@@ -4,6 +4,7 @@
 - **Student:** Mahmut Çirka · 2520191026 ([@mahmutcirka](https://github.com/mahmutcirka))
 - **Pull request:** [#128](https://github.com/keyvanarasteh/os-lab/pull/128) · reservation [#127](https://github.com/keyvanarasteh/os-lab/pull/127)
 - **Verification:** [VERIFY.md](VERIFY.md)
+- **Proof video:** linked in the pull request description (2 min 12 s, not committed)
 
 ## What the task asked for
 
@@ -66,4 +67,5 @@ manifest is the operator's own declaration.
 The code, tests and documentation in this pull request were written with the help of Claude Code;
 the commits carry a `Co-Authored-By` line. I chose the task and reviewed each change before it was
 pushed. The test runs recorded in [VERIFY.md](VERIFY.md) were done on my own machine and in a
-GitHub codespace of my fork.
+GitHub codespace of my fork. The proof video records a small script, written with the same help,
+that types each command and runs it for real on my machine; the recording is not edited afterwards.
