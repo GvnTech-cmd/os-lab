@@ -153,7 +153,7 @@ Course midterm reservations add a `course` (and an option number in `note`) — 
 | **OS-26** | **File Permission & Ownership Auditor** | Scans for world-writable files, over-permissive modes and ownership drift with suggested fixes. (Teached ders03) | **Medium** · Small |
 | **OS-27** | **Permission-Fix Advisor with 644/755/600 Presets** | Preset-based `chmod` with preview and approval, explaining each preset. (Teached ders03) | **Medium** · Tiny–Small |
 | **OS-28** | **File Search & Text-Grep Teaching Wrapper** | Builds correct `find`/`grep` commands (with wildcards) from a query and explains what ran. (Teached ders02) | **Medium** · Tiny–Small |
-| **OS-29** | **Server Log Viewer Helper (less/head/tail/wc)** | head/tail/follow/count modes over a log path, safe on large/rotating files. (Teached ders02) | **Medium** · Tiny–Small |
+| **OS-29** | **Server Log Viewer Helper (less/head/tail/wc)** | head/tail/follow/count modes over a log path, safe on large/rotating files. (Teached ders02) | **Medium** · Tiny–Small |ilknur (ilknurbagci)|
 | **OS-30** | **Ubuntu Server Hardening Checker/Applier** | SSH/users/updates/ufw baseline audit with approval-gated apply (hardened-from-scratch candidate). (Teached vize adayı) | **High** · Small–Medium |
 | **OS-31** | **journald Structured Logging & Log-Rotation Setup** | Persistent journald + size limits + logrotate profile for lab services, with rotation verification. (Teached 26.10/05.10) | **Medium** · Small |
 | **OS-32** | **Service Inventory & Health Report (systemctl)** | Read-only units inventory with active/enabled state and failed/flapping highlights. (Teached 12.10/26.10) | **Medium** · Small |
