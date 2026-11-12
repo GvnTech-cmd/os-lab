@@ -67,7 +67,9 @@ that may be tested, with who authorized it and an optional end date.
 `$OSLAB_SCOPE_FILE`, then `scope.json` in the checkout (git-ignored;
 [[console/scope.example.json]] is the starting point). Validation is strict:
 unknown fields, wrong types, a missing `authorization` text and more than 512
-entries per list are errors, so a typo cannot silently widen or empty a scope.
+entries per list, a repeated field and a range with address bits beyond its
+prefix (`10.25.130.14/24`) are errors, so a typo cannot silently widen or empty
+a scope. The file must be a regular file and at most 256 KiB is read.
 A scope must name its targets: `*`, `0.0.0.0/0`, `::/0`, `*.com` and `com.*` are
 rejected. Address ranges must be loopback, private or link-local unless the
 manifest sets `allowPublic`, which is the written-authorization case.
@@ -79,10 +81,13 @@ part is matched, against addresses, CIDR ranges, exact names and `*.suffix`.
 
 A wildcard covers subdomains at any depth but not the bare domain, and whole
 top-level domains are accepted only for reserved lab names such as `.test` and
-`.local`. An IPv4-mapped IPv6 address is matched as its IPv4 address. Targets
-that could hide another host are refused before matching: user info and
-fragments in URLs are not the host, `inet_aton` spellings such as `127.1` or
-`2130706433` are not names, and non-ASCII names must be written in punycode.
+`.local`. An IPv4-mapped IPv6 address, in a rule or a target, is matched as its
+IPv4 address. Targets that could hide another host are refused before matching:
+user info and fragments in URLs are not the host, `inet_aton` spellings such as
+`127.1` or `2130706433` are not names, and non-ASCII names must be written in
+punycode. A `file:` URL is a path, not a host, and is refused. So is an address
+with an interface zone (`fe80::1%eth0`), because rules carry no interface, and
+square brackets around anything but one IPv6 address.
 Names are matched as text, so a tool that connects by name should also check
 the address it resolved.
 
@@ -98,12 +103,16 @@ refused rather than matched.
 
 ### Paths
 
-A path is in scope when its real location is inside a declared folder; manifest
-folders are relative to the manifest, targets to the working directory.
+A path is in scope when its real location is inside a declared folder; relative
+manifest folders start at the manifest, relative targets at the working directory.
 
 Targets are resolved the way the operating system would open them, with links
 followed, so `..`, a sibling folder that shares a name prefix and a link that
 leaves the lab folder are all refused. A filesystem root cannot be declared.
+The manifest is the operator's declaration, so it may also name an absolute or
+`~` folder. A decision describes the path when it was checked: tools should open
+the resolved path it returns, and lab folders should be writable only by the
+operator, since the guard cannot prevent a later swap of a folder for a link.
 
 ### Refusal
 
@@ -112,8 +121,8 @@ expired scope, an unknown kind or a malformed target are refusals, never passes.
 
 Each refusal states the target, the scope name and the declared rules of that
 kind, so the operator can see whether the target or the manifest is wrong.
-Control characters are rejected before any trimming because the tool would use
-the raw value. A scope is valid through its `expires` date and refuses
+Control characters and leading or trailing whitespace are refused rather than
+trimmed, because the tool would use the raw value. A scope is valid through its `expires` date and refuses
 everything after it.
 
 ### Console and command line

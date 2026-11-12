@@ -72,9 +72,31 @@ def test_hosts_outside_the_lab_are_refused(scope, target):
     "127.1", "2130706433", "0x7f.0.0.1", "0x7f000001", "017700000001",   # inet_aton spellings
     "lоcalhost",                             # Cyrillic "о"
     "local host", "localhost\n", "localhost\r\nevil.com", "", "   ", "http://", "localhost:port", "a..b",
+    " localhost", "localhost ", " 127.0.0.1",                    # the tool would use the padded value
+    "file://localhost/etc/passwd", "FILE://localhost/C:/Windows/win.ini",    # a path, not a network host
+    "[::1", "::1]", "[[::1]]", "[127.0.0.1]", "[localhost]",     # brackets are for IPv6 only, and in pairs
 ])
 def test_disguised_or_malformed_hosts_are_refused(scope, target):
     assert not allowed(scope, "host", target)
+
+
+# @lat: [[tooling#Scope guard#Hosts]]
+def test_interface_zones_are_refused(tmp_path):
+    scope = scope_guard.parse_scope(manifest(hosts=["fe80::/10"]), source=str(tmp_path / "scope.json"))
+    assert allowed(scope, "host", "fe80::1") and allowed(scope, "host", "[fe80::1]:22")
+    for target in ("fe80::1%eth0", "[fe80::1%eth0]", "[fe80::1%25eth0]:22", "http://[fe80::1%25eth0]/"):
+        decision = scope_guard.check("host", target, scope, today=TODAY)
+        assert not decision.allowed, target
+
+
+# @lat: [[tooling#Scope guard#Hosts]]
+def test_mapped_ipv6_rules_match_like_their_ipv4_address(tmp_path):
+    scope = scope_guard.parse_scope(manifest(hosts=["::ffff:10.9.8.7", "::ffff:10.7.0.0/112"]),
+                                    source=str(tmp_path / "scope.json"))
+    for target in ("10.9.8.7", "::ffff:10.9.8.7", "[::ffff:10.9.8.7]:443", "10.7.0.5", "::ffff:10.7.255.255"):
+        assert allowed(scope, "host", target), target
+    for target in ("10.9.8.8", "10.8.0.1", "::ffff:10.8.0.1"):
+        assert not allowed(scope, "host", target), target
 
 
 # @lat: [[tooling#Scope guard#Apps and devices]]
@@ -82,7 +104,8 @@ def test_packages_match_exactly_or_by_dotted_prefix(scope):
     for package in ("com.testlab.vulnerable", "com.oslab.demo", "com.oslab.demo.debug"):
         assert allowed(scope, "package", package)
     for package in ("com.testlab.vulnerable2", "com.testlab", "com.oslabs.demo", "com.oslab", "com.OSLAB.demo",
-                    "com.whatsapp", "org.com.oslab.demo", "com.oslab.demo; rm -rf /", "singleword", "", "com..oslab"):
+                    "com.whatsapp", "org.com.oslab.demo", "com.oslab.demo; rm -rf /", "singleword", "", "com..oslab",
+                    " com.testlab.vulnerable", "com.testlab.vulnerable "):
         assert not allowed(scope, "package", package)
 
 
@@ -91,7 +114,7 @@ def test_device_serials_match_exactly_or_by_prefix(scope):
     for serial in ("emulator-5554", "emulator-5556", "127.0.0.1:5555", "R58M12ABCDE"):
         assert allowed(scope, "device", serial)
     for serial in ("R58M12ABCDF", "r58m12abcde", "R58M12ABCDE1", "192.168.1.20:5555", "127.0.0.1:5556",
-                   "emulator", "xemulator-5554", "emulator-5554 -s other", "", "*"):
+                   "emulator", "xemulator-5554", "emulator-5554 -s other", "", "*", " emulator-5554", "emulator-5554 "):
         assert not allowed(scope, "device", serial)
 
 
@@ -108,6 +131,8 @@ def test_paths_must_stay_inside_a_declared_folder(scope, tmp_path, monkeypatch):
     assert not allowed(scope, "path", str(tmp_path))
     assert not allowed(scope, "path", "")
     assert not allowed(scope, "path", "artifacts\0/x")
+    assert not allowed(scope, "path", " " + str(inside / "x.json"))       # open() would use the padded name
+    assert not allowed(scope, "path", str(inside / "x.json") + " ")
     # a relative target is resolved against the working directory, as the tool's open() would
     monkeypatch.chdir(tmp_path)
     assert allowed(scope, "path", os.path.join("artifacts", "x.json"))
@@ -178,6 +203,17 @@ def test_a_broken_manifest_refuses_instead_of_falling_open(tmp_path, monkeypatch
     assert scope_guard.in_scope("host", "127.0.0.1")
     path.write_text(" " * (scope_guard.MAX_MANIFEST_BYTES + 1), encoding="utf-8")
     assert not scope_guard.in_scope("host", "127.0.0.1")
+    path.write_text("[" * 100000, encoding="utf-8")                       # deeper than the JSON decoder goes
+    refused = scope_guard.check("host", "127.0.0.1")
+    assert not refused.allowed and "nested too deeply" in refused.reason
+    # a repeated field would silently replace the first one
+    text = json.dumps(manifest(hosts=["8.8.8.8"], allowPublic=True))[:-1] + ', "hosts": ["127.0.0.1"]}'
+    path.write_text(text, encoding="utf-8")
+    refused = scope_guard.check("host", "127.0.0.1")
+    assert not refused.allowed and '"hosts" appears more than once' in refused.reason
+    monkeypatch.setenv(scope_guard.SCOPE_ENV, str(tmp_path))              # a folder is not a manifest
+    refused = scope_guard.check("host", "127.0.0.1")
+    assert not refused.allowed and "not a regular file" in refused.reason
 
 
 # @lat: [[tooling#Scope guard#Manifest]]
@@ -201,6 +237,8 @@ def test_manifest_lookup_order(tmp_path):
     {"hosts": ["*"]}, {"hosts": ["0.0.0.0/0"]}, {"hosts": ["::/0"]}, {"hosts": ["*.com"]},
     {"hosts": ["lab.*.internal"]}, {"hosts": ["*lab.internal"]}, {"hosts": ["http://localhost"]},
     {"hosts": ["127.1"]}, {"hosts": ["10.0.0.0/33"]},
+    {"hosts": ["10.25.130.14/24"]}, {"hosts": ["fd00:1ab::17/64"]},        # host bits would widen to the range
+    {"hosts": ["::ffff:0:0/96"]}, {"hosts": ["::ffff:8.8.8.8"]},           # mapped "everything" / mapped public
     {"hosts": ["8.8.8.8"]}, {"hosts": ["0.0.0.0/1"]}, {"hosts": ["192.168.0.0/15"]}, {"hosts": ["2001:db8::/16"]},
     {"packages": ["*"]}, {"packages": ["com.*"]}, {"packages": ["com.oslab*"]}, {"packages": ["com.*.app"]},
     {"devices": ["*"]}, {"devices": ["emu*lator"]}, {"devices": ["a b"]},
@@ -210,6 +248,12 @@ def test_manifest_lookup_order(tmp_path):
 def test_invalid_or_over_broad_manifests_are_rejected(changes, tmp_path):
     with pytest.raises(ScopeManifestError):
         scope_guard.parse_scope(manifest(**changes), source=str(tmp_path / "scope.json"))
+
+
+# @lat: [[tooling#Scope guard#Manifest]]
+def test_a_range_with_host_bits_names_the_fix(tmp_path):
+    with pytest.raises(ScopeManifestError, match=r'write "10\.25\.130\.0/24" for the range'):
+        scope_guard.parse_scope(manifest(hosts=["10.25.130.14/24"]), source=str(tmp_path / "scope.json"))
 
 
 # @lat: [[tooling#Scope guard#Manifest]]

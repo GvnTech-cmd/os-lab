@@ -21,6 +21,11 @@ malformed target are all refusals. It never resolves DNS and never touches the n
 name is matched by name only, so a tool that connects by name should also check the address it
 actually resolved.
 
+A decision describes the target at the moment of the check. Use ``decision.target`` (the
+normalized host, or the resolved path) for the operation that follows, and keep lab folders
+writable only by the operator: the guard cannot stop another process from swapping a folder for
+a link between the check and the tool's own open().
+
 The manifest is looked up in this order: the ``path`` argument, ``$OSLAB_SCOPE_FILE``, then
 ``scope.json`` in the os-lab checkout. Start from ``console/scope.example.json``.
 
@@ -40,6 +45,7 @@ import ipaddress
 import json
 import os
 import re
+import stat
 import sys
 import urllib.parse
 from dataclasses import dataclass, field
@@ -64,6 +70,7 @@ _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _NUMERIC_LABEL = re.compile(r"^(?:0x[0-9a-f]*|[0-9]+)$")
 # Special-use names that never resolve on the public internet (RFC 6761, RFC 6762, ICANN .internal).
 _LAB_TLDS = {"test", "local", "localhost", "internal", "example", "invalid"}
+_MAPPED = ipaddress.ip_network("::ffff:0:0/96")
 
 
 class ScopeError(PermissionError):
@@ -154,10 +161,20 @@ def _host_rule(entry: str, allow_public: bool):
     """One "hosts" entry as ("network", ip_network) or ("name", exact-or-.suffix)."""
     text = entry.lower()
     try:
-        network = ipaddress.ip_network(text, strict=False)
+        network = ipaddress.ip_network(text, strict=True)
     except ValueError:
         network = None
+        try:
+            widened = ipaddress.ip_network(text, strict=False)
+        except ValueError:
+            widened = None
+        if widened is not None:              # 10.25.130.14/24 would silently cover the whole /24
+            raise ScopeManifestError(
+                f'hosts: "{entry}" has address bits beyond its prefix; write "{widened}" for the range '
+                "or the address alone for one host") from None
     if network is not None:
+        if network.version == 6 and network.subnet_of(_MAPPED):    # targets are matched unmapped
+            network = ipaddress.IPv4Network((int(network.network_address) & 0xFFFFFFFF, network.prefixlen - 96))
         if network.prefixlen == 0:
             raise ScopeManifestError(f'hosts: "{entry}" matches every address; a scope must name its targets')
         if not allow_public and not network.is_loopback and not network.is_private and not network.is_link_local:
@@ -248,14 +265,27 @@ def parse_scope(data, source: str | None = None, base_dir: str | None = None) ->
                  devices=tuple(devices), paths=tuple(paths), source=source, rules=rules)
 
 
+def _unique_fields(pairs):
+    """json keeps the last of two equal keys; a second "hosts" list must not replace the first unnoticed."""
+    fields = {}
+    for key, value in pairs:
+        if key in fields:
+            raise ScopeManifestError(f'Scope field "{key}" appears more than once')
+        fields[key] = value
+    return fields
+
+
 def load_scope(path: str | None = None, root: str | None = None, env=None) -> Scope:
     """Read and validate the scope manifest. Raises ScopeManifestError; never returns a partial scope."""
     source = manifest_path(path, root, env)
     try:
-        if os.path.getsize(source) > MAX_MANIFEST_BYTES:
+        if not stat.S_ISREG(os.stat(source).st_mode):
+            raise ScopeManifestError(f"Scope manifest is not a regular file: {source}")
+        with open(source, "rb") as handle:
+            raw = handle.read(MAX_MANIFEST_BYTES + 1)     # the limit applies to what is actually read
+        if len(raw) > MAX_MANIFEST_BYTES:
             raise ScopeManifestError(f"Scope manifest is larger than {MAX_MANIFEST_BYTES} bytes: {source}")
-        with open(source, encoding="utf-8-sig") as handle:
-            data = json.load(handle)
+        data = json.loads(raw.decode("utf-8-sig"), object_pairs_hook=_unique_fields)
     except FileNotFoundError:
         raise ScopeManifestError(
             f"No lab scope is declared ({source} does not exist). Copy console/scope.example.json to "
@@ -264,10 +294,24 @@ def load_scope(path: str | None = None, root: str | None = None, env=None) -> Sc
         raise ScopeManifestError(f"Scope manifest cannot be read: {source} ({exc})") from None
     except json.JSONDecodeError as exc:
         raise ScopeManifestError(f"Scope manifest is not valid JSON: {source} (line {exc.lineno})") from None
+    except RecursionError:
+        raise ScopeManifestError(f"Scope manifest is nested too deeply: {source}") from None
     return parse_scope(data, source=source)
 
 
 # ── Targets ──────────────────────────────────────────────────────────────────
+
+def _address(text: str) -> str | None:
+    """An IP literal in its normalized form, or None when ``text`` is not one. Raises ValueError for a zone."""
+    try:
+        address = ipaddress.ip_address(text)
+    except ValueError:
+        return None
+    if getattr(address, "scope_id", None):
+        # fe80::1%eth0 and fe80::1%wlan0 can be different machines; rules carry no interface
+        raise ValueError("the address carries an interface zone (%...), which the scope cannot express")
+    return str(_unmapped(address)).lower()
+
 
 def normalize_host(target: str) -> str:
     """The bare host of an address, host name, host:port or URL, lower-cased. Raises ValueError."""
@@ -278,24 +322,28 @@ def normalize_host(target: str) -> str:
         raise ValueError("the host contains a backslash")
     if not text.isascii():
         raise ValueError("the host is not ASCII; write internationalized names in punycode (xn--)")
-    try:                                     # a bare address, including unbracketed IPv6
-        return str(_unmapped(ipaddress.ip_address(text.strip("[]").split("%", 1)[0]))).lower()
-    except ValueError:
-        pass
+    bracketed = text.startswith("[") and text.endswith("]")
+    bare = text[1:-1] if bracketed else text
+    if bracketed and ":" not in bare:
+        raise ValueError("square brackets are only for IPv6 addresses")
+    if "[" not in bare and "]" not in bare:  # a bare address, including unbracketed IPv6
+        address = _address(bare)
+        if address:
+            return address
     try:
         parts = urllib.parse.urlsplit(text if "://" in text else "//" + text)
         host = parts.hostname
         parts.port                           # raises ValueError for a port that is not a number
     except ValueError as exc:
         raise ValueError(f"the host cannot be parsed ({exc})") from None
+    if parts.scheme == "file":
+        raise ValueError("a file URL names a local path, not a network host; check it as a path")
     if not host:
         raise ValueError("no host was found in the target")
-    host = host.split("%", 1)[0]
     host = host[:-1] if host.endswith(".") else host
-    try:
-        return str(_unmapped(ipaddress.ip_address(host))).lower()
-    except ValueError:
-        pass
+    address = _address(host)
+    if address:
+        return address
     if not _HOSTNAME.match(host) or len(host) > 253:
         raise ValueError("the host is not a valid address or host name")
     if all(_NUMERIC_LABEL.match(label) for label in host.split(".")):
@@ -375,8 +423,10 @@ def check(kind: str, target, scope: Scope | None = None, *, today: _dt.date | No
         return Decision(False, str(kind), shown, f"Refused: unknown target kind {kind!r}; use one of {', '.join(KINDS)}")
     if not isinstance(target, str) or len(target) > MAX_TARGET:
         return Decision(False, kind, shown, f"Refused: the {_LABELS[kind]} must be a string of at most {MAX_TARGET} characters")
-    if _has_control(target):                 # checked before any trimming: the tool would use the raw value
+    if _has_control(target):                 # the tool would use the raw value, not a cleaned-up copy
         return Decision(False, kind, repr(shown), f"Refused: the {_LABELS[kind]} contains control characters")
+    if target != target.strip():
+        return Decision(False, kind, repr(shown), f"Refused: the {_LABELS[kind]} has leading or trailing whitespace")
     if scope is None:
         try:
             scope = load_scope()
