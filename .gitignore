@@ -10,6 +10,8 @@
 **/config.env
 !**/config.env.example
 android-lab/lab/.sim-device
+# Your declared lab scope (start from console/scope.example.json)
+/scope.json
 ios-lab/mac/config.env
 ios-lab/mac/.sim-device
 ios-lab/mac/.appium.pid

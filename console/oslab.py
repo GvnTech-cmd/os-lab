@@ -11,6 +11,7 @@ A standard-library port of the OS Lab desktop runtime in qLar PR #174
 - ``JobService``       runs a confirmed plan in the background with captured, secret-redacted
                        output, a timeout and cancellation.
 - ``monitor()``        container state and resource use for a lab.
+- ``scope_status()``   the declared lab scope; scope_guard.py refuses targets outside it.
 
 The web console in android-lab/lab/web_ui.py exposes these over a localhost JSON API.
 """
@@ -480,6 +481,12 @@ def capability_catalog() -> dict:
                     level = "full"
                 item["support"][platform]["level"] = level
     return catalog
+
+
+def scope_status(root: str) -> dict:
+    """The declared lab scope that console/scope_guard.py enforces: scope.json or $OSLAB_SCOPE_FILE."""
+    import scope_guard
+    return scope_guard.scope_status(root)
 
 
 # ── Configuration ────────────────────────────────────────────────────────────

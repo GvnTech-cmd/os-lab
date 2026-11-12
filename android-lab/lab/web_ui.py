@@ -183,7 +183,7 @@ class LabHttpHandler(BaseHTTPRequestHandler):
         if path.startswith("/api/app/update"):
             self._app_get(path)
             return
-        if path.startswith(("/api/host", "/api/labs", "/api/jobs", "/api/capabilities")):
+        if path.startswith(("/api/host", "/api/labs", "/api/jobs", "/api/capabilities", "/api/scope")):
             if not oslab:
                 self._json(501, {"error": "The console module (console/oslab.py) is not installed"})
                 return
@@ -295,6 +295,8 @@ class LabHttpHandler(BaseHTTPRequestHandler):
             self._json(200, {"host": host, "labs": oslab.lab_catalog(REPO_ROOT, host)["labs"]})
         elif path == "/api/capabilities":
             self._json(200, oslab.capability_catalog())
+        elif path == "/api/scope":
+            self._json(200, oslab.scope_status(REPO_ROOT))
         elif len(parts) == 4 and parts[:2] == ["api", "labs"] and parts[2] in oslab.LABS and parts[3] == "config":
             self._json(200, oslab.lab_config(REPO_ROOT, parts[2]))
         elif len(parts) == 4 and parts[:2] == ["api", "labs"] and parts[2] in oslab.LABS and parts[3] == "monitor":

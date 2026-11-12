@@ -39,7 +39,8 @@ Guests are treated as untrusted.
 The labs never expose their viewers or remote-access ports publicly by default,
 and each lab's `knowledge/` directory documents network containment for
 detonation-style work. This is a defensive, authorization-only project — see
-[[tooling#Security and licensing]].
+[[tooling#Security and licensing]]. Lab tools enforce that rule through the
+[[tooling#Scope guard]], which refuses targets outside the declared lab scope.
 
 ## Why a monorepo
 
