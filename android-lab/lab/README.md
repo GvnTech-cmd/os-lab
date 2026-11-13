@@ -93,6 +93,7 @@ new device profile.
 | `install APK=` | copy APK into `apks/` and `adb install -r` |
 | `wf1 APK=` | static workflow (MobSF + JADX) |
 | `wf2 APK= [PKG=]` | dynamic workflow (emulator + mitm + frida) |
+| `pinning APK=` | PENT-11: static SSL-pinning detector/classifier (run before `wf2`) |
 | `hook PKG= HOOK=` | attach a Frida hook to a running app |
 | `report` | collect logs/status/flows into `artifacts/` |
 | `clean` | wipe `artifacts/` |
@@ -113,6 +114,7 @@ lab/
 │   ├── wait-boot.sh       # poll device_status until "ready"
 │   ├── wf1-static.sh      # MobSF upload → scan → PDF/JSON → jadx
 │   ├── wf2-dynamic.sh     # boot → install → proxy → frida-server
+│   ├── pinning_detector.py # PENT-11 static SSL/certificate-pinning classifier
 │   ├── report.sh          # artifact sweep
 │   ├── install-service.sh # systemd unit for boot start
 │   └── uninstall-service.sh

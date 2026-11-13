@@ -67,10 +67,23 @@ report generator [[android-lab/lab/scripts/app_reporter.py]], the MobSF client
 [[android-lab/lab/scripts/apk_patcher.py]]. Prebuilt Frida hooks are in
 [[android-lab/lab/hooks]].
 
+### Pinning detector
+
+[[android-lab/lab/scripts/pinning_detector.py]] (PENT-11) classifies how an APK or decompiled
+tree pins TLS, statically, before any dynamic work.
+
+It decodes binary manifest and `res/xml` Network Security Config files itself, then scores OkHttp
+pin literals, custom TrustManager key checks, TrustKit and cross-platform plugins, Flutter,
+native `.so` verification and bundled certificates. Output is a ranked method list with
+evidence, a `pinned` / `likely_pinned` / `possible` / `none_detected` status, weak-validation
+flags and the matching lab hook as next step. Library-only class presence stays `low`
+confidence. It reads local files only (`make pinning APK=`); tests are in
+[[android-lab/lab/tests/test_pinning_detector.py]].
+
 ## Tests
 
 The lab ships a pytest suite in [[android-lab/lab/tests]].
 
-It covers the analyzer, reporter, MobSF client, secret scanner, patcher, flow
+It covers the analyzer, reporter, MobSF client, secret scanner, pinning detector, patcher, flow
 parser, agentic engine and web UI, and runs in CI — see
 [[tooling#Local test runner]].

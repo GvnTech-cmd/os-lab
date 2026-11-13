@@ -3,7 +3,8 @@
   "name": "Mevlit Kaan Öztürk",
   "github": "kkaanozturk",
   "course": "MYO062",
-  "status": "reserved",
+  "status": "in-progress",
   "pr": "",
-  "date": "2026-11-12"
+  "date": "2026-11-12",
+  "note": "MYO062 vize PENT-11: static SSL pinning detector"
 }
