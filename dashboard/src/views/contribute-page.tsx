@@ -24,6 +24,7 @@ import { TopBar } from "../shell/top-bar";
 import { REPO_BLOB } from "../lib/legal";
 import { SOURCE_BONUS_TASKS } from "./source-bonus-tasks";
 import { CLEANUP_LAB_TASKS } from "./cleanup-lab-tasks";
+import { MACOS_LAB_TASKS } from "./macos-lab-tasks";
 
 export type TaskCategory = "all" | "pentest" | "os" | "firewall";
 export type TaskPriority = "all" | "high" | "medium";
@@ -47,6 +48,7 @@ export interface TodoTask {
 export const CURATED_TASKS: TodoTask[] = [
   ...SOURCE_BONUS_TASKS,
   ...CLEANUP_LAB_TASKS,
+  ...MACOS_LAB_TASKS,
   // --- 1. Penetration Testing (Pentesting) ---
   {
     id: "PENT-01",

@@ -1,1 +1,0 @@
-export{t as FirewallCompanyPage}from"./firewall-company-page.DDMK37zQ.js";

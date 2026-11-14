@@ -229,6 +229,7 @@ Run from the checkout root as `make -C android-lab/lab TARGET [VARIABLE=value ..
 - `install` — Install an APK into the emulator: make install APK=path/to/app.apk
 - `wf1` — WF1 static: MobSF scan → JADX decompile → report. make wf1 APK=app.apk
 - `wf2` — WF2 dynamic: boot → deploy → mitmproxy → frida (optional). make wf2 APK=app.apk [PKG=com.example]
+- `pinning` — PENT-11 static SSL-pinning classifier (no device needed): make pinning APK=app.apk
 - `hook` — Run a Frida hook against a running app: make hook PKG=com.example HOOK=hooks/ssl-pinning-bypass.js
 - `report` — Collect logs, device status and flows into artifacts/
 - `install-service` — Install a systemd unit that starts the stack at boot

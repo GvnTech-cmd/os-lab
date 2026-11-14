@@ -393,3 +393,55 @@ test("shared CopyButton reports clipboard failure without a success icon", async
   await expect(page.getByRole("status").filter({ hasText: "Clipboard unavailable" })).toBeVisible();
   await expect(page.getByText("Copied", { exact: true })).toHaveCount(0);
 });
+
+const MIRROR_PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
+
+test("the app mirror previews mirror clicks and runs them directly while armed", async ({ page }) => {
+  const action = { id: "macos-click", label: "Click in app", description: "Preview macos-click", privileged: false };
+  await mockApi(page, "macos", { macos: { state: "ready", provider: "native-macos", actions: [action] } });
+  let armed = false;
+  let clicks = 0;
+  await page.route("**/api/labs/macos/apps", (route) => route.fulfill({ json: {
+    available: true, reason: null, screenRecording: true,
+    windows: [{ windowId: 42, pid: 100, app: "Finder", title: "Demo", x: 0, y: 0, width: 800, height: 600 }]
+  } }));
+  await page.route("**/api/labs/macos/apps/42/screenshot", (route) => route.fulfill({ body: MIRROR_PNG, headers: { "Content-Type": "image/png" } }));
+  await page.route("**/api/labs/macos/apps/42/elements", (route) => route.fulfill({ json: {
+    windowId: 42, app: "Finder", bounds: { x: 0, y: 0, width: 800, height: 600 },
+    elements: [{ role: "Button", label: "OK", x: 100, y: 100, w: 80, h: 24 }]
+  } }));
+  await page.route("**/api/labs/macos/control", (route) => {
+    if (route.request().method() === "POST") {
+      armed = (route.request().postDataJSON() as { armed?: boolean }).armed === true;
+    }
+    return route.fulfill({ json: { armed, expiresInSec: armed ? 600 : 0 } });
+  });
+  await page.route("**/api/labs/macos/click", (route) => {
+    clicks++;
+    return route.fulfill({ json: { ok: true, pid: 100, x: 140, y: 112 } });
+  });
+  await page.route("**/api/labs/plan", (route) => route.fulfill({ json: {
+    plan: { lab: "macos", action: "macos-click", provider: "native-macos", workspace: "", program: "bash",
+            args: [], effects: ["One click on this Mac."], timeoutSec: 120, privileged: false, runnable: true,
+            manualCommand: null, setup: null, display: "bash mac/macos-app.sh click 100 140 112" },
+    token: "test-token"
+  } }));
+
+  await page.goto("/labs/macos/");
+  await expect(page.getByLabel("Window")).toBeVisible();
+  await page.getByRole("button", { name: "Elements" }).click();
+  const hotspot = page.getByRole("button", { name: "1: OK" });
+  await expect(hotspot).toBeVisible();
+
+  // Without control mode the hotspot only previews the click action.
+  await hotspot.click();
+  await expect(page.getByRole("heading", { name: /Click in app/ })).toBeVisible();
+  await expect.poll(() => clicks).toBe(0);
+  await expect(page.getByText("Clicks on the mirror preview a macos-click action first.")).toBeVisible();
+
+  // Armed, the same click lands immediately and never opens a preview.
+  await page.getByRole("button", { name: "Arm control" }).click();
+  await expect(page.getByText("Armed — mirror clicks run immediately on this Mac.")).toBeVisible();
+  await hotspot.click();
+  await expect.poll(() => clicks).toBe(1);
+});

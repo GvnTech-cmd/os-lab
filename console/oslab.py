@@ -18,6 +18,7 @@ The web console in android-lab/lab/web_ui.py exposes these over a localhost JSON
 
 from __future__ import annotations
 
+import ctypes
 import hashlib
 import hmac
 import json
@@ -120,7 +121,9 @@ LABCTL_ACTIONS = ["status", "doctor", "urls", "logs", "monitor", "start", "stop"
 MAC_ACTIONS = ["status", "doctor", "setup", "start", "stop", "appium-install", "appium-start", "appium-stop",
                "idb-install", "idb-start", "idb-stop", "xcuitest-smoke"]
 # The macOS Lab automates installed macOS applications through Appium mac2 — no simulator.
-MACOS_APP_ACTIONS = ["status", "doctor", "setup", "appium-install", "appium-start", "appium-stop", "macos-smoke"]
+# macos-click drives the app mirror panel (never rendered as a plain button).
+MACOS_APP_ACTIONS = ["status", "doctor", "setup", "appium-install", "appium-start", "appium-stop", "macos-smoke",
+                     "macos-click"]
 
 ACTION_INFO = {
     "csv-merge": ("Join catalogs", "Join operator catalogs into private storage."),
@@ -150,6 +153,7 @@ ACTION_INFO = {
     "idb-stop": ("Stop idb", "Stop the idb companion."),
     "xcuitest-smoke": ("XCUITest smoke test", "Run one real XCUITest session through Appium and WebDriverAgent on the booted simulator."),
     "macos-smoke": ("macOS app smoke test", "Run one real Appium mac2 session that activates Finder on this Mac."),
+    "macos-click": ("Click in app", "Bring the mirrored app to the front and click once at the chosen point."),
 }
 
 # On the iOS Lab's native path "start" and "stop" drive the iOS Simulator, not a container stack.
@@ -363,6 +367,220 @@ def ios_screenshot() -> bytes:
             os.unlink(path)
         except OSError:
             pass
+
+
+# ── macOS app mirror ─────────────────────────────────────────────────────────
+# Read-only host inspection for the app mirror panel: the window list comes from CoreGraphics
+# through ctypes (the osascript ObjC bridge segfaults on current macOS), a window's pixels come
+# from `screencapture -l` and its accessibility tree from System Events. Control mode posts real
+# clicks through the same macos-app.sh click action the previewed flow uses.
+
+_MACOS_CONTROL = {"armed": False, "armedAt": 0.0}
+_MACOS_CONTROL_LOCK = threading.Lock()
+_MACOS_CONTROL_TIMEOUT = 600  # control mode disarms itself after ten idle minutes
+
+
+class _MacosWindows:
+    """Minimal ctypes bindings for the CG window list. Listing needs no permission; window
+    titles are only populated when the console holds Screen Recording."""
+
+    UTF8 = 0x08000100
+
+    def __init__(self) -> None:
+        self.cg = ctypes.CDLL("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics")
+        self.cf = ctypes.CDLL("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation")
+        cg, cf = self.cg, self.cf
+        cg.CGWindowListCopyWindowInfo.restype = ctypes.c_void_p
+        cg.CGWindowListCopyWindowInfo.argtypes = [ctypes.c_uint32, ctypes.c_int32]
+        cf.CFArrayGetCount.restype = ctypes.c_long
+        cf.CFArrayGetCount.argtypes = [ctypes.c_void_p]
+        cf.CFArrayGetValueAtIndex.restype = ctypes.c_void_p
+        cf.CFArrayGetValueAtIndex.argtypes = [ctypes.c_void_p, ctypes.c_long]
+        cf.CFDictionaryGetValue.restype = ctypes.c_void_p
+        cf.CFDictionaryGetValue.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        cf.CFStringCreateWithCString.restype = ctypes.c_void_p
+        cf.CFStringCreateWithCString.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_uint32]
+        cf.CFStringGetCString.restype = ctypes.c_bool
+        cf.CFStringGetCString.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_long, ctypes.c_uint32]
+        cf.CFNumberGetValue.restype = ctypes.c_bool
+        cf.CFNumberGetValue.argtypes = [ctypes.c_void_p, ctypes.c_long, ctypes.POINTER(ctypes.c_int64)]
+        cf.CFGetTypeID.restype = ctypes.c_ulong
+        cf.CFGetTypeID.argtypes = [ctypes.c_void_p]
+        cf.CFStringGetTypeID.restype = ctypes.c_ulong
+        cf.CFNumberGetTypeID.restype = ctypes.c_ulong
+
+    def _cfstr(self, text: str) -> int:
+        return self.cf.CFStringCreateWithCString(None, text.encode(), self.UTF8)
+
+    def _string(self, ref: int) -> str:
+        buf = ctypes.create_string_buffer(1024)
+        return buf.value.decode() if ref and self.cf.CFStringGetCString(ref, buf, 1024, self.UTF8) else ""
+
+    def _number(self, ref: int) -> int:
+        value = ctypes.c_int64()
+        return value.value if ref and self.cf.CFNumberGetValue(ref, 4, ctypes.byref(value)) else 0  # 4 = SInt64
+
+    def value(self, dictionary: int, key: str):
+        ref = self.cf.CFDictionaryGetValue(dictionary, self._cfstr(key))
+        if not ref:
+            return None
+        return self._string(ref) if self.cf.CFGetTypeID(ref) == self.cf.CFStringGetTypeID() else self._number(ref)
+
+    def windows(self) -> list[dict]:
+        arr = self.cg.CGWindowListCopyWindowInfo(1, 0)  # on-screen only
+        out = []
+        for i in range(self.cf.CFArrayGetCount(arr)):
+            d = self.cf.CFArrayGetValueAtIndex(arr, i)
+            if self.value(d, "kCGWindowLayer") != 0:
+                continue
+            owner = self.value(d, "kCGWindowOwnerName") or ""
+            width = self.value(self.cf.CFDictionaryGetValue(d, self._cfstr("kCGWindowBounds")), "Width")
+            height = self.value(self.cf.CFDictionaryGetValue(d, self._cfstr("kCGWindowBounds")), "Height")
+            if not owner or not width or not height or width < 40 or height < 40:
+                continue  # desktop-stage and helper windows are not app windows
+            out.append({"windowId": self.value(d, "kCGWindowNumber"), "pid": self.value(d, "kCGWindowOwnerPID"),
+                        "app": owner, "title": self.value(d, "kCGWindowName") or "",
+                        "x": self.value(self.cf.CFDictionaryGetValue(d, self._cfstr("kCGWindowBounds")), "X"),
+                        "y": self.value(self.cf.CFDictionaryGetValue(d, self._cfstr("kCGWindowBounds")), "Y"),
+                        "width": width, "height": height})
+        return out
+
+
+_MACOS_CG: _MacosWindows | None = None
+
+
+def _macos_cg() -> _MacosWindows:
+    global _MACOS_CG
+    if _MACOS_CG is None:
+        _MACOS_CG = _MacosWindows()
+    return _MACOS_CG
+
+
+def macos_windows() -> dict:
+    """Visible ordinary windows for the app mirror panel. Listing needs no permission; the
+    screenRecording flag is a hint: titles only appear when the console holds Screen Recording."""
+    if host_os() != "macos":
+        return {"available": False, "reason": "The app mirror needs a Mac.", "screenRecording": False, "windows": []}
+    try:
+        windows = _macos_cg().windows()
+    except OSError as e:
+        return {"available": False, "reason": f"CoreGraphics is unavailable: {e}", "screenRecording": False, "windows": []}
+    return {"available": True, "reason": None, "screenRecording": any(w["title"] for w in windows), "windows": windows}
+
+
+def macos_window_screenshot(window_id: int) -> bytes:
+    """A PNG of one on-screen window. Raises PlanError when the id is stale or Screen Recording is missing."""
+    if host_os() != "macos":
+        raise PlanError("The app mirror needs a Mac")
+    try:
+        window_id = int(window_id)
+    except (TypeError, ValueError):
+        raise PlanError("Invalid window id") from None
+    fd, path = tempfile.mkstemp(suffix=".png")
+    try:
+        os.close(fd)
+        code, output = _capture(["screencapture", "-x", "-o", f"-l{window_id}", path], timeout=15)
+        with open(path, "rb") as f:
+            png = f.read()
+        if code != 0 or not png.startswith(b"\x89PNG"):
+            raise PlanError("Could not capture that window. If this keeps failing, grant Screen Recording "
+                            "to the console (System Settings > Privacy & Security) and retry.")
+        return png
+    finally:
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+
+
+def macos_window_elements(root: str, window_id: int) -> dict:
+    """The accessibility tree of one window as window-relative hotspots, from System Events."""
+    if host_os() != "macos":
+        raise PlanError("The app mirror needs a Mac")
+    try:
+        window_id = int(window_id)
+    except (TypeError, ValueError):
+        raise PlanError("Invalid window id") from None
+    window = next((w for w in macos_windows()["windows"] if w["windowId"] == window_id), None)
+    if window is None:
+        raise PlanError("That window is not on screen anymore; refresh the mirror")
+    pid = window["pid"]
+    # A property read is the honest probe: counting windows works without permission, reads do not.
+    code, output = _capture(["osascript", "-e",
+                             f'tell application "System Events" to get position of window 1 of '
+                             f'(first application process whose unix id is {int(pid)})'], timeout=10)
+    if code != 0:
+        raise PlanError("Reading UI elements needs Accessibility permission for the console "
+                        "(System Settings > Privacy & Security > Accessibility), and the app needs a visible window.")
+    script = os.path.join(root, "ios-lab", "mac", "ax-elements.applescript")
+    if not os.path.isfile(script):
+        raise PlanError("ax-elements.applescript is missing from ios-lab/mac")
+    code, output = _capture(["osascript", script, str(pid), str(window["x"]), str(window["y"])], timeout=60)
+    if code != 0:
+        raise PlanError("Could not read UI elements: " + output.strip()[:200])
+    elements = []
+    for line in output.splitlines():
+        parts = line.split("\t")
+        if len(parts) < 6:
+            continue
+        role, label, x, y, w, h = parts[0], "\t".join(parts[1:-4]), parts[-4], parts[-3], parts[-2], parts[-1]
+        try:
+            element = {"role": role.replace("AX", ""), "label": label[:120],
+                       "x": int(float(x)) - window["x"], "y": int(float(y)) - window["y"],
+                       "w": int(float(w)), "h": int(float(h))}
+        except ValueError:
+            continue
+        if element["w"] <= 0 or element["h"] <= 0:
+            continue
+        if element["x"] >= window["width"] or element["y"] >= window["height"] \
+                or element["x"] + element["w"] <= 0 or element["y"] + element["h"] <= 0:
+            continue
+        elements.append(element)
+    return {"windowId": window_id, "app": window["app"], "bounds": {"x": window["x"], "y": window["y"],
+            "width": window["width"], "height": window["height"]}, "elements": elements}
+
+
+def macos_control_state() -> dict:
+    """Whether armed control mode is active; it disarms itself after ten idle minutes."""
+    with _MACOS_CONTROL_LOCK:
+        armed = _MACOS_CONTROL["armed"] and time.time() - _MACOS_CONTROL["armedAt"] < _MACOS_CONTROL_TIMEOUT
+        if not armed:
+            _MACOS_CONTROL["armed"] = False
+        return {"armed": armed, "expiresInSec": int(_MACOS_CONTROL_TIMEOUT - (time.time() - _MACOS_CONTROL["armedAt"])) if armed else 0}
+
+
+def macos_control_arm(armed: bool) -> dict:
+    if not isinstance(armed, bool):
+        raise PlanError("armed must be true or false")
+    with _MACOS_CONTROL_LOCK:
+        _MACOS_CONTROL["armed"] = armed
+        _MACOS_CONTROL["armedAt"] = time.time()
+    return macos_control_state()
+
+
+def macos_control_click(root: str, data: dict) -> dict:
+    """One immediate click while control mode is armed: bring the owning app forward, then post
+    the event through macos-app.sh click — the same script the previewed flow runs."""
+    with _MACOS_CONTROL_LOCK:
+        armed = _MACOS_CONTROL["armed"] and time.time() - _MACOS_CONTROL["armedAt"] < _MACOS_CONTROL_TIMEOUT
+    if not armed:
+        raise PlanError("Control mode is not armed; arm the app mirror first")
+    values = {}
+    for key in ("pid", "x", "y"):
+        try:
+            value = int(data.get(key))
+        except (TypeError, ValueError):
+            raise PlanError(f"{key} must be an integer") from None
+        if not 0 <= value <= 100000:
+            raise PlanError(f"{key} is out of range")
+        values[key] = value
+    script = _scoped(root, "ios-lab", "mac", "macos-app.sh")
+    code, output = _capture(["bash", script, "click", str(values["pid"]), str(values["x"]), str(values["y"])], timeout=30)
+    with _MACOS_CONTROL_LOCK:
+        _MACOS_CONTROL["armedAt"] = time.time()  # each click slides the disarm timer
+    if code != 0:
+        raise PlanError(output.strip()[:200] or "The click did not run")
+    return {"ok": True, **values}
 
 
 def _validated_ios_device(root: str, device: str) -> dict:
@@ -773,7 +991,8 @@ def plan(root: str, request: dict, host: dict | None = None) -> dict:
     if request.get("lab") == "source":
         import source_control
         return source_control.plan(root, request)
-    allowed = {"lab", "action", "profile", "cpus", "ram", "disk", "device", "wslDistro", "backup"}
+    allowed = {"lab", "action", "profile", "cpus", "ram", "disk", "device", "wslDistro", "backup",
+               "clickPid", "clickX", "clickY"}
     unknown = set(request) - allowed
     if unknown:
         raise PlanError("Unknown request fields: " + ", ".join(sorted(unknown)))
@@ -807,6 +1026,17 @@ def plan(root: str, request: dict, host: dict | None = None) -> dict:
     for key in ("cpus", "ram", "disk"):
         if request.get(key) not in (None, "") and action != "resize":
             raise PlanError("Resource parameters are only accepted by resize")
+    click = {"pid": request.get("clickPid"), "x": request.get("clickX"), "y": request.get("clickY")}
+    if any(v not in (None, "") for v in click.values()) and action != "macos-click":
+        raise PlanError("Click parameters are only accepted by the app mirror click")
+    if action == "macos-click":
+        for name, value in click.items():
+            try:
+                if not 0 <= int(value) <= 100000:
+                    raise ValueError
+            except (TypeError, ValueError):
+                raise PlanError(f"click{name.capitalize()} must be a screen coordinate") from None
+            click[name] = int(value)
     if request.get("backup"):
         raise PlanError("Restore is not available from the web console; use the lab's scripts/restore.sh")
 
@@ -825,7 +1055,7 @@ def plan(root: str, request: dict, host: dict | None = None) -> dict:
                 "status": ("macos-app.sh", "status"), "doctor": ("macos-app.sh", "doctor"),
                 "setup": ("appium.sh", "install"), "appium-install": ("appium.sh", "install"),
                 "appium-start": ("appium.sh", "start"), "appium-stop": ("appium.sh", "stop"),
-                "macos-smoke": ("macos-app.sh", "smoke"),
+                "macos-smoke": ("macos-app.sh", "smoke"), "macos-click": ("macos-app.sh", "click"),
             }[action]
         else:
             script, extra = {
@@ -840,6 +1070,10 @@ def plan(root: str, request: dict, host: dict | None = None) -> dict:
             picked = _validated_ios_device(root, device)
             selected = ["--device", picked["udid"]]
             effects.append(f"Boots the iOS Simulator device {picked['name']} ({picked['runtime']}) on this Mac.")
+        if action == "macos-click":
+            selected = [str(click["pid"]), str(click["x"]), str(click["y"])]
+            effects.append(f"Brings the app (pid {click['pid']}) to the front and clicks once at "
+                           f"({click['x']}, {click['y']}) on this Mac.")
         path = _scoped(root, "ios-lab", "mac", script)
         if not os.path.isfile(path):
             raise PlanError("Provider script is missing: ios-lab/mac/" + script)

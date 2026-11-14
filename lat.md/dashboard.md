@@ -29,6 +29,19 @@ The screen comes from the read-only `/api/labs/ios/simulator` and
 change through the previewed plan flow; the console validates the device
 against `xcrun simctl` (see [[ios-lab]]).
 
+## macOS app mirror
+
+When the macOS Lab is ready, [[dashboard/src/views/macos-app-mirror.tsx]]
+floats a draggable, resizable mirror of one real window on this Mac, fed by
+the read-only `/api/labs/macos/apps`, `/api/labs/macos/apps/<id>/screenshot`
+and `/api/labs/macos/apps/<id>/elements` endpoints.
+
+Mirror and hotspot clicks preview a `macos-click` action like any other;
+only while control mode is armed (an explicit toggle that disarms itself
+after ten minutes) do clicks land immediately through
+`/api/labs/macos/click`, which stays localhost-only like every other POST.
+See [[ios-lab]] for permissions.
+
 ## UX readiness
 
 [[ux-readiness]] records the dashboard's action, endpoint, and navigation
