@@ -4,7 +4,7 @@ SHELL := /bin/bash
 FRIDA ?= $(if $(wildcard .venv/bin/frida),.venv/bin/frida,frida)
 LABCTL ?= ../../labctl
 
-.PHONY: help setup setup-python platform-tools preflight pull up boot static-up static-down down status monitor profiles logs adb shell install wf1 wf2 hook report install-service uninstall-service clean
+.PHONY: pinning help setup setup-python platform-tools preflight pull up boot static-up static-down down status monitor profiles logs adb shell install wf1 wf2 hook report install-service uninstall-service clean
 
 help: ## Show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -71,6 +71,10 @@ wf1: ## WF1 static: MobSF scan → JADX decompile → report. make wf1 APK=app.a
 
 wf2: ## WF2 dynamic: boot → deploy → mitmproxy → frida (optional). make wf2 APK=app.apk [PKG=com.example]
 	bash scripts/wf2-dynamic.sh $(APK) $(PKG)
+
+pinning: ## PENT-11 static SSL-pinning classifier (no device needed): make pinning APK=app.apk
+	@test -n "$(APK)" || { echo "usage: make pinning APK=path/to/app.apk"; exit 1; }
+	python3 scripts/pinning_detector.py "$(APK)"
 
 hook: ## Run a Frida hook against a running app: make hook PKG=com.example HOOK=hooks/ssl-pinning-bypass.js
 	@test -n "$(PKG)" && test -n "$(HOOK)" || { echo "usage: make hook PKG=com.example HOOK=hooks/ssl-pinning-bypass.js"; exit 1; }
