@@ -2,6 +2,8 @@
  * iOS Lab simulator panel: pick an installed device, attach (boot) it and watch its screen here.
  * Attach and detach stay previewed lab actions (start with a device option, stop), so nothing
  * runs without confirmation; the screen is the booted device's screenshot via the console.
+ * The card lives in a right-side panel that the lab header's Simulator icon toggles, so the
+ * page stays focused on readiness and actions until the mirror is wanted.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -10,15 +12,39 @@ import {
   CircleNotchIcon,
   DeviceMobileIcon,
   FrameCornersIcon,
-  PowerIcon
+  PowerIcon,
+  XIcon
 } from "@phosphor-icons/react";
-import { Badge, Empty, Field, Section, Skeleton, Status } from "../components/ui";
+import { Badge, Empty, Field, IconButton, Skeleton, Status } from "../components/ui";
 import { api, message, usePoll, type LabRequest } from "../lib/api";
 
 /** Screens refresh a little slower than jobs; each frame is one simctl screenshot on this Mac. */
 const SCREEN_INTERVAL = 5000;
 
-export function SimulatorPanel({ onPreview }: { onPreview: (action: string, extra?: Partial<LabRequest>) => void }) {
+export function SimulatorDrawer({ open, onClose, onPreview }: { open: boolean; onClose: () => void; onPreview: (action: string, extra?: Partial<LabRequest>) => void }) {
+  if (!open) return null;
+  return (
+    <aside role="dialog" aria-label="Simulator" className="iux-sidepanel fixed inset-y-0 right-0 z-40 flex w-full max-w-md flex-col border-l border-(--iux-border) bg-(--iux-background) shadow-2xl">
+      <header className="flex items-center gap-2 border-b border-(--iux-border) px-5 py-3">
+        <span className="shrink-0 text-[#f36c21]">
+          <DeviceMobileIcon size={16} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-sm font-semibold">Simulator</h2>
+          <p className="text-xs text-(--iux-muted-foreground)">Pick a device, attach it and watch its screen here.</p>
+        </div>
+        <IconButton label="Close" onClick={onClose} className="ml-auto">
+          <XIcon size={14} weight="bold" />
+        </IconButton>
+      </header>
+      <div className="flex-1 overflow-y-auto p-5">
+        <SimulatorBody onPreview={onPreview} />
+      </div>
+    </aside>
+  );
+}
+
+function SimulatorBody({ onPreview }: { onPreview: (action: string, extra?: Partial<LabRequest>) => void }) {
   const { data, error } = usePoll(() => api.iosSimulator(), SCREEN_INTERVAL);
   const [udid, setUdid] = useState("");
   const [framed, setFramed] = useState(true);
@@ -85,11 +111,7 @@ export function SimulatorPanel({ onPreview }: { onPreview: (action: string, extr
   }, [booted?.udid, grab]);
 
   return (
-    <Section
-      icon={<DeviceMobileIcon size={16} />}
-      title="Simulator"
-      description="Pick a device, attach it and watch its screen here."
-    >
+    <>
       {error ? (
         <Status value={{ ok: false, text: error }} />
       ) : !data ? (
@@ -182,6 +204,6 @@ export function SimulatorPanel({ onPreview }: { onPreview: (action: string, extr
           </div>
         </div>
       )}
-    </Section>
+    </>
   );
 }

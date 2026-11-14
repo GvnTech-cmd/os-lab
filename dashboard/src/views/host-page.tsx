@@ -11,10 +11,11 @@ import {
   WarningCircleIcon,
   XCircleIcon
 } from "@phosphor-icons/react";
+import { useState } from "react";
 import { AppShell, LAB_ICON, labHref } from "../shell/app-shell";
 import { TopBar } from "../shell/top-bar";
 import { MinimalistHero } from "../apk-lab/components";
-import { Badge, Empty, Section, Skeleton } from "../components/ui";
+import { Badge, Empty, IconButton, Modal, Skeleton } from "../components/ui";
 import { AppUpdatePanel } from "./app-update-panel";
 import { ContentPanel } from "./content-panel";
 import { localeFromPath, localePath } from "../i18n/paths";
@@ -127,6 +128,9 @@ export default function HostPage() {
   const { data, error, refresh } = hostStore.use();
   const host = data?.host;
   const labs = data?.labs ?? [];
+  // Host tools and providers open on demand instead of stacking two long cards on the page.
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const [providersOpen, setProvidersOpen] = useState(false);
   const ready = labs.filter((l) => l.state === "ready").length;
   const hostLab = host?.os === "windows" ? "windows" : host?.os === "macos" ? "macos" : host?.os === "linux" ? "linux" : null;
   const stateOrder = { ready: 0, "needs-setup": 1, unavailable: 2 };
@@ -205,17 +209,25 @@ export default function HostPage() {
               </div>
 
               <section id="labs" className="space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-base font-semibold">Labs on this computer</h2>
-                    <p className="text-xs text-(--iux-muted-foreground)">
-                      Availability follows this host's OS, architecture, KVM and tools. Labs that cannot run here are left out.
-                    </p>
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <h2 className="text-base font-semibold">Labs on this computer</h2>
+                      <p className="text-xs text-(--iux-muted-foreground)">
+                        Availability follows this host's OS, architecture, KVM and tools. Labs that cannot run here are left out.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <IconButton label="Host tools" onClick={() => setToolsOpen(true)}>
+                        <PackageIcon size={14} />
+                      </IconButton>
+                      <IconButton label="Providers" onClick={() => setProvidersOpen(true)}>
+                        <CpuIcon size={14} />
+                      </IconButton>
+                      <button type="button" className="iux-btn" data-variant="outline" onClick={() => void refresh()}>
+                        <ArrowClockwiseIcon size={14} /> Re-detect
+                      </button>
+                    </div>
                   </div>
-                  <button type="button" className="iux-btn" data-variant="outline" onClick={() => void refresh()}>
-                    <ArrowClockwiseIcon size={14} /> Re-detect
-                  </button>
-                </div>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {runnableLabs.map(({ lab }) => (
                     <LabCard key={lab.id} lab={lab} />
@@ -232,28 +244,32 @@ export default function HostPage() {
                 ) : null}
               </section>
 
-              <Section icon={<PackageIcon size={16} />} title="Host tools" description={`Found on PATH for ${host.root}.`}>
-                <Tools host={host} />
-              </Section>
+              {toolsOpen ? (
+                <Modal title="Host tools" icon={<PackageIcon size={16} />} description={`Found on PATH for ${host.root}.`} onClose={() => setToolsOpen(false)}>
+                  <Tools host={host} />
+                </Modal>
+              ) : null}
 
               <AppUpdatePanel />
 
               <ContentPanel />
 
-              <Section icon={<CpuIcon size={16} />} title="Providers" description="How each kind of guest would run on this host.">
-                <ul className="divide-y divide-(--iux-border)">
-                  {host.providers.map((p) => (
-                    <li key={p.id} className="flex flex-wrap items-center gap-3 py-2.5 text-sm">
-                      <span className="w-44 shrink-0 font-mono text-xs">{p.id}</span>
-                      <span className="min-w-0 flex-1">
-                        {p.guest}
-                        <span className="block text-xs text-(--iux-muted-foreground)">{p.requirements}</span>
-                      </span>
-                      {p.candidate ? <Badge tone="success">Candidate</Badge> : <Badge>Not on this host</Badge>}
-                    </li>
-                  ))}
-                </ul>
-              </Section>
+              {providersOpen ? (
+                <Modal title="Providers" icon={<CpuIcon size={16} />} description="How each kind of guest would run on this host." onClose={() => setProvidersOpen(false)}>
+                  <ul className="divide-y divide-(--iux-border)">
+                    {host.providers.map((p) => (
+                      <li key={p.id} className="flex flex-wrap items-center gap-3 py-2.5 text-sm">
+                        <span className="w-44 shrink-0 font-mono text-xs">{p.id}</span>
+                        <span className="min-w-0 flex-1">
+                          {p.guest}
+                          <span className="block text-xs text-(--iux-muted-foreground)">{p.requirements}</span>
+                        </span>
+                        {p.candidate ? <Badge tone="success">Candidate</Badge> : <Badge>Not on this host</Badge>}
+                      </li>
+                    ))}
+                  </ul>
+                </Modal>
+              ) : null}
             </>
           )}
         </main>
