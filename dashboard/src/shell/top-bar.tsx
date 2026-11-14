@@ -17,6 +17,7 @@ export interface TopBarProps {
 }
 
 export function TopBar({ title, back, icon, locale }: TopBarProps) {
+  const publicPages = import.meta.env.PUBLIC_SITE_MODE === "pages";
   const currentLocale = locale ?? (typeof window === "undefined" ? "en" : localeFromPath(window.location.pathname));
   const { data: health, error } = healthStore.use();
   const { data: jobs } = jobsStore.use();
@@ -35,7 +36,7 @@ export function TopBar({ title, back, icon, locale }: TopBarProps) {
         {back ? (
           <>
             <a
-              href={back.href}
+              href={localePath(back.href, currentLocale)}
               className="hidden shrink-0 items-center gap-1 text-xs text-(--iux-muted-foreground) hover:text-(--iux-foreground) sm:flex"
             >
               <ArrowLeftIcon size={12} /> {back.label}
@@ -57,14 +58,14 @@ export function TopBar({ title, back, icon, locale }: TopBarProps) {
           >
             {FIREWALL_LOCALES.map((code) => <option key={code} value={code}>{firewallLanguageName[code]}</option>)}
           </select>
-          <div className="flex items-center gap-1.5 text-xs text-(--iux-muted-foreground)">
+          {!publicPages ? <div className="flex items-center gap-1.5 text-xs text-(--iux-muted-foreground)">
             <CircleIcon
               size={8}
               weight="fill"
               className={!online ? "text-zinc-500" : busy ? "animate-pulse text-[#f36c21]" : "text-[#00d084]"}
             />
             <span className="hidden sm:inline">{label}</span>
-          </div>
+          </div> : null}
           <ThemeToggle />
         </div>
       </div>

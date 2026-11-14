@@ -10,7 +10,10 @@
     "preview": "astro preview",
     "check": "tsc --noEmit",
     "test:e2e": "playwright test",
-    "test:i18n": "node scripts/check-translations.mjs"
+    "test:i18n": "node scripts/check-translations.mjs",
+    "test:source:model": "node --test scripts/source-brain-model.test.mjs",
+    "test:how-to-use:pages": "node scripts/how-to-use-pages-smoke.mjs",
+    "test:source:pages": "node scripts/source-pages-smoke.mjs"
   },
   "dependencies": {
     "@astrojs/react": "^7.1.1",

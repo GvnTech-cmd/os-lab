@@ -45,6 +45,18 @@
             "name": "servers",
             "cidr": "10.10.40.0/24",
             "note": "ERP, AD, mail; Git/CI in 10.10.40.48/28. DMZ 172.16.40.0/24 is kept in a separate private block."
+          },
+          {
+            "id": 60,
+            "name": "iot",
+            "cidr": "10.10.60.0/24",
+            "note": "IP cameras, printers and badge readers; no path into staff or server VLANs."
+          },
+          {
+            "id": 99,
+            "name": "guest",
+            "cidr": "10.10.99.0/24",
+            "note": "Guest Wi-Fi carved from the branch block; internet only, excluded from the VPN traffic selectors."
           }
         ]
       },
@@ -65,31 +77,63 @@
           "chosen": {
             "product": "PA-3400 series (HA)",
             "vendor": "Palo Alto Networks",
+            "priceUsd": 24000,
             "reason": "Strongest threat prevention for the VPN hub; manages all sites via Panorama."
           },
           "alternatives": [
             {
               "product": "FortiGate 400F / 600F class (HA)",
               "vendor": "Fortinet",
+              "priceUsd": 12000,
               "reason": "High IPsec performance for a VPN hub, built-in SD-WAN."
             },
             {
               "product": "Quantum 6000 series",
               "vendor": "Check Point",
+              "priceUsd": 20000,
               "reason": "Strong policy management."
             },
             {
               "product": "Secure Firewall 3100 series",
               "vendor": "Cisco",
+              "priceUsd": 22000,
               "reason": "Fits enterprise Cisco infrastructure."
             },
             {
               "product": "XGS 5500 / 6500",
               "vendor": "Sophos",
+              "priceUsd": 15000,
               "reason": "More cost-effective and easy to manage."
             }
           ],
           "rules": [
+            {
+              "action": "allow",
+              "direction": "in",
+              "proto": "udp",
+              "port": "67:68",
+              "from": "all-vlans",
+              "to": "ad-dhcp-dns-ntp",
+              "note": "DHCP relay from every VLAN gateway to the AD DHCP server in VLAN 40; without it the default deny leaves clients with no IP."
+            },
+            {
+              "action": "allow",
+              "direction": "in",
+              "proto": "udp",
+              "port": "53,123",
+              "from": "all-vlans",
+              "to": "ad-dhcp-dns-ntp",
+              "note": "Clients may use only the internal DNS resolver and NTP server, so DNS filtering and log timestamps stay consistent."
+            },
+            {
+              "action": "allow",
+              "direction": "out",
+              "proto": "udp",
+              "port": "53,123",
+              "from": "ad-dhcp-dns-ntp",
+              "to": "any",
+              "note": "Only the resolver/NTP server talks to upstream DNS and pool.ntp.org; clients cannot bypass it."
+            },
             {
               "action": "allow",
               "direction": "in",
@@ -135,6 +179,31 @@
               "note": "Software and staff teams are isolated from each other."
             },
             {
+              "action": "deny",
+              "direction": "in",
+              "proto": "any",
+              "from": "vlan60-iot",
+              "to": "internal-vlans",
+              "note": "Cameras, printers and badge readers never reach staff, software or server VLANs."
+            },
+            {
+              "action": "deny",
+              "direction": "in",
+              "proto": "any",
+              "from": "vlan99-guest",
+              "to": "internal-vlans",
+              "note": "Guests get internet only and reach no internal network."
+            },
+            {
+              "action": "allow",
+              "direction": "out",
+              "proto": "tcp",
+              "port": "80,443",
+              "from": "vlan99-guest",
+              "to": "any",
+              "note": "Guest internet through the web filter with the 5/1 Mbps per-user limit."
+            },
+            {
               "action": "allow",
               "direction": "out",
               "proto": "tcp",
@@ -155,8 +224,6 @@
               "action": "deny",
               "direction": "in",
               "proto": "any",
-              "from": "any",
-              "to": "any",
               "note": "Default rule: deny everything else and log it."
             }
           ]
@@ -166,27 +233,32 @@
           "chosen": {
             "product": "FortiGate 200F class (ISFW mode)",
             "vendor": "Fortinet",
+            "priceUsd": 4500,
             "reason": "Mode designed for high-speed segmentation between internal networks."
           },
           "alternatives": [
             {
               "product": "PA-1400 series",
               "vendor": "Palo Alto Networks",
+              "priceUsd": 9500,
               "reason": "Fine-grained user- and application-based rules."
             },
             {
               "product": "Quantum 3000 series",
               "vendor": "Check Point",
+              "priceUsd": 6000,
               "reason": "Same management console as HQ."
             },
             {
               "product": "Secure Firewall 1200 / 3100",
               "vendor": "Cisco",
+              "priceUsd": 8000,
               "reason": "Segmentation alongside Cisco switches."
             },
             {
               "product": "OPNsense / pfSense",
               "vendor": "Netgate / Deciso",
+              "priceUsd": 1500,
               "reason": "Free and flexible for test and dev environments."
             }
           ],
@@ -207,6 +279,12 @@
               "from": "vlan30-software",
               "to": "vlan20-staff",
               "note": "Developer VLAN cannot wander into the staff VLAN."
+            },
+            {
+              "action": "deny",
+              "direction": "forward",
+              "proto": "any",
+              "note": "Default rule: any other east-west traffic through the ISFW is denied and logged."
             }
           ]
         },
@@ -215,27 +293,32 @@
           "chosen": {
             "product": "Cloudflare WAF",
             "vendor": "Cloudflare",
+            "priceUsd": 2400,
             "reason": "Global network absorbs very large DDoS attacks; ready-made OWASP rules."
           },
           "alternatives": [
             {
               "product": "AWS WAF",
               "vendor": "Amazon",
+              "priceUsd": 1200,
               "reason": "Native integration since the website runs on AWS."
             },
             {
               "product": "App & API Protector",
               "vendor": "Akamai",
+              "priceUsd": 30000,
               "reason": "Strong bot protection, widely used in large enterprises."
             },
             {
               "product": "Imperva WAF",
               "vendor": "Imperva",
+              "priceUsd": 12000,
               "reason": "Strong in database and API protection."
             },
             {
               "product": "Advanced WAF / Distributed Cloud",
               "vendor": "F5",
+              "priceUsd": 15000,
               "reason": "Also offers an on-prem option."
             }
           ],
@@ -256,6 +339,12 @@
               "from": "any",
               "to": "dmz",
               "note": "Anything else from the internet to the DMZ is dropped and logged."
+            },
+            {
+              "action": "deny",
+              "direction": "in",
+              "proto": "any",
+              "note": "Default rule: deny everything else and log it."
             }
           ]
         }
@@ -313,8 +402,8 @@
           {
             "id": 99,
             "name": "guest",
-            "cidr": "192.168.99.0/24",
-            "note": "Same guest range at every site; never enters the VPN."
+            "cidr": "10.40.199.0/24",
+            "note": "Guest Wi-Fi carved from the branch block; internet only, excluded from the VPN traffic selectors. .99 sits inside the student /17, so the Academy uses .199."
           }
         ]
       },
@@ -335,31 +424,63 @@
           "chosen": {
             "product": "FortiGate 1800F class (HA)",
             "vendor": "Fortinet",
+            "priceUsd": 60000,
             "reason": "High session count and price/performance thanks to custom silicon; common on campuses."
           },
           "alternatives": [
             {
               "product": "PA-5400 series",
               "vendor": "Palo Alto Networks",
+              "priceUsd": 95000,
               "reason": "Strongest application identification and threat prevention."
             },
             {
               "product": "Quantum 9000 / 16000 series",
               "vendor": "Check Point",
+              "priceUsd": 70000,
               "reason": "Strong centralized management for large networks."
             },
             {
               "product": "Secure Firewall 4200 series",
               "vendor": "Cisco",
+              "priceUsd": 80000,
               "reason": "High capacity, integrates with Cisco campus networks."
             },
             {
               "product": "SRX4000 series",
               "vendor": "Juniper",
+              "priceUsd": 45000,
               "reason": "Very high routing and session capacity."
             }
           ],
           "rules": [
+            {
+              "action": "allow",
+              "direction": "in",
+              "proto": "udp",
+              "port": "67:68",
+              "from": "all-vlans",
+              "to": "campus-dhcp-dns-ntp",
+              "note": "DHCP relay from every VLAN gateway to the campus DHCP server in VLAN 140; without it the default deny leaves clients with no IP."
+            },
+            {
+              "action": "allow",
+              "direction": "in",
+              "proto": "udp",
+              "port": "53,123",
+              "from": "all-vlans",
+              "to": "campus-dhcp-dns-ntp",
+              "note": "Clients may use only the internal DNS resolver and NTP server, so DNS filtering and log timestamps stay consistent."
+            },
+            {
+              "action": "allow",
+              "direction": "out",
+              "proto": "udp",
+              "port": "53,123",
+              "from": "campus-dhcp-dns-ntp",
+              "to": "any",
+              "note": "Only the resolver/NTP server talks to upstream DNS and pool.ntp.org; clients cannot bypass it."
+            },
             {
               "action": "allow",
               "direction": "in",
@@ -425,8 +546,6 @@
               "action": "deny",
               "direction": "in",
               "proto": "any",
-              "from": "any",
-              "to": "any",
               "note": "Default rule: deny everything else and log it."
             }
           ]
@@ -465,7 +584,8 @@
           {
             "id": 99,
             "name": "guest",
-            "cidr": "192.168.99.0/24"
+            "cidr": "10.20.99.0/24",
+            "note": "Guest Wi-Fi carved from the branch block; internet only, excluded from the VPN traffic selectors."
           }
         ]
       },
@@ -484,31 +604,63 @@
           "chosen": {
             "product": "FortiGate 100F class",
             "vendor": "Fortinet",
+            "priceUsd": 3000,
             "reason": "Understands OT protocols; Rugged models exist for field use."
           },
           "alternatives": [
             {
               "product": "XGS 2100 / 2300",
               "vendor": "Sophos",
+              "priceUsd": 2500,
               "reason": "Easy management, synchronized with endpoint protection."
             },
             {
               "product": "PA-450",
               "vendor": "Palo Alto Networks",
+              "priceUsd": 3500,
               "reason": "Industrial protocol visibility with the OT security add-on."
             },
             {
               "product": "Firebox M-series",
               "vendor": "WatchGuard",
+              "priceUsd": 3000,
               "reason": "Cost-effective for mid-sized offices."
             },
             {
               "product": "Quantum Spark 1900",
               "vendor": "Check Point",
+              "priceUsd": 5000,
               "reason": "Small/mid office, same management as HQ."
             }
           ],
           "rules": [
+            {
+              "action": "allow",
+              "direction": "in",
+              "proto": "udp",
+              "port": "67:68",
+              "from": "all-vlans",
+              "to": "fw-dhcp-dns-ntp",
+              "note": "DHCP relay from every VLAN gateway to the DHCP server on the local firewall; without it the default deny leaves clients with no IP."
+            },
+            {
+              "action": "allow",
+              "direction": "in",
+              "proto": "udp",
+              "port": "53,123",
+              "from": "all-vlans",
+              "to": "fw-dhcp-dns-ntp",
+              "note": "Clients may use only the internal DNS resolver and NTP server, so DNS filtering and log timestamps stay consistent."
+            },
+            {
+              "action": "allow",
+              "direction": "out",
+              "proto": "udp",
+              "port": "53,123",
+              "from": "fw-dhcp-dns-ntp",
+              "to": "any",
+              "note": "Only the resolver/NTP server talks to upstream DNS and pool.ntp.org; clients cannot bypass it."
+            },
             {
               "action": "allow",
               "direction": "out",
@@ -548,8 +700,6 @@
               "action": "deny",
               "direction": "in",
               "proto": "any",
-              "from": "any",
-              "to": "any",
               "note": "Default rule: deny everything else and log it."
             }
           ]
@@ -581,7 +731,8 @@
           {
             "id": 99,
             "name": "guest",
-            "cidr": "192.168.99.0/24"
+            "cidr": "10.30.99.0/24",
+            "note": "Guest Wi-Fi carved from the branch block; internet only, excluded from the VPN traffic selectors."
           }
         ]
       },
@@ -600,31 +751,63 @@
           "chosen": {
             "product": "Firebox T-series",
             "vendor": "WatchGuard",
+            "priceUsd": 1200,
             "reason": "Simple, cloud-managed, built for small offices."
           },
           "alternatives": [
             {
               "product": "FortiGate 60F / 70F",
               "vendor": "Fortinet",
+              "priceUsd": 900,
               "reason": "Affordable, automatic VPN to HQ (SD-WAN)."
             },
             {
               "product": "XGS 1xx series",
               "vendor": "Sophos",
+              "priceUsd": 1000,
               "reason": "Easy UI, desktop form factor."
             },
             {
               "product": "PA-400 series",
               "vendor": "Palo Alto Networks",
+              "priceUsd": 1500,
               "reason": "Policy consistency if HQ runs Palo Alto."
             },
             {
               "product": "Quantum Spark 1600 / 1800",
               "vendor": "Check Point",
+              "priceUsd": 3500,
               "reason": "Small office, easy GDPR reporting."
             }
           ],
           "rules": [
+            {
+              "action": "allow",
+              "direction": "in",
+              "proto": "udp",
+              "port": "67:68",
+              "from": "all-vlans",
+              "to": "fw-dhcp-dns-ntp",
+              "note": "DHCP relay from every VLAN gateway to the DHCP server on the local firewall; without it the default deny leaves clients with no IP."
+            },
+            {
+              "action": "allow",
+              "direction": "in",
+              "proto": "udp",
+              "port": "53,123",
+              "from": "all-vlans",
+              "to": "fw-dhcp-dns-ntp",
+              "note": "Clients may use only the internal DNS resolver and NTP server, so DNS filtering and log timestamps stay consistent."
+            },
+            {
+              "action": "allow",
+              "direction": "out",
+              "proto": "udp",
+              "port": "53,123",
+              "from": "fw-dhcp-dns-ntp",
+              "to": "any",
+              "note": "Only the resolver/NTP server talks to upstream DNS and pool.ntp.org; clients cannot bypass it."
+            },
             {
               "action": "allow",
               "direction": "out",
@@ -655,8 +838,6 @@
               "action": "deny",
               "direction": "in",
               "proto": "any",
-              "from": "any",
-              "to": "any",
               "note": "Default rule: deny everything else and log it."
             }
           ]
@@ -669,10 +850,24 @@
     "note": "Site-to-site IPsec IKEv2 (AES-256-GCM, SHA-256, DH20) into Izmir; staff and faculty at home use SSL/IPsec VPN with MFA; students get no VPN."
   },
   "monitoring": {
-    "siem": "Central SIEM/log server in Izmir fed by all four NGFWs, switches and AWS CloudTrail/GuardDuty; Zabbix/LibreNMS for device health, Grafana for the NOC screen.",
-    "owner": "SOC manager in Izmir (Tier 1-3 analysts, MSSP at night); NOC engineers own line, device and VPN outages.",
+    "siem": "Central SIEM/log server in Izmir fed by all four NGFWs, switches and AWS CloudTrail/GuardDuty; Zabbix/LibreNMS for device health, Grafana for the NOC screen. Retention: firewall, VPN, DHCP and auth logs stay 90 days hot in the SIEM and 2 years in an encrypted, write-once S3 archive (covers Law 5651 and KVKK/GDPR evidence).",
+    "owner": "SOC manager in Izmir (Tier 1-3 analysts, MSSP at night); NOC engineers own line, device and VPN outages. The two firewall/network administrators own a nightly config backup (FortiManager/Panorama export to a versioned, encrypted S3 bucket, restore tested quarterly) and a monthly firmware patch window driven by vendor PSIRT advisories.",
     "alertSink": "SIEM to SOC Tier 1; email alerts for critical events.",
     "appVsSecurity": "NOC watches availability (VPN down 1 min, line >80% for 15 min); SOC watches attacks (failed admin logins, IPS hits, OT-to-internet attempts)."
   },
+  "cveWatch": [
+    {
+      "id": "CVE-2024-3400",
+      "product": "PAN-OS GlobalProtect (Izmir PA-3400 HA pair)",
+      "status": "patched",
+      "note": "Unauthenticated command injection in the GlobalProtect gateway (CVSS 10, exploited in the wild). Temporary mitigation: Threat Prevention signature 95187 on the GlobalProtect interface. Permanent fix: fixed PAN-OS hotfix installed on the passive node first, failover, then the second node."
+    },
+    {
+      "id": "CVE-2024-21762",
+      "product": "FortiOS SSL-VPN (Academy FortiGate 1800F HA, Bursa FortiGate 100F)",
+      "status": "patched",
+      "note": "Out-of-bounds write in sslvpnd allowing unauthenticated code execution (on the CISA KEV list). Temporary mitigation: SSL-VPN disabled, IPsec only. Permanent fix: FortiOS 7.4.3 / 7.2.7 / 7.0.14 or later in the monthly patch window."
+    }
+  ],
   "slug": "anadolunet-holding"
 }

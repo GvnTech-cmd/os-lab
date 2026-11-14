@@ -1,51 +1,53 @@
 name: updater-manifest
 
+# Publish app-updates/latest.json without anyone running a command.
+#
+# Artifact builds stay local (each platform host uploads to app-v<version>). This workflow
+# watches for a release whose five signed assets are all present, builds the feed, verifies
+# every signature, uploads it and marks that release as GitHub Latest. It is idempotent and
+# never downgrades the feed, so a partial upload of a newer version is simply skipped until
+# the next run. The schedule is the safety net; a manual run can pin a version.
+
 on:
+  schedule:
+    - cron: '*/20 * * * *'
+  release:
+    types: [published, edited]
   workflow_dispatch:
     inputs:
       version:
-        description: Fully published app version (for example 0.2.5)
-        required: true
+        description: Publish this version instead of auto-detecting
+        required: false
         type: string
 
 permissions:
   contents: write
+
+concurrency:
+  group: updater-manifest
+  cancel-in-progress: true
 
 jobs:
   publish:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 1
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: bash app/scripts/install-minisign-linux.sh
-      - name: Download and verify release assets
+      - name: Install minisign
+        run: bash app/scripts/install-minisign-linux.sh
+      - name: Publish the newest complete release
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
-          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]
-          tag="app-v$VERSION"
-          gh release view "$tag" >/dev/null
-          mkdir -p release-assets
-          gh release download "$tag" --dir release-assets
-          node app/scripts/build-update-manifest.mjs "$VERSION" release-assets latest.json
-          for package in \
-            "os-lab_${VERSION}_macos_universal.app.tar.gz" \
-            "os-lab_${VERSION}_windows_x64-setup.exe" \
-            "os-lab_${VERSION}_linux_amd64.AppImage" \
-            "os-lab_${VERSION}_linux_arm64.AppImage"; do
-            python3 app/scripts/verify-release-signature.py "release-assets/$package" --version "$VERSION"
-          done
-      - name: Publish updater feed
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          if ! gh release view app-updates >/dev/null 2>&1; then
-            gh release create app-updates --target "$GITHUB_SHA" --title 'os-lab app update feed' \
-              --notes 'Signed app update manifest. Download installers from versioned app releases.' --prerelease
+          if [ -n "${VERSION:-}" ]; then
+            node scripts/publish-app-update.mjs "$VERSION" --mark-latest --verify
+          else
+            node scripts/publish-app-update.mjs --detect-latest --allow-none --mark-latest --verify
           fi
-          gh release upload app-updates latest.json --clobber

@@ -26,7 +26,7 @@ flowchart LR
     NET((Internet))
     subgraph IZ["İzmir HQ · 10.10.0.0/16 · 2.5 Gbps"]
         IZFW{{"2 × NGFW (HA)<br/>VPN hub"}}
-        IZV["VLAN 10 Management · 20 Staff<br/>30 Software · 40 Servers"]
+        IZV["VLAN 10 Management · 20 Staff<br/>30 Software · 40 Servers<br/>60 IoT · 99 Guest"]
         DMZ["DMZ 172.16.40.0/24<br/>web · mail gateway"]
         IZFW --- IZV
         IZFW --- DMZ
@@ -60,16 +60,22 @@ Because inter-site traffic passes through the İzmir firewall, it is inspected a
 | İzmir |  | 20 | 10.10.20.0/23 | Staff |
 | İzmir |  | 30 | 10.10.30.0/24 | Software team |
 | İzmir |  | 40 | 10.10.40.0/24 | Internal servers (ERP, AD, email) |
+| İzmir |  | 60 | 10.10.60.0/24 | IoT: IP cameras, printers, badge readers (no access to internal VLANs) |
+| İzmir |  | 99 | 10.10.99.0/24 | Guest network (internet only) |
 | İzmir |  | DMZ | 172.16.40.0/24 | Website, mail gateway (internet-facing) |
 | Bursa | 10.20.0.0/16 | 20 | 10.20.20.0/24 | Staff |
 | Bursa |  | 50 | 10.20.50.0/24 | Production / OT devices (isolated) |
+| Bursa |  | 99 | 10.20.99.0/24 | Guest network (internet only) |
 | Berlin | 10.30.0.0/16 | 20 | 10.30.20.0/24 | Staff |
+| Berlin |  | 99 | 10.30.99.0/24 | Guest network (internet only) |
 | Academy | 10.40.0.0/16 | 100 | 10.40.0.0/17 | Student Wi-Fi (32,766 addresses: 8,000 students × \~2 devices + headroom) |
 | Academy |  | 110 | 10.40.128.0/22 | Faculty |
 | Academy |  | 120 | 10.40.132.0/23 | Administrative staff |
 | Academy |  | 130 | 10.40.136.0/22 | Computer labs |
 | Academy |  | 140 | 10.40.140.0/24 | LMS, exam and campus servers |
-| All sites |  | 99 | 192.168.99.0/24 | Guest network (internet only) |
+| Academy |  | 99 | 10.40.199.0/24 | Guest network (internet only); .99 falls inside the student /17, so .199 is used |
+
+Every VLAN, the guest networks included, is carved from its own site's /16 block, so each site can be summarized as a single route. Guest networks are still kept out of the VPN traffic selectors, so guest traffic never enters a tunnel.
 
 Why a /17 for students: each of the 8,000 students connects with a phone and a laptop on average, which comes to about 16,000 devices. A /18 (16,382 addresses) would be cutting it too close, so the next larger block was chosen.
 
@@ -140,14 +146,14 @@ Each site gets a next-generation firewall (NGFW). İzmir and the Academy use two
 11. **Apply bandwidth policies:** Enter the QoS classes and per-user limits from Section 3 as traffic-shaping rules.
 12. **Logging and monitoring:** Logs from all sites are sent to the central SIEM / log server in İzmir; email alerts for critical events.
 13. **Testing and validation:** External port scan with Nmap, attempt to reach internal networks from the guest network, VPN drop test, HA failover test.
-14. **Backups and change management:** Take a weekly configuration backup; log every rule change with a ticket number and description.
+14. **Backups and change management:** Take a nightly configuration backup (see Section 12); log every rule change with a ticket number and description.
 
 ## 5. Per-Site Firewall Rules
 
-Rules are evaluated top to bottom and the first match wins; the last row of each table is the "deny all" rule.
+Rules are evaluated top to bottom and the first match wins; the last row of each table is the "deny all" rule. The first three rows at every site open the base services on purpose: a "deny all" rule would otherwise also block DHCP (clients get no IP), DNS and NTP (TLS and log timestamps break). Clients may only use the internal resolver / NTP server, and only that server talks to upstream DNS and pool.ntp.org.
 
 > Note: Lab testing showed that these tables only define the *site-side* of each traffic flow. For example,
-> Academy rule 4 (faculty → İzmir servers) does not work without a matching rule on the İzmir firewall,
+> Academy rule 7 (faculty → İzmir servers) does not work without a matching rule on the İzmir firewall,
 > because İzmir's default rule drops that traffic. The missing counterpart rules and complementary rules such
 > as guest internet access were added to `config/subeler/*.json` with `"ek": true`; the full list is in Section 14.
 
@@ -155,46 +161,63 @@ Rules are evaluated top to bottom and the first match wins; the last row of each
 
 | # | Source | Destination | Service | Action | Notes |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Management VLAN 10 | All device management | SSH, HTTPS | Allow | IT team only |
-| 2 | Internet | DMZ web server | HTTPS 443 | Allow | IPS profile enabled |
-| 3 | Staff VLAN 20 | Internal servers VLAN 40 | ERP, LDAP, SMTP/IMAPS | Allow |  |
-| 4 | Software VLAN 30 | Git / CI servers | SSH 22, HTTPS | Allow | Software team only |
-| 5 | Software VLAN 30 | Staff VLAN 20 | Any | Deny | Teams are isolated from each other |
-| 6 | All internal VLANs | Internet | HTTP/HTTPS, DNS | Allow | Web filter + QoS |
-| 7 | DMZ | Internal network | Any | Deny | Protects the internal network if the DMZ is compromised |
-| 8 | Any | Any | Any | Deny + Log | Default rule |
+| 1 | All VLANs | AD DHCP server (VLAN 40) | DHCP UDP 67/68 | Allow | DHCP relay on every VLAN gateway |
+| 2 | All VLANs | AD DNS / NTP server | DNS UDP 53, NTP UDP 123 | Allow | Internal resolver and time source only |
+| 3 | DNS / NTP server | Internet | DNS UDP 53, NTP UDP 123 | Allow | Upstream DNS and pool.ntp.org |
+| 4 | Management VLAN 10 | All device management | SSH, HTTPS | Allow | IT team only |
+| 5 | Internet | DMZ web server | HTTPS 443 | Allow | IPS profile enabled |
+| 6 | Staff VLAN 20 | Internal servers VLAN 40 | ERP, LDAP, SMTP/IMAPS | Allow |  |
+| 7 | Software VLAN 30 | Git / CI servers | SSH 22, HTTPS | Allow | Software team only |
+| 8 | Software VLAN 30 | Staff VLAN 20 | Any | Deny | Teams are isolated from each other |
+| 9 | IoT VLAN 60 | All internal networks | Any | Deny | Cameras and printers never reach users or servers |
+| 10 | Guest VLAN 99 | All internal networks | Any | Deny | Internet only |
+| 11 | Guest VLAN 99 | Internet | HTTP/HTTPS | Allow | Web filter, 5/1 Mbps per user |
+| 12 | All internal VLANs | Internet | HTTP/HTTPS | Allow | Web filter + QoS |
+| 13 | DMZ | Internal network | Any | Deny | Protects the internal network if the DMZ is compromised |
+| 14 | Any | Any | Any | Deny + Log | Default rule |
+
+The internal segmentation firewall in front of the software team (ISFW) and the DMZ/WAF layer also end with their own "deny all and log" rule.
 
 ### AnadoluNet Academy (Eskişehir)
 
 | # | Source | Destination | Service | Action | Notes |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Student VLAN 100 | LMS / exam servers VLAN 140 | HTTPS 443 | Allow | Prioritized during exams |
-| 2 | Student VLAN 100 | Faculty, admin, lab VLANs | Any | Deny | Students cannot reach internal networks |
-| 3 | Student VLAN 100 | Internet | HTTP/HTTPS, DNS | Allow | 10/3 Mbps limit, P2P blocked |
-| 4 | Faculty VLAN 110 | LMS + İzmir servers (VPN) | HTTPS, SMB | Allow | Grade entry, file sharing |
-| 5 | Admin VLAN 120 | İzmir ERP (VPN) | ERP port, HTTPS | Allow | Student affairs, accounting |
-| 6 | Lab VLAN 130 | Internet | HTTP/HTTPS | Allow | Can be disabled during exams |
-| 7 | Guest VLAN 99 | All internal networks | Any | Deny | Internet only |
-| 8 | Any | Any | Any | Deny + Log | Default rule |
+| 1 | All VLANs | Campus DHCP server (VLAN 140) | DHCP UDP 67/68 | Allow | DHCP relay on every VLAN gateway |
+| 2 | All VLANs | Campus DNS / NTP server | DNS UDP 53, NTP UDP 123 | Allow | Internal resolver and time source only |
+| 3 | DNS / NTP server | Internet | DNS UDP 53, NTP UDP 123 | Allow | Upstream DNS and pool.ntp.org |
+| 4 | Student VLAN 100 | LMS / exam servers VLAN 140 | HTTPS 443 | Allow | Prioritized during exams |
+| 5 | Student VLAN 100 | Faculty, admin, lab VLANs | Any | Deny | Students cannot reach internal networks |
+| 6 | Student VLAN 100 | Internet | HTTP/HTTPS | Allow | 10/3 Mbps limit, P2P blocked |
+| 7 | Faculty VLAN 110 | LMS + İzmir servers (VPN) | HTTPS, SMB | Allow | Grade entry, file sharing |
+| 8 | Admin VLAN 120 | İzmir ERP (VPN) | ERP port, HTTPS | Allow | Student affairs, accounting |
+| 9 | Lab VLAN 130 | Internet | HTTP/HTTPS | Allow | Can be disabled during exams |
+| 10 | Guest VLAN 99 | All internal networks | Any | Deny | Internet only |
+| 11 | Any | Any | Any | Deny + Log | Default rule |
 
 ### Bursa Office
 
 | # | Source | Destination | Service | Action | Notes |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Staff VLAN 20 | İzmir servers (VPN) | ERP, email, HTTPS | Allow |  |
-| 2 | Staff VLAN 20 | OT VLAN 50 | Monitoring port only | Allow | Production engineers only |
-| 3 | OT VLAN 50 | Internet | Any | Deny | Production devices never reach the internet |
-| 4 | Staff VLAN 20 | Internet | HTTP/HTTPS, DNS | Allow | Web filter |
-| 5 | Any | Any | Any | Deny + Log | Default rule |
+| 1 | All VLANs | Firewall DHCP server | DHCP UDP 67/68 | Allow | Local DHCP on the firewall |
+| 2 | All VLANs | Firewall DNS / NTP | DNS UDP 53, NTP UDP 123 | Allow | Local resolver and time source only |
+| 3 | Firewall DNS / NTP | Internet | DNS UDP 53, NTP UDP 123 | Allow | Upstream DNS and pool.ntp.org |
+| 4 | Staff VLAN 20 | İzmir servers (VPN) | ERP, email, HTTPS | Allow |  |
+| 5 | Staff VLAN 20 | OT VLAN 50 | Monitoring port only | Allow | Production engineers only |
+| 6 | OT VLAN 50 | Internet | Any | Deny | Production devices never reach the internet |
+| 7 | Staff VLAN 20 | Internet | HTTP/HTTPS | Allow | Web filter |
+| 8 | Any | Any | Any | Deny + Log | Default rule |
 
 ### Berlin Office
 
 | # | Source | Destination | Service | Action | Notes |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Staff VLAN 20 | İzmir servers (VPN) | ERP, email, HTTPS | Allow |  |
-| 2 | Staff VLAN 20 | Internet | HTTP/HTTPS, DNS | Allow | Web filter |
-| 3 | Internet | Berlin internal network | Any | Deny | GDPR: personal data is never exposed |
-| 4 | Any | Any | Any | Deny + Log | Default rule |
+| 1 | All VLANs | Firewall DHCP server | DHCP UDP 67/68 | Allow | Local DHCP on the firewall |
+| 2 | All VLANs | Firewall DNS / NTP | DNS UDP 53, NTP UDP 123 | Allow | Local resolver and time source only |
+| 3 | Firewall DNS / NTP | Internet | DNS UDP 53, NTP UDP 123 | Allow | Upstream DNS and pool.ntp.org |
+| 4 | Staff VLAN 20 | İzmir servers (VPN) | ERP, email, HTTPS | Allow |  |
+| 5 | Staff VLAN 20 | Internet | HTTP/HTTPS | Allow | Web filter |
+| 6 | Internet | Berlin internal network | Any | Deny | GDPR: personal data is never exposed |
+| 7 | Any | Any | Any | Deny + Log | Default rule |
 
 ## 6. Inter-Site VPN, Monitoring and Summary
 
@@ -318,65 +341,67 @@ Required\ capacity = Line\ bandwidth \times 2
 
 The model series below are rough class indicators; capacity figures must be verified against the vendor's current datasheet before purchase.
 
+Prices are approximate list prices in USD for one hardware unit of the entry model in each series, before security subscriptions and support (an HA pair doubles the hardware cost). WAF prices are per year. They are for comparing the options against each other, not purchase quotes.
+
 ### AnadoluNet Academy (≥ 10 Gbps)
 
-| # | Product / series | Why |
-| --- | --- | --- |
-| 1 | Fortinet FortiGate 1800F class (HA) | High session count and price/performance thanks to custom silicon; common on campuses |
-| 2 | Palo Alto Networks PA-5400 series | Strongest application identification and threat prevention |
-| 3 | Check Point Quantum 9000 / 16000 series | Strong centralized management, large networks |
-| 4 | Cisco Secure Firewall 4200 series | High capacity, integrates with Cisco campus networks |
-| 5 | Juniper SRX4000 series | Very high routing and session capacity |
+| # | Product / series | Approx. price (USD) | Why |
+| --- | --- | --- | --- |
+| 1 | Fortinet FortiGate 1800F class (HA) | 60,000 | High session count and price/performance thanks to custom silicon; common on campuses |
+| 2 | Palo Alto Networks PA-5400 series | 95,000 | Strongest application identification and threat prevention |
+| 3 | Check Point Quantum 9000 / 16000 series | 70,000 | Strong centralized management, large networks |
+| 4 | Cisco Secure Firewall 4200 series | 80,000 | High capacity, integrates with Cisco campus networks |
+| 5 | Juniper SRX4000 series | 45,000 | Very high routing and session capacity |
 
 ### İzmir HQ (≥ 5 Gbps)
 
-| # | Product / series | Why |
-| --- | --- | --- |
-| 1 | Palo Alto Networks PA-3400 series (HA) | Strongest threat prevention for the hub; manages all sites via Panorama |
-| 2 | Fortinet FortiGate 400F / 600F class (HA) | High IPsec performance for a VPN hub, built-in SD-WAN |
-| 3 | Check Point Quantum 6000 series | Strong policy management |
-| 4 | Cisco Secure Firewall 3100 series | Fits enterprise Cisco infrastructure |
-| 5 | Sophos XGS high-end (e.g. XGS 5500 / 6500) | More cost-effective, easy to manage |
+| # | Product / series | Approx. price (USD) | Why |
+| --- | --- | --- | --- |
+| 1 | Palo Alto Networks PA-3400 series (HA) | 24,000 | Strongest threat prevention for the hub; manages all sites via Panorama |
+| 2 | Fortinet FortiGate 400F / 600F class (HA) | 12,000 | High IPsec performance for a VPN hub, built-in SD-WAN |
+| 3 | Check Point Quantum 6000 series | 20,000 | Strong policy management |
+| 4 | Cisco Secure Firewall 3100 series | 22,000 | Fits enterprise Cisco infrastructure |
+| 5 | Sophos XGS high-end (e.g. XGS 5500 / 6500) | 15,000 | More cost-effective, easy to manage |
 
 ### Software team – internal segmentation firewall (≥ 4 Gbps)
 
-| # | Product / series | Why |
-| --- | --- | --- |
-| 1 | Fortinet FortiGate (ISFW mode, 200F class) | Mode designed for high-speed segmentation between internal networks |
-| 2 | Palo Alto Networks PA-1400 series | Fine-grained user- and application-based rules |
-| 3 | Check Point Quantum 3000 series | Same management console as HQ |
-| 4 | Cisco Secure Firewall 1200 / 3100 series | Segmentation alongside Cisco switches |
-| 5 | OPNsense / pfSense (on server hardware) | Free and flexible for test and dev environments |
+| # | Product / series | Approx. price (USD) | Why |
+| --- | --- | --- | --- |
+| 1 | Fortinet FortiGate (ISFW mode, 200F class) | 4,500 | Mode designed for high-speed segmentation between internal networks |
+| 2 | Palo Alto Networks PA-1400 series | 9,500 | Fine-grained user- and application-based rules |
+| 3 | Check Point Quantum 3000 series | 6,000 | Same management console as HQ |
+| 4 | Cisco Secure Firewall 1200 / 3100 series | 8,000 | Segmentation alongside Cisco switches |
+| 5 | OPNsense / pfSense (on server hardware) | 1,500 (hardware only) | Free and flexible for test and dev environments |
 
 ### Bursa Office (≥ 1 Gbps, including OT)
 
-| # | Product / series | Why |
-| --- | --- | --- |
-| 1 | Fortinet FortiGate 100F class | Understands OT protocols; FortiGate Rugged models available for field use |
-| 2 | Sophos XGS 2100 / 2300 | Easy management, synchronized with endpoint protection |
-| 3 | Palo Alto Networks PA-450 | Industrial protocol visibility (with the OT security add-on) |
-| 4 | WatchGuard Firebox M-series | Cost-effective for mid-sized offices |
-| 5 | Check Point Quantum Spark 1900 | Small/mid office, same management as HQ |
+| # | Product / series | Approx. price (USD) | Why |
+| --- | --- | --- | --- |
+| 1 | Fortinet FortiGate 100F class | 3,000 | Understands OT protocols; FortiGate Rugged models available for field use |
+| 2 | Sophos XGS 2100 / 2300 | 2,500 | Easy management, synchronized with endpoint protection |
+| 3 | Palo Alto Networks PA-450 | 3,500 | Industrial protocol visibility (with the OT security add-on) |
+| 4 | WatchGuard Firebox M-series | 3,000 | Cost-effective for mid-sized offices |
+| 5 | Check Point Quantum Spark 1900 | 5,000 | Small/mid office, same management as HQ |
 
 ### Berlin Office (≥ 500 Mbps)
 
-| # | Product / series | Why |
-| --- | --- | --- |
-| 1 | WatchGuard Firebox T-series | Simple, cloud-managed, built for small offices |
-| 2 | Fortinet FortiGate 60F / 70F | Affordable, automatic VPN to HQ (SD-WAN) |
-| 3 | Sophos XGS 1xx series (desktop) | Easy UI |
-| 4 | Palo Alto Networks PA-400 series (entry) | Policy consistency if HQ runs Palo Alto |
-| 5 | Check Point Quantum Spark 1600 / 1800 | Small office, easy GDPR reporting |
+| # | Product / series | Approx. price (USD) | Why |
+| --- | --- | --- | --- |
+| 1 | WatchGuard Firebox T-series | 1,200 | Simple, cloud-managed, built for small offices |
+| 2 | Fortinet FortiGate 60F / 70F | 900 | Affordable, automatic VPN to HQ (SD-WAN) |
+| 3 | Sophos XGS 1xx series (desktop) | 1,000 | Easy UI |
+| 4 | Palo Alto Networks PA-400 series (entry) | 1,500 | Policy consistency if HQ runs Palo Alto |
+| 5 | Check Point Quantum Spark 1600 / 1800 | 3,500 | Small office, easy GDPR reporting |
 
 ### DMZ / Web applications (WAF)
 
-| # | Product | Why |
-| --- | --- | --- |
-| 1 | Cloudflare WAF | Global network, absorbs very large DDoS attacks, ready-made OWASP rules |
-| 2 | AWS WAF | Native integration since the website runs on AWS |
-| 3 | Akamai App & API Protector | Widely used in large enterprises, strong bot protection |
-| 4 | Imperva WAF | Strong in database and API protection |
-| 5 | F5 (Advanced WAF / Distributed Cloud) | Also offers an on-prem option |
+| # | Product | Approx. price (USD / year) | Why |
+| --- | --- | --- | --- |
+| 1 | Cloudflare WAF | 2,400 | Global network, absorbs very large DDoS attacks, ready-made OWASP rules |
+| 2 | AWS WAF | 1,200 | Native integration since the website runs on AWS |
+| 3 | Akamai App & API Protector | 30,000 | Widely used in large enterprises, strong bot protection |
+| 4 | Imperva WAF | 12,000 | Strong in database and API protection |
+| 5 | F5 (Advanced WAF / Distributed Cloud) | 15,000 | Also offers an on-prem option |
 
 ### Cloud (AWS VPC, ≥ 2 Gbps)
 
@@ -470,6 +495,23 @@ Staffing a single seat 24/7 takes about 5 people: 168 hours per week ÷ 40 hours
 6. **Reporting:** Daily shift handover, weekly bandwidth report, monthly management report and rule review.
 7. **Training and exercises:** Quarterly phishing simulations for employees; an annual tabletop exercise and penetration test.
 8. **Compliance:** ISO/IEC 27001, KVKK in Turkey, GDPR for Berlin (personal data breaches must be reported to the supervisory authority within 72 hours); attack techniques are mapped to the MITRE ATT&CK framework.
+
+### Log retention, configuration backups and patching
+
+| Topic | Plan | Owner |
+| --- | --- | --- |
+| Log retention | Firewall, VPN, DHCP and authentication logs stay 90 days "hot" (searchable) in the SIEM, then 2 years in an encrypted, write-once S3 archive. This covers Law 5651 and KVKK/GDPR evidence requests. | SOC manager |
+| Configuration backup | Every firewall config is exported nightly through FortiManager / Panorama to a versioned, encrypted S3 bucket; a restore to a spare/virtual unit is tested every quarter. | Firewall / network administrators |
+| Patching and firmware | Monthly patch window for firewalls and servers, driven by vendor PSIRT advisories; critical, actively exploited CVEs are patched out of band. At HA sites the passive unit is upgraded first, then a failover, then the second unit. | Firewall / network administrators |
+
+### CVE watch
+
+| CVE | Affected product | Temporary mitigation | Permanent fix | Status |
+| --- | --- | --- | --- | --- |
+| CVE-2024-3400 | PAN-OS GlobalProtect (İzmir PA-3400 HA pair) | Threat Prevention signature 95187 on the GlobalProtect interface | Fixed PAN-OS hotfix, passive node first, then failover | Patched |
+| CVE-2024-21762 | FortiOS SSL-VPN (Academy FortiGate 1800F HA, Bursa FortiGate 100F) | SSL-VPN disabled, remote access over IPsec only | FortiOS 7.4.3 / 7.2.7 / 7.0.14 or later | Patched |
+
+Both are unauthenticated remote code execution bugs in the VPN service of a firewall that is in this design and were exploited in the wild. They show why the mitigation (a signature, disabling a feature) and the permanent fix (the patch) are tracked separately.
 
 ## 13. Conclusion
 

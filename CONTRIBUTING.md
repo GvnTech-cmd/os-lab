@@ -166,6 +166,67 @@ Course midterm reservations add a `course` (and an option number in `note`) — 
 | **OS-39** | **netplan DNS Configurator (approval-gated)** | Persistent DNS via `/etc/netplan/*.yaml` with a shown diff, `netplan try`/apply and a verify query; static vs DHCP. (Teached 02.11) | **Medium** · Small |
 | **OS-40** | **Wi-Fi / Interface DNS Troubleshooter** | Reproduces the 02.11 fault (DHCP `ignore-auto-dns`, empty resolver on Wi-Fi) and offers the `nmcli` fix; cache + AP/router/switch primer. (Teached 02.11) | **High** · Small |
 
+#### Bonus — shipped reference tools (not reservable)
+
+These are already implemented and merged under
+[`linux-lab/scripts/bonus/`](linux-lab/scripts/bonus/). They close recurring
+gaps that are not covered by OS-01…OS-40 and are **not** vize tasks — reserve an
+`OS-…` row above instead. Read them as worked examples of the lab's script style:
+read-only, `set -euo pipefail`, clear exit codes (`0` clean / `1` problem /
+`2` usage), portable between macOS and Linux, no external tools required.
+
+| ID | Tool | What it does |
+|---|---|---|
+| **OS-B1** | `env-doctor.sh` | Validates a lab `.env` against its `.env.example` — missing keys, empty values, unknown/extra keys, duplicates (`--json` for CI). Nothing today checks a copied `.env` for drift. |
+| **OS-B2** | `port-check.sh` | Reports whether the lab's `WEB_PORT`/`SSH_PORT` (or ports you pass) are free on `127.0.0.1` via bash `/dev/tcp`, catching the "port already allocated" start failure before `make up`. |
+| **OS-B3** | `ssh-config-doctor.sh` | Summarises each `~/.ssh/config` Host block and flags a missing `HostName`, an absent `IdentityFile`, or a key with group/other-readable permissions that `ssh` silently ignores. |
+| **OS-B4** | `shell-lint.sh` | `bash -n` (the repo's required gate) over the `*.sh` you touched, plus `shellcheck` advisories when installed — a scoped pre-PR check instead of the whole-repo `run-tests.sh`. |
+| **OS-B5** | `md-linkcheck.sh` | Verifies local (non-http) Markdown links resolve on disk, so a typo'd path in `VERIFY.md`/`REPORT.md`/docs is caught before it becomes a dead link. |
+| **OS-B6** | `secret-scan.sh` | Scans for known credential signatures (PEM/OpenSSH keys, AWS/GitHub/Slack/Google tokens) and reports `file:line` + rule with the value **redacted**; `--staged` for a pre-commit check. Complements the release scripts' tracked-key guard. |
+
+### 2b. Cleanup Lab (CLN)
+
+A disk-cleanup lab that ports [Qleaner](https://github.com/keyvanarasteh/Qleaner)'s scan detections,
+detection signatures and clean techniques into os-lab. Only the behaviour is ported: pages follow the
+os-lab dashboard and [`docs/UX_READINESS.md`](docs/UX_READINESS.md), and Qleaner's known bugs must not be
+copied. Contract, safety rules, the port map and the bug list: [`cleanup-lab/README.md`](cleanup-lab/README.md).
+Course note: **MYO063** students can take these tasks as a bonus (`"course": "MYO063"` in the reservation); at most **2 merged PRs per student**, so reserve at most two CLN tasks at a time.
+
+| ID | Task | Priority / Effort |
+|---|---|---|
+| **CLN-01** | Cleanup Lab skeleton: engine, labctl, readiness and /cleanup/ page | **High** · Small–Medium |
+| **CLN-02** | Detector catalog format, loader and Qleaner parity test | **High** · Medium |
+| **CLN-03** | Scan job: bounded-parallel size scan with progress and cancel | **High** · Medium |
+| **CLN-04** | Detections: system caches, logs, temp, crash reports, fonts, Spotlight, Trash | **High** · Small–Medium |
+| **CLN-05** | Detections: browser caches and privacy data, every profile | **High** · Small–Medium |
+| **CLN-06** | Detections: developer tool and package-manager caches | **High** · Medium |
+| **CLN-07** | Detections: deep project sweep (node_modules, Rust target), Xcode DerivedData, simulators | **Medium** · Small–Medium |
+| **CLN-08** | Detections: containers and VM images | **Medium** · Small |
+| **CLN-09** | Detection signatures: macOS app leftovers | **High** · Medium |
+| **CLN-10** | Detection signatures: Linux and Windows app leftovers | **Medium** · Medium |
+| **CLN-11** | Detections: package orphans (Homebrew leaves, global pip, gems) | **Medium** · Small |
+| **CLN-12** | Safety guard: canonical paths, allowed roots, ownership, running apps | **High** · Small–Medium |
+| **CLN-13** | Plan → confirm → clean, Trash by default, honest results | **High** · Medium |
+| **CLN-14** | Secure shred technique, done honestly | **Medium** · Small–Medium |
+| **CLN-15** | Audit history with a real integrity signature | **Medium** · Small |
+| **CLN-16** | Cleanup pages: scan, results, leftovers (os-lab UX) | **High** · Medium |
+| **CLN-17** | Ignore rules, enforced by the engine | **Medium** · Small |
+| **CLN-18** | Schedules: scheduled dry-run scans | **Medium** · Small–Medium |
+| **CLN-19** | Headless CLI parity: labctl cleanup scan / plan / clean --json | **Medium** · Small |
+| **CLN-20** | Privileged targets and disk-access check | **Medium** · Small–Medium |
+| **CLN-21** | Native scan backend: wire qrust-scan into the desktop app | **High** · Medium |
+| **CLN-22** | Harden qrust-scan: nested .gitignore, iterative glob, verified candidates | **High** · Small–Medium |
+| **CLN-23** | Disk Explorer page: read-only size tree, hotspots and seek | **Medium** · Medium |
+| **CLN-24** | Project artifact signatures proved by marker files | **High** · Small–Medium |
+| **CLN-25** | Tool-reported cache locations: environment, then the tool, then the default | **High** · Small |
+| **CLN-26** | Learning loop: cleaned-items ledger, soft pre-selection, Quick Clean | **Medium** · Medium |
+| **CLN-27** | Relocate caches to another volume behind a symlink | **Medium** · Medium |
+| **CLN-28** | Volumes overview and disk-pressure card | **Medium** · Small |
+| **CLN-29** | Simulator and emulator runtimes: list, size, remove | **Medium** · Small–Medium |
+
+CLN-21 … CLN-29 start from working, tested reference code in [`cleanup-lab/reference/`](cleanup-lab/reference/README.md)
+(the `qrust-scan` Rust crate and the `cleanup_ref` Python modules). Adapt it to the contract; do not bypass the safety guard.
+
 ### 3. Firewall Solutions
 
 | ID | Task | Scope & Reference | Priority / Effort |
@@ -208,6 +269,28 @@ Course midterm reservations add a `course` (and an option number in `note`) — 
 | **FW-36** | **Trusted apt Source Adder & Verifier** | Adds a vetted repo with GPG verification + apt pinning when the distro lags; refuses unsigned sources. (Teached 23.10) | **Medium** · Small |
 | **FW-37** | **KVKK/Cookie/Privacy-Text Compliance Checker** | Checks allowlisted pages for required KVKK/cookie/privacy notices, flagging missing/stale policies. (Teached 23.10) | **Medium** · Small |
 | **FW-38** | **"Explain-Your-Rule" Audit (Unexplained Rule = Vulnerability)** | Requires a one-line justification per rule and blocks sign-off until every rule has a rationale. (Teached 23.10) | **Medium** · Small |
+
+### Source Lab bonus contributions — open
+
+The owner deferred the following remaining verification and related patches to
+bonus contributions. They are reservable in **Contribute → Roadmap & TODOs** as
+`SRC-B01`–`SRC-B06`; they are not course exam options or claims of completed
+native/live acceptance. Follow [the runbook](source-lab/RUNBOOK.md), record
+sanitized evidence in [VALIDATION.md](source-lab/VALIDATION.md), and include any
+required fixes with the verification. Release signatures remain mandatory.
+
+| Task | Priority | Required result |
+|---|---|---|
+| SRC-B01 — Native install/update | High | Fresh packaged and minimal macOS/Windows install, restart/update with existing private state, Python 3.11+ readiness, five-platform portable acceptance fingerprint and Source UI/report smoke; parse Windows installer with PowerShell 5.1 and 7. |
+| SRC-B02 — Live browser | High | Owned canary target, real Playwright/Chromium, signed non-synthetic session, deliberate tamper rejection, profile/process cleanup and documented optional-tool fallback. |
+| SRC-B03 — Native telemetry | Medium | Authorized Windows/macOS/Android/iOS collection recipes feeding the four retained importer libraries, host/tool provenance, integrity checks and no fabricated live proof. |
+| SRC-B04 — Snapshot generation | Medium | Reproducible Brain/Pipeline generation from owned source, revisions/dates/provider validation and absent-provider tests; no database, Skills or OpenAPI integration. |
+| SRC-B05 — Native lifecycle/path checks | High | Cancellation/timeout/restart, cross-process locks, CRLF sessions, symlink/junction/reparse-point refusal and private-key behavior on actual native hosts; patch failures. |
+| SRC-B06 — Large workspace browsing | Medium | Bounded pagination/summary-only reads beyond current target/session/aggregate limits, clear partial coverage and measured owned-fixture UI/API performance. |
+
+Further merger UI is skipped by owner. Research-only collection and remote
+hosting proposals remain separate upstream follow-ups, not hidden release
+requirements or implemented capabilities. See [scope audit](source-lab/AUDIT.md).
 
 ## Step 4: Add tests
 

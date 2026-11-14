@@ -16,3 +16,4 @@ profile identifies the contributor.
 | H*** A*** K*** | [@frudotz](https://github.com/frudotz) | [K1-FW — Çok Lokasyonlu Kurumsal Ağ ve Güvenlik Duvarı](companies/k1-fw-cok-lokasyonlu-ag/) |
 | A*** M*** K*** | [@RedRiveRR](https://github.com/RedRiveRR) | [Çok Siteli Kurumsal Güvenlik Duvarı Projesi](companies/cok-siteli-kurumsal-guvenlik-duvari/) |
 | D*** P*** | [@denizpekova](https://github.com/denizpekova) | [MT Technology Group](companies/mt-technology-group/) |
+| M*** B*** Y*** | [@Berrkle](https://github.com/Berrkle) | [NovaTek Holding](companies/novatek-holding/) |

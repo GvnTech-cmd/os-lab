@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "platforms": {
+    "linux": {
+      "apt-cache": {
+        "id": "privileged.linux.apt-cache",
+        "name": "APT package cache",
+        "risk": "low",
+        "previewMode": "files",
+        "preview": null,
+        "measurePath": "/var/cache/apt/archives",
+        "run": ["apt-get", "clean"],
+        "impact": "Package archives re-download on the next install or upgrade."
+      },
+      "journal-vacuum": {
+        "id": "privileged.linux.journal-vacuum",
+        "name": "Journal logs (vacuum to 100 MB)",
+        "risk": "medium",
+        "previewMode": "text",
+        "preview": ["journalctl", "--disk-usage"],
+        "run": ["journalctl", "--vacuum-size=100M"],
+        "impact": "Journal entries beyond 100 MB are removed; recent logs stay."
+      },
+      "apt-autoremove": {
+        "id": "privileged.linux.apt-autoremove",
+        "name": "Orphaned packages (autoremove --purge)",
+        "risk": "high",
+        "previewMode": "packages",
+        "preview": ["apt-get", "autoremove", "--purge"],
+        "run": ["apt-get", "autoremove", "--purge", "-y"],
+        "impact": "Unneeded dependencies and their configuration are removed. Review the package list before confirming."
+      }
+    },
+    "macos": {
+      "spotlight-rebuild": {
+        "id": "privileged.macos.spotlight-rebuild",
+        "name": "Spotlight index rebuild (/)",
+        "risk": "high",
+        "previewMode": "text",
+        "preview": ["mdutil", "-s", "/"],
+        "run": ["mdutil", "-E", "/"],
+        "impact": "Search results are unavailable while macOS rebuilds the index."
+      }
+    },
+    "windows": {
+      "dism-cleanup": {
+        "id": "privileged.windows.dism-cleanup",
+        "name": "Windows component store cleanup (DISM)",
+        "risk": "medium",
+        "previewMode": "text",
+        "preview": ["Dism.exe", "/online", "/Cleanup-Image", "/AnalyzeComponentStore"],
+        "run": ["Dism.exe", "/online", "/Cleanup-Image", "/StartComponentCleanup"],
+        "impact": "Superseded update payloads are removed. This action never uses /ResetBase, so installed updates stay uninstallable."
+      }
+    }
+  }
+}

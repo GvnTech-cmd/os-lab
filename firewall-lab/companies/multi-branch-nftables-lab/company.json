@@ -7,122 +7,329 @@
     "course": "BGT207",
     "github": "apo536098-wq"
   },
-  "summary": "A company with offices in Ankara, Istanbul and London, an academic branch of 10,000 students plus teachers and staff, and a software team. One Linux machine is the central firewall/router: default-drop nftables policy, an access matrix between groups, and tc HTB classes that share a 1 Gbit uplink (software 250-600, students 250-500, teachers/staff/offices 100-300 Mbit).",
+  "summary": "A fictional education and software company with a headquarters in Ankara, an Istanbul hub (VPN hub, DMZ, data center), a London office and an academic campus of 10,000 students. Each site has its own /16, role-based VLANs and a firewall HA pair managed from one FortiManager, with dual ISPs (SD-WAN failover; ULAKNET plus a commercial line at the campus). The website, mobile app API and LMS sit behind a Cloudflare WAF with ModSecurity at the origin. Administration is only through a role-based VPN with MFA and a bastion; there is no public SSH. Policy is default deny with a reason for every rule, and logs follow KVKK, Law 5651 and UK GDPR. A single Linux machine with nftables and tc HTB reproduces the rule logic as a tested lab (68 of 68 policy tests pass).",
   "branches": [
     {
-      "id": "ankara-office",
-      "name": "Ankara Office (central firewall)",
+      "id": "ankara-hq",
+      "name": "Ankara Headquarters",
       "role": "headquarters",
       "location": "Ankara, Turkey",
-      "population": {},
+      "population": {
+        "staff": 120,
+        "rnd": 25,
+        "software": 40
+      },
       "network": {
-        "cidr": "10.10.1.0/24",
+        "cidr": "10.1.0.0/16",
         "dmz": false,
         "vlans": [
           {
-            "id": 1,
-            "name": "ankara",
-            "cidr": "10.10.1.0/24",
-            "note": "Gateway 10.10.1.1, interface ank0."
+            "id": 10,
+            "name": "office",
+            "cidr": "10.1.10.0/24",
+            "note": "Office staff."
+          },
+          {
+            "id": 20,
+            "name": "dev",
+            "cidr": "10.1.20.0/24",
+            "note": "Software developers: git, CI/CD and deployments."
+          },
+          {
+            "id": 30,
+            "name": "rnd",
+            "cidr": "10.1.30.0/24",
+            "note": "R&D; no direct internet, egress only through an allow-listed proxy."
+          },
+          {
+            "id": 40,
+            "name": "guest",
+            "cidr": "10.1.40.0/24",
+            "note": "Visitors, internet only."
+          },
+          {
+            "id": 50,
+            "name": "print-iot",
+            "cidr": "10.1.50.0/24",
+            "note": "Printers and IoT devices."
+          },
+          {
+            "id": 99,
+            "name": "management",
+            "cidr": "10.1.99.0/24",
+            "note": "Firewall, switch and iDRAC management; reachable only from the bastion."
           }
         ]
       },
       "bandwidth": {
-        "downMbps": 100,
-        "upMbps": 100,
+        "downMbps": 500,
+        "upMbps": 500,
         "drivers": [
           "office work",
-          "inter-branch traffic"
+          "git and CI/CD",
+          "inter-site VPN traffic",
+          "cloud backup"
         ]
       },
       "firewalls": [
         {
           "segment": "perimeter",
           "chosen": {
-            "product": "nftables on Kali Linux (central router/firewall)",
-            "vendor": "Netfilter project",
-            "reason": "Stateful default-drop filtering, NAT, packet marking and tc HTB QoS on one box; reproducible and testable with nmap/iperf3."
+            "product": "FortiGate 200G (HA pair)",
+            "vendor": "Fortinet",
+            "throughputGbps": 6,
+            "priceUsd": 18163.4,
+            "reason": "6 Gbps threat protection (datasheet) against a 500 Mbps link leaves headroom for IPS and SSL inspection plus growth; active-passive HA pair with session sync, managed from the central FortiManager. Price is per unit: list price of the hardware with 1-year FortiCare Premium and UTP bundle; an HA pair needs two units."
           },
           "alternatives": [
             {
-              "product": "OPNsense",
-              "vendor": "Deciso",
-              "reason": "Web UI and plugins for the same job; heavier than a single script. (Reviewer-added comparison; not in the student's original submission.)"
-            },
-            {
-              "product": "pfSense CE",
-              "vendor": "Netgate",
-              "reason": "Classic open-source firewall with traffic shaper and VPN. (Reviewer-added comparison; not in the student's original submission.)"
+              "product": "FortiGate 900G",
+              "vendor": "Fortinet",
+              "throughputGbps": 20,
+              "priceUsd": 51000,
+              "reason": "Not chosen: 20 Gbps is far more than a 500 Mbps headquarters needs and costs nearly three times as much per unit; revisit if the link grows past several Gbps."
             },
             {
               "product": "FortiGate 60F",
               "vendor": "Fortinet",
-              "reason": "Commercial NGFW appliance, IPS and SD-WAN, for a real deployment. (Reviewer-added comparison; not in the student's original submission.)"
+              "throughputGbps": 0.7,
+              "priceUsd": 1630.8,
+              "reason": "Not chosen: 0.7 Gbps threat protection leaves only 40% headroom over the 500 Mbps link, while the headquarters also carries inter-site VPN and six VLANs."
             },
             {
-              "product": "Sophos XGS 116",
-              "vendor": "Sophos",
-              "reason": "Small-office appliance with easy UI and synchronized endpoint protection. (Reviewer-added comparison; not in the student's original submission.)"
+              "product": "Palo Alto PA-440",
+              "vendor": "Palo Alto Networks",
+              "throughputGbps": 1.0,
+              "priceUsd": 3975,
+              "reason": "Not chosen: about 1.0 Gbps threat prevention is enough today but leaves little growth, and a second vendor adds a separate management plane that FortiManager cannot manage. Price is approximate (about EUR 3,680 for hardware plus 1-year Threat Prevention, converted); verify with a quote."
+            },
+            {
+              "product": "OPNsense",
+              "vendor": "Deciso",
+              "priceUsd": 0,
+              "reason": "Not chosen: free and capable, but no vendor support, no shared policy package with the other sites, and IPS tuning becomes our own job."
             }
           ],
           "rules": [
             {
               "action": "allow",
-              "direction": "forward",
+              "direction": "in",
+              "proto": "udp",
+              "port": "67:68",
+              "from": "internal",
+              "to": "firewall",
+              "note": "DHCP (I04): without it clients get no IP address; scoped to the internal VLANs only."
+            },
+            {
+              "action": "allow",
+              "direction": "in",
               "proto": "any",
-              "from": "any",
-              "to": "any",
-              "note": "Replies to established connections must pass or nothing works (stateful tracking)."
+              "port": 53,
+              "from": "internal",
+              "to": "firewall",
+              "note": "DNS (I04): internal clients resolve names through the firewall; nothing outside can use it."
+            },
+            {
+              "action": "allow",
+              "direction": "in",
+              "proto": "udp",
+              "port": 123,
+              "from": "internal",
+              "to": "firewall",
+              "note": "NTP (I04): clients and logs need the same time for TLS and log correlation."
+            },
+            {
+              "action": "allow",
+              "direction": "in",
+              "proto": "tcp",
+              "port": 22,
+              "from": "bastion",
+              "to": "firewall",
+              "note": "SSH to the firewall only from the bastion (I03); there is no public SSH."
+            },
+            {
+              "action": "allow",
+              "direction": "out",
+              "proto": "udp",
+              "port": 123,
+              "from": "firewall",
+              "to": "ntp-pool",
+              "note": "The firewall syncs its own clock with a public NTP pool so log timestamps stay correct."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": "22,443",
+              "from": "bastion",
+              "to": "management",
+              "note": "Only the bastion reaches the management VLAN (R02)."
             },
             {
               "action": "deny",
               "direction": "forward",
               "proto": "any",
-              "from": "students",
+              "from": "all-other-sources",
+              "to": "management",
+              "note": "Nobody else reaches firewall, switch or iDRAC management interfaces; logged (R02)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": "22,80,443,8080",
+              "from": "vpn-dev",
+              "to": "dev",
+              "note": "VPN developers reach the DEV VLAN only; role-based VPN with MFA (R03)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": 443,
+              "from": "vpn-staff",
+              "to": "offices",
+              "note": "VPN staff reach office web apps on 443 only (R03)."
+            },
+            {
+              "action": "deny",
+              "direction": "forward",
+              "proto": "any",
+              "from": "vpn-users",
               "to": "internal",
-              "note": "Students reach no internal network (staff, software, offices)."
+              "note": "Anything else from a VPN pool is logged and dropped (R03)."
+            },
+            {
+              "action": "deny",
+              "direction": "forward",
+              "proto": "any",
+              "from": "guest",
+              "to": "internal",
+              "note": "Guests never reach any internal network (R05)."
             },
             {
               "action": "allow",
               "direction": "forward",
               "proto": "tcp",
               "port": "80,443",
-              "from": "students",
+              "from": "guest",
               "to": "internet",
-              "note": "Students get web (80/443, QUIC 443) and DNS only."
+              "note": "Guests get web only (R05)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "udp",
+              "port": 443,
+              "from": "guest",
+              "to": "internet",
+              "note": "Guests may use QUIC on 443 (R05)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "any",
+              "port": 53,
+              "from": "guest",
+              "to": "internet",
+              "note": "Guests need DNS to browse (R05)."
             },
             {
               "action": "deny",
               "direction": "forward",
               "proto": "any",
-              "from": "teachers",
-              "to": "students,staff",
-              "note": "Teachers are blocked from the student and staff networks."
+              "from": "print-iot",
+              "to": "internal",
+              "note": "Printers and IoT never initiate traffic to internal networks (R06)."
             },
             {
               "action": "allow",
               "direction": "forward",
               "proto": "tcp",
-              "port": "80,443,587,993,995",
-              "from": "teachers",
+              "port": 443,
+              "from": "print-iot",
               "to": "internet",
-              "note": "Teachers get web, mail and video conferencing (Teams/Zoom ports) to the internet."
+              "note": "Printers and IoT reach vendor cloud services on 443 only (R06)."
             },
             {
               "action": "allow",
               "direction": "forward",
               "proto": "any",
-              "from": "staff",
+              "port": "53,123",
+              "from": "print-iot",
+              "to": "internet",
+              "note": "Printers and IoT need DNS and NTP (R06)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": "22,443,8080",
+              "from": "rnd",
+              "to": "dev",
+              "note": "R&D reaches developer tools on SSH, web and 8080 only (R11)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": 3128,
+              "from": "rnd",
+              "to": "rnd-proxy",
+              "note": "R&D has no direct internet; it exits only through the allow-listed proxy in the DMZ (R11)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": "22,80,443,8080",
+              "from": "dev",
+              "to": "dmz",
+              "note": "Developers deploy to the DMZ on SSH, web and 8080 (R12)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": "22,80,443,3306,5432,8080",
+              "from": "dev",
+              "to": "dc",
+              "note": "Developers reach data center servers and databases by port, not 'allow all' (R12)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": "22,80,443",
+              "from": "dev",
+              "to": "internet",
+              "note": "Developers use git over SSH and web packages (R12)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "any",
+              "port": "53,123",
+              "from": "dev",
+              "to": "internet",
+              "note": "Developers need DNS and NTP (R12)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "any",
+              "from": "offices",
               "to": "offices",
-              "note": "Staff reach the offices for administrative work."
+              "note": "Offices talk freely to each other over the site tunnels (R13)."
             },
             {
               "action": "allow",
               "direction": "forward",
-              "proto": "any",
-              "from": "software",
-              "to": "any",
-              "note": "Software team is the most privileged group and reaches everything."
+              "proto": "tcp",
+              "port": "515,631,9100",
+              "from": "offices",
+              "to": "print-iot",
+              "note": "Offices print to the printer VLAN on printing ports only (R13)."
             },
             {
               "action": "allow",
@@ -130,120 +337,450 @@
               "proto": "tcp",
               "port": "22,80,443,8080",
               "from": "offices",
-              "to": "software",
-              "note": "Offices reach the software team only on SSH, web and 8080."
+              "to": "dev",
+              "note": "Offices reach developer tools on SSH, web and 8080 only (R13)."
             },
             {
               "action": "allow",
-              "direction": "in",
+              "direction": "forward",
               "proto": "tcp",
-              "port": 22,
-              "from": "software,ankara",
-              "to": "firewall",
-              "note": "The firewall itself accepts SSH only from the software and Ankara networks."
+              "port": "80,443",
+              "from": "offices",
+              "to": "dmz,dc",
+              "note": "Offices reach internal web apps in the DMZ and data center on 80/443 only (R13)."
             },
             {
               "action": "allow",
-              "direction": "in",
-              "proto": "udp",
-              "port": "53,67",
-              "from": "internal",
-              "to": "firewall",
-              "note": "DNS and DHCP (53, 67/udp) are served to internal networks only."
+              "direction": "forward",
+              "proto": "tcp",
+              "port": "80,443,587,993,995",
+              "from": "offices",
+              "to": "internet",
+              "note": "Office users get web and mail (R13)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "any",
+              "port": "53,123",
+              "from": "offices",
+              "to": "internet",
+              "note": "Offices need DNS and NTP (R13)."
             },
             {
               "action": "deny",
               "direction": "forward",
               "proto": "any",
-              "from": "any",
-              "to": "any",
-              "note": "Default rule: everything else is logged (rate-limited) and dropped."
+              "note": "Default rule (R16): everything else is logged (rate-limited) and dropped."
             }
           ]
         }
       ]
     },
     {
-      "id": "istanbul-office",
-      "name": "Istanbul Office",
-      "role": "branch",
+      "id": "istanbul-hub",
+      "name": "Istanbul Hub",
+      "role": "datacenter",
       "location": "Istanbul, Turkey",
-      "population": {},
+      "population": {
+        "staff": 80
+      },
       "network": {
-        "cidr": "10.10.2.0/24",
-        "dmz": false,
+        "cidr": "10.2.0.0/16",
+        "dmz": true,
         "vlans": [
           {
-            "id": 2,
-            "name": "istanbul",
-            "cidr": "10.10.2.0/24",
-            "note": "Gateway 10.10.2.1, interface ist0."
+            "id": 10,
+            "name": "office",
+            "cidr": "10.2.10.0/24",
+            "note": "Office staff."
+          },
+          {
+            "id": 40,
+            "name": "guest",
+            "cidr": "10.2.40.0/24",
+            "note": "Visitors, internet only."
+          },
+          {
+            "id": 50,
+            "name": "print-iot",
+            "cidr": "10.2.50.0/24",
+            "note": "Printers and IoT devices."
+          },
+          {
+            "id": 60,
+            "name": "dmz",
+            "cidr": "10.2.60.0/24",
+            "note": "Public reverse proxy (ModSecurity) for the website, mobile app API and LMS."
+          },
+          {
+            "id": 70,
+            "name": "dc",
+            "cidr": "10.2.70.0/24",
+            "note": "Data center: application servers and databases."
+          },
+          {
+            "id": 99,
+            "name": "management",
+            "cidr": "10.2.99.0/24",
+            "note": "Bastion host, FortiManager and device management."
           }
         ]
       },
       "bandwidth": {
-        "downMbps": 100,
-        "upMbps": 100,
+        "downMbps": 1000,
+        "upMbps": 1000,
         "drivers": [
-          "office work"
+          "VPN hub for all sites",
+          "public website, mobile app API and LMS",
+          "data center traffic",
+          "cloud backup"
         ]
       },
       "firewalls": [
         {
           "segment": "perimeter",
           "chosen": {
-            "product": "nftables on Kali Linux (central router/firewall)",
-            "vendor": "Netfilter project",
-            "reason": "Stateful default-drop filtering, NAT, packet marking and tc HTB QoS on one box; reproducible and testable with nmap/iperf3."
+            "product": "FortiGate 900G (HA pair)",
+            "vendor": "Fortinet",
+            "throughputGbps": 20,
+            "priceUsd": 51000,
+            "reason": "The hub terminates IPsec tunnels from three sites plus role-based VPN users and inspects DMZ traffic; 20 Gbps threat protection (datasheet) against a 1 Gbps dual link leaves room for SSL inspection and growth; redundant power. Price is per unit: list price of the hardware with 1-year FortiCare Premium and UTP bundle; an HA pair needs two units."
           },
           "alternatives": [
             {
+              "product": "FortiGate 200G",
+              "vendor": "Fortinet",
+              "throughputGbps": 6,
+              "priceUsd": 18163.4,
+              "reason": "Not chosen: 6 Gbps is enough for the 1 Gbps link on paper, but the hub also carries every site tunnel, VPN users and DMZ inspection at once; it is the cheaper fallback if traffic stays low."
+            },
+            {
+              "product": "FortiWiFi 80F-2R",
+              "vendor": "Fortinet",
+              "throughputGbps": 0.9,
+              "priceUsd": 3240.2,
+              "reason": "Not chosen: 0.9 Gbps threat protection is below the 1 Gbps link, so inspection would become the bottleneck."
+            },
+            {
+              "product": "Palo Alto PA-440",
+              "vendor": "Palo Alto Networks",
+              "throughputGbps": 1.0,
+              "priceUsd": 3975,
+              "reason": "Not chosen: about 1.0 Gbps threat prevention matches the link with no headroom, and a second vendor splits management away from FortiManager. Price is approximate (about EUR 3,680 for hardware plus 1-year Threat Prevention, converted); verify with a quote."
+            },
+            {
               "product": "OPNsense",
               "vendor": "Deciso",
-              "reason": "Web UI and plugins for the same job; heavier than a single script. (Reviewer-added comparison; not in the student's original submission.)"
-            },
-            {
-              "product": "pfSense CE",
-              "vendor": "Netgate",
-              "reason": "Classic open-source firewall with traffic shaper and VPN. (Reviewer-added comparison; not in the student's original submission.)"
-            },
-            {
-              "product": "FortiGate 60F",
-              "vendor": "Fortinet",
-              "reason": "Commercial NGFW appliance, IPS and SD-WAN, for a real deployment. (Reviewer-added comparison; not in the student's original submission.)"
-            },
-            {
-              "product": "Sophos XGS 116",
-              "vendor": "Sophos",
-              "reason": "Small-office appliance with easy UI and synchronized endpoint protection. (Reviewer-added comparison; not in the student's original submission.)"
+              "priceUsd": 0,
+              "reason": "Not chosen: no vendor SLA or central policy management for the hub that everything depends on; unsuitable for the data center."
             }
           ],
           "rules": [
             {
               "action": "allow",
-              "direction": "forward",
+              "direction": "in",
+              "proto": "udp",
+              "port": "67:68",
+              "from": "internal",
+              "to": "firewall",
+              "note": "DHCP (I04): without it clients get no IP address; scoped to the internal VLANs only."
+            },
+            {
+              "action": "allow",
+              "direction": "in",
+              "proto": "any",
+              "port": 53,
+              "from": "internal",
+              "to": "firewall",
+              "note": "DNS (I04): internal clients resolve names through the firewall; nothing outside can use it."
+            },
+            {
+              "action": "allow",
+              "direction": "in",
+              "proto": "udp",
+              "port": 123,
+              "from": "internal",
+              "to": "firewall",
+              "note": "NTP (I04): clients and logs need the same time for TLS and log correlation."
+            },
+            {
+              "action": "allow",
+              "direction": "in",
               "proto": "tcp",
-              "port": "22,80,443,587,993,995",
-              "from": "offices",
-              "to": "internet",
-              "note": "Office traffic to the internet is limited to web, mail and SSH."
+              "port": 22,
+              "from": "bastion",
+              "to": "firewall",
+              "note": "SSH to the firewall only from the bastion (I03); there is no public SSH."
+            },
+            {
+              "action": "allow",
+              "direction": "out",
+              "proto": "udp",
+              "port": 123,
+              "from": "firewall",
+              "to": "ntp-pool",
+              "note": "The firewall syncs its own clock with a public NTP pool so log timestamps stay correct."
+            },
+            {
+              "action": "allow",
+              "direction": "in",
+              "proto": "udp",
+              "port": "500,4500",
+              "from": "branch-gateways",
+              "to": "firewall",
+              "note": "IPsec tunnels from Ankara, London and the campus terminate at the hub."
+            },
+            {
+              "action": "limit",
+              "direction": "in",
+              "proto": "udp",
+              "port": "500,4500",
+              "from": "internet",
+              "to": "firewall",
+              "note": "Rate-limited VPN login (UDP 500/4500) for the role-based VPN with MFA; brute-force attempts are throttled."
             },
             {
               "action": "allow",
               "direction": "forward",
-              "proto": "udp",
-              "port": "53,123",
-              "from": "offices",
-              "to": "internet",
-              "note": "Offices need DNS and NTP to the internet."
+              "proto": "tcp",
+              "port": "22,443",
+              "from": "vpn-admin",
+              "to": "bastion",
+              "note": "VPN admins reach only the bastion, never a device directly (R02)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": "22,443",
+              "from": "bastion",
+              "to": "management",
+              "note": "Only the bastion reaches the management VLAN (R02)."
             },
             {
               "action": "deny",
               "direction": "forward",
               "proto": "any",
-              "from": "any",
-              "to": "any",
-              "note": "Default rule: everything else is logged and dropped."
+              "from": "all-other-sources",
+              "to": "management",
+              "note": "Nobody else reaches firewall, switch or iDRAC management interfaces; logged (R02)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": "22,80,443,8080",
+              "from": "vpn-dev",
+              "to": "dc,dmz",
+              "note": "VPN developers reach DC and DMZ servers by port; role-based VPN with MFA (R03)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": 443,
+              "from": "vpn-staff",
+              "to": "offices",
+              "note": "VPN staff reach office web apps on 443 only (R03)."
+            },
+            {
+              "action": "deny",
+              "direction": "forward",
+              "proto": "any",
+              "from": "vpn-users",
+              "to": "internal",
+              "note": "Anything else from a VPN pool is logged and dropped (R03)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": 443,
+              "from": "cloudflare",
+              "to": "dmz-proxy",
+              "note": "Only Cloudflare ranges reach the DMZ reverse proxy (ModSecurity + OWASP CRS) for the website, mobile app API and LMS; the origin is never exposed directly (R04)."
+            },
+            {
+              "action": "deny",
+              "direction": "forward",
+              "proto": "any",
+              "from": "guest",
+              "to": "internal",
+              "note": "Guests never reach any internal network (R05)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": "80,443",
+              "from": "guest",
+              "to": "internet",
+              "note": "Guests get web only (R05)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "udp",
+              "port": 443,
+              "from": "guest",
+              "to": "internet",
+              "note": "Guests may use QUIC on 443 (R05)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "any",
+              "port": 53,
+              "from": "guest",
+              "to": "internet",
+              "note": "Guests need DNS to browse (R05)."
+            },
+            {
+              "action": "deny",
+              "direction": "forward",
+              "proto": "any",
+              "from": "print-iot",
+              "to": "internal",
+              "note": "Printers and IoT never initiate traffic to internal networks (R06)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": 443,
+              "from": "print-iot",
+              "to": "internet",
+              "note": "Printers and IoT reach vendor cloud services on 443 only (R06)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "any",
+              "port": "53,123",
+              "from": "print-iot",
+              "to": "internet",
+              "note": "Printers and IoT need DNS and NTP (R06)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "any",
+              "from": "offices",
+              "to": "offices",
+              "note": "Offices talk freely to each other over the site tunnels (R13)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": "515,631,9100",
+              "from": "offices",
+              "to": "print-iot",
+              "note": "Offices print to the printer VLAN on printing ports only (R13)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": "22,80,443,8080",
+              "from": "offices",
+              "to": "dev",
+              "note": "Offices reach developer tools on SSH, web and 8080 only (R13)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": "80,443",
+              "from": "offices",
+              "to": "dmz,dc",
+              "note": "Offices reach internal web apps in the DMZ and data center on 80/443 only (R13)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": "80,443,587,993,995",
+              "from": "offices",
+              "to": "internet",
+              "note": "Office users get web and mail (R13)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "any",
+              "port": "53,123",
+              "from": "offices",
+              "to": "internet",
+              "note": "Offices need DNS and NTP (R13)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": "443,3306,5432",
+              "from": "dmz",
+              "to": "dc",
+              "note": "The DMZ app tier reaches its database in the data center on one set of ports only (R14)."
+            },
+            {
+              "action": "deny",
+              "direction": "forward",
+              "proto": "any",
+              "from": "dmz",
+              "to": "internal",
+              "note": "A compromised DMZ host cannot roam the internal network (R14)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": 443,
+              "from": "dmz",
+              "to": "internet",
+              "note": "DMZ servers fetch updates over 443 only (R14)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "any",
+              "port": "53,123",
+              "from": "dmz",
+              "to": "internet",
+              "note": "DMZ servers need DNS and NTP (R14)."
+            },
+            {
+              "action": "deny",
+              "direction": "forward",
+              "proto": "any",
+              "from": "dc",
+              "to": "internal",
+              "note": "Data center servers never initiate traffic to internal networks (R15)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": 443,
+              "from": "dc",
+              "to": "internet",
+              "note": "Data center servers use 443 for updates and backups (R15)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "any",
+              "port": "53,123",
+              "from": "dc",
+              "to": "internet",
+              "note": "Data center servers need DNS and NTP (R15)."
+            },
+            {
+              "action": "deny",
+              "direction": "forward",
+              "proto": "any",
+              "note": "Default rule (R16): everything else is logged (rate-limited) and dropped."
             }
           ]
         }
@@ -254,122 +791,329 @@
       "name": "London Office",
       "role": "branch",
       "location": "London, United Kingdom",
-      "population": {},
+      "population": {
+        "staff": 45
+      },
       "network": {
-        "cidr": "10.10.3.0/24",
+        "cidr": "10.3.0.0/16",
         "dmz": false,
         "vlans": [
           {
-            "id": 3,
-            "name": "london",
-            "cidr": "10.10.3.0/24",
-            "note": "Gateway 10.10.3.1, interface lon0."
+            "id": 10,
+            "name": "office",
+            "cidr": "10.3.10.0/24",
+            "note": "Office staff."
+          },
+          {
+            "id": 40,
+            "name": "guest",
+            "cidr": "10.3.40.0/24",
+            "note": "Visitors, internet only."
+          },
+          {
+            "id": 50,
+            "name": "print-iot",
+            "cidr": "10.3.50.0/24",
+            "note": "Printers and IoT devices."
+          },
+          {
+            "id": 99,
+            "name": "management",
+            "cidr": "10.3.99.0/24",
+            "note": "Firewall and switch management; reachable only from the bastion."
           }
         ]
       },
       "bandwidth": {
-        "downMbps": 100,
-        "upMbps": 100,
+        "downMbps": 200,
+        "upMbps": 200,
         "drivers": [
-          "office work"
+          "office work",
+          "video conferencing",
+          "email",
+          "git",
+          "cloud backup"
         ]
       },
       "firewalls": [
         {
           "segment": "perimeter",
           "chosen": {
-            "product": "nftables on Kali Linux (central router/firewall)",
-            "vendor": "Netfilter project",
-            "reason": "Stateful default-drop filtering, NAT, packet marking and tc HTB QoS on one box; reproducible and testable with nmap/iperf3."
+            "product": "FortiGate 60F (HA pair)",
+            "vendor": "Fortinet",
+            "throughputGbps": 0.7,
+            "priceUsd": 1630.8,
+            "reason": "0.7 Gbps threat protection (datasheet) is more than three times the 200 Mbps link; HA pair for failover; same FortiOS and FortiManager policy package as the other sites. Price is per unit: list price of the hardware with 1-year FortiCare Premium and UTP bundle; an HA pair needs two units."
           },
           "alternatives": [
             {
+              "product": "FortiWiFi 80F-2R",
+              "vendor": "Fortinet",
+              "throughputGbps": 0.9,
+              "priceUsd": 3240.2,
+              "reason": "Not chosen: 0.9 Gbps is more than a 200 Mbps office needs and the unit costs about twice as much; built-in Wi-Fi radios are not needed because access points are separate."
+            },
+            {
+              "product": "Palo Alto PA-440",
+              "vendor": "Palo Alto Networks",
+              "throughputGbps": 1.0,
+              "priceUsd": 3975,
+              "reason": "Not chosen: about 1.0 Gbps is enough, but it adds a second vendor and management plane at more than twice the 60F price. Price is approximate (about EUR 3,680 for hardware plus 1-year Threat Prevention, converted); verify with a quote."
+            },
+            {
               "product": "OPNsense",
               "vendor": "Deciso",
-              "reason": "Web UI and plugins for the same job; heavier than a single script. (Reviewer-added comparison; not in the student's original submission.)"
+              "priceUsd": 0,
+              "reason": "Not chosen: free and capable, but no vendor support or central policy management for a small remote office."
             },
             {
-              "product": "pfSense CE",
-              "vendor": "Netgate",
-              "reason": "Classic open-source firewall with traffic shaper and VPN. (Reviewer-added comparison; not in the student's original submission.)"
-            },
-            {
-              "product": "FortiGate 60F",
-              "vendor": "Fortinet",
-              "reason": "Commercial NGFW appliance, IPS and SD-WAN, for a real deployment. (Reviewer-added comparison; not in the student's original submission.)"
-            },
-            {
-              "product": "Sophos XGS 116",
-              "vendor": "Sophos",
-              "reason": "Small-office appliance with easy UI and synchronized endpoint protection. (Reviewer-added comparison; not in the student's original submission.)"
+              "product": "nftables on Linux (this repo's lab)",
+              "vendor": "Netfilter project",
+              "priceUsd": 0,
+              "reason": "Not chosen for production: it proves the rule logic (68 of 68 policy tests pass) but has no HA, IPS or vendor support; it stays as the lab implementation."
             }
           ],
           "rules": [
             {
               "action": "allow",
-              "direction": "forward",
+              "direction": "in",
+              "proto": "udp",
+              "port": "67:68",
+              "from": "internal",
+              "to": "firewall",
+              "note": "DHCP (I04): without it clients get no IP address; scoped to the internal VLANs only."
+            },
+            {
+              "action": "allow",
+              "direction": "in",
+              "proto": "any",
+              "port": 53,
+              "from": "internal",
+              "to": "firewall",
+              "note": "DNS (I04): internal clients resolve names through the firewall; nothing outside can use it."
+            },
+            {
+              "action": "allow",
+              "direction": "in",
+              "proto": "udp",
+              "port": 123,
+              "from": "internal",
+              "to": "firewall",
+              "note": "NTP (I04): clients and logs need the same time for TLS and log correlation."
+            },
+            {
+              "action": "allow",
+              "direction": "in",
               "proto": "tcp",
-              "port": "22,80,443,587,993,995",
-              "from": "offices",
-              "to": "internet",
-              "note": "Office traffic to the internet is limited to web, mail and SSH."
+              "port": 22,
+              "from": "bastion",
+              "to": "firewall",
+              "note": "SSH to the firewall only from the bastion (I03); there is no public SSH."
+            },
+            {
+              "action": "allow",
+              "direction": "out",
+              "proto": "udp",
+              "port": 123,
+              "from": "firewall",
+              "to": "ntp-pool",
+              "note": "The firewall syncs its own clock with a public NTP pool so log timestamps stay correct."
             },
             {
               "action": "allow",
               "direction": "forward",
-              "proto": "udp",
-              "port": "53,123",
-              "from": "offices",
-              "to": "internet",
-              "note": "Offices need DNS and NTP to the internet."
+              "proto": "tcp",
+              "port": "22,443",
+              "from": "bastion",
+              "to": "management",
+              "note": "Only the bastion reaches the management VLAN (R02)."
             },
             {
               "action": "deny",
               "direction": "forward",
               "proto": "any",
-              "from": "any",
-              "to": "any",
-              "note": "Default rule: everything else is logged and dropped."
+              "from": "all-other-sources",
+              "to": "management",
+              "note": "Nobody else reaches firewall, switch or iDRAC management interfaces; logged (R02)."
+            },
+            {
+              "action": "deny",
+              "direction": "forward",
+              "proto": "any",
+              "from": "guest",
+              "to": "internal",
+              "note": "Guests never reach any internal network (R05)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": "80,443",
+              "from": "guest",
+              "to": "internet",
+              "note": "Guests get web only (R05)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "udp",
+              "port": 443,
+              "from": "guest",
+              "to": "internet",
+              "note": "Guests may use QUIC on 443 (R05)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "any",
+              "port": 53,
+              "from": "guest",
+              "to": "internet",
+              "note": "Guests need DNS to browse (R05)."
+            },
+            {
+              "action": "deny",
+              "direction": "forward",
+              "proto": "any",
+              "from": "print-iot",
+              "to": "internal",
+              "note": "Printers and IoT never initiate traffic to internal networks (R06)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": 443,
+              "from": "print-iot",
+              "to": "internet",
+              "note": "Printers and IoT reach vendor cloud services on 443 only (R06)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "any",
+              "port": "53,123",
+              "from": "print-iot",
+              "to": "internet",
+              "note": "Printers and IoT need DNS and NTP (R06)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "any",
+              "from": "offices",
+              "to": "offices",
+              "note": "Offices talk freely to each other over the site tunnels (R13)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": "515,631,9100",
+              "from": "offices",
+              "to": "print-iot",
+              "note": "Offices print to the printer VLAN on printing ports only (R13)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": "22,80,443,8080",
+              "from": "offices",
+              "to": "dev",
+              "note": "Offices reach developer tools on SSH, web and 8080 only (R13)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": "80,443",
+              "from": "offices",
+              "to": "dmz,dc",
+              "note": "Offices reach internal web apps in the DMZ and data center on 80/443 only (R13)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": "80,443,587,993,995",
+              "from": "offices",
+              "to": "internet",
+              "note": "Office users get web and mail (R13)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "any",
+              "port": "53,123",
+              "from": "offices",
+              "to": "internet",
+              "note": "Offices need DNS and NTP (R13)."
+            },
+            {
+              "action": "deny",
+              "direction": "forward",
+              "proto": "any",
+              "note": "Default rule (R16): everything else is logged (rate-limited) and dropped."
             }
           ]
         }
       ]
     },
     {
-      "id": "academic-branch",
-      "name": "Academic Branch",
+      "id": "academic-campus",
+      "name": "Academic Campus",
       "role": "campus",
       "location": "Ankara, Turkey",
       "population": {
-        "students": 10000
+        "students": 10000,
+        "staff": 600
       },
       "network": {
-        "cidr": "10.20.0.0/16",
+        "cidr": "10.4.0.0/16",
         "dmz": false,
         "vlans": [
           {
-            "id": 20,
+            "id": 100,
             "name": "students",
-            "cidr": "10.20.0.0/18",
-            "note": "/18 = 16,382 hosts; 10,000 students do not fit in a /24."
+            "cidr": "10.4.0.0/17",
+            "note": "32,766 usable addresses for 10,000 students at two to three devices each, with headroom."
           },
           {
-            "id": 64,
+            "id": 110,
+            "name": "lab",
+            "cidr": "10.4.128.0/24",
+            "note": "Teaching labs."
+          },
+          {
+            "id": 120,
             "name": "teachers",
-            "cidr": "10.20.64.0/24",
-            "note": "Live lessons and video conferencing."
+            "cidr": "10.4.129.0/24",
+            "note": "Teachers: live lessons and video conferencing."
           },
           {
-            "id": 65,
+            "id": 130,
             "name": "staff",
-            "cidr": "10.20.65.0/24",
-            "note": "Administrative work."
+            "cidr": "10.4.130.0/24",
+            "note": "Administrative staff."
+          },
+          {
+            "id": 40,
+            "name": "guest",
+            "cidr": "10.4.131.0/24",
+            "note": "Visitors, internet only."
+          },
+          {
+            "id": 99,
+            "name": "management",
+            "cidr": "10.4.255.0/24",
+            "note": "Firewall and switch management; reachable only from the bastion."
           }
         ]
       },
       "bandwidth": {
-        "downMbps": 250,
-        "upMbps": 250,
+        "downMbps": 1000,
+        "upMbps": 1000,
         "drivers": [
           "student web traffic",
           "live lessons",
@@ -380,41 +1124,138 @@
         {
           "segment": "perimeter",
           "chosen": {
-            "product": "nftables on Kali Linux (central router/firewall)",
-            "vendor": "Netfilter project",
-            "reason": "Stateful default-drop filtering, NAT, packet marking and tc HTB QoS on one box; reproducible and testable with nmap/iperf3."
+            "product": "FortiGate 200G (HA pair)",
+            "vendor": "Fortinet",
+            "throughputGbps": 6,
+            "priceUsd": 18163.4,
+            "reason": "10,000 students on a dual 1 Gbps link (ULAKNET + commercial line): 6 Gbps threat protection (datasheet) leaves room for inspection and growth; HA pair keeps lessons running if one unit fails. Price is per unit: list price of the hardware with 1-year FortiCare Premium and UTP bundle; an HA pair needs two units."
           },
           "alternatives": [
             {
-              "product": "OPNsense",
-              "vendor": "Deciso",
-              "reason": "Web UI and plugins for the same job; heavier than a single script. (Reviewer-added comparison; not in the student's original submission.)"
-            },
-            {
-              "product": "pfSense CE",
-              "vendor": "Netgate",
-              "reason": "Classic open-source firewall with traffic shaper and VPN. (Reviewer-added comparison; not in the student's original submission.)"
+              "product": "FortiGate 900G",
+              "vendor": "Fortinet",
+              "throughputGbps": 20,
+              "priceUsd": 51000,
+              "reason": "Not chosen: more than three times the inspection throughput the 1 Gbps link needs at nearly three times the price; revisit if the link grows past 5 Gbps."
             },
             {
               "product": "FortiGate 60F",
               "vendor": "Fortinet",
-              "reason": "Commercial NGFW appliance, IPS and SD-WAN, for a real deployment. (Reviewer-added comparison; not in the student's original submission.)"
+              "throughputGbps": 0.7,
+              "priceUsd": 1630.8,
+              "reason": "Not chosen: 0.7 Gbps threat protection is below the 1 Gbps link, so inspection would throttle 10,000 students."
             },
             {
-              "product": "Sophos XGS 116",
-              "vendor": "Sophos",
-              "reason": "Small-office appliance with easy UI and synchronized endpoint protection. (Reviewer-added comparison; not in the student's original submission.)"
+              "product": "Palo Alto PA-440",
+              "vendor": "Palo Alto Networks",
+              "throughputGbps": 1.0,
+              "priceUsd": 3975,
+              "reason": "Not chosen: about 1.0 Gbps equals the link with no headroom for peaks, and a second vendor splits management away from FortiManager. Price is approximate (about EUR 3,680 for hardware plus 1-year Threat Prevention, converted); verify with a quote."
+            },
+            {
+              "product": "nftables on Linux (this repo's lab)",
+              "vendor": "Netfilter project",
+              "priceUsd": 0,
+              "reason": "Not chosen for production: it proves the rule logic and the HTB shaping but has no HA, IPS or vendor support; it stays as the lab implementation."
             }
           ],
           "rules": [
             {
               "action": "allow",
+              "direction": "in",
+              "proto": "udp",
+              "port": "67:68",
+              "from": "internal",
+              "to": "firewall",
+              "note": "DHCP (I04): without it clients get no IP address; scoped to the internal VLANs only."
+            },
+            {
+              "action": "allow",
+              "direction": "in",
+              "proto": "any",
+              "port": 53,
+              "from": "internal",
+              "to": "firewall",
+              "note": "DNS (I04): internal clients resolve names through the firewall; nothing outside can use it."
+            },
+            {
+              "action": "allow",
+              "direction": "in",
+              "proto": "udp",
+              "port": 123,
+              "from": "internal",
+              "to": "firewall",
+              "note": "NTP (I04): clients and logs need the same time for TLS and log correlation."
+            },
+            {
+              "action": "allow",
+              "direction": "in",
+              "proto": "tcp",
+              "port": 22,
+              "from": "bastion",
+              "to": "firewall",
+              "note": "SSH to the firewall only from the bastion (I03); there is no public SSH."
+            },
+            {
+              "action": "allow",
+              "direction": "out",
+              "proto": "udp",
+              "port": 123,
+              "from": "firewall",
+              "to": "ntp-pool",
+              "note": "The firewall syncs its own clock with a public NTP pool so log timestamps stay correct."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": "22,443",
+              "from": "bastion",
+              "to": "management",
+              "note": "Only the bastion reaches the management VLAN (R02)."
+            },
+            {
+              "action": "deny",
+              "direction": "forward",
+              "proto": "any",
+              "from": "all-other-sources",
+              "to": "management",
+              "note": "Nobody else reaches firewall, switch or iDRAC management interfaces; logged (R02)."
+            },
+            {
+              "action": "deny",
+              "direction": "forward",
+              "proto": "any",
+              "from": "guest",
+              "to": "internal",
+              "note": "Guests never reach any internal network (R05)."
+            },
+            {
+              "action": "allow",
               "direction": "forward",
               "proto": "tcp",
               "port": "80,443",
-              "from": "students",
+              "from": "guest",
               "to": "internet",
-              "note": "Students share 250-500 Mbit with SFQ so one student cannot take the whole class."
+              "note": "Guests get web only (R05)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "udp",
+              "port": 443,
+              "from": "guest",
+              "to": "internet",
+              "note": "Guests may use QUIC on 443 (R05)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "any",
+              "port": 53,
+              "from": "guest",
+              "to": "internet",
+              "note": "Guests need DNS to browse (R05)."
             },
             {
               "action": "deny",
@@ -422,101 +1263,128 @@
               "proto": "any",
               "from": "students",
               "to": "internal",
-              "note": "Students never reach teachers, staff, software or offices."
-            },
-            {
-              "action": "deny",
-              "direction": "forward",
-              "proto": "any",
-              "from": "any",
-              "to": "any",
-              "note": "Default rule: everything else is logged and dropped."
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "software-team",
-      "name": "Software Team",
-      "role": "branch",
-      "location": "Ankara, Turkey",
-      "population": {},
-      "network": {
-        "cidr": "10.30.1.0/24",
-        "dmz": false,
-        "vlans": [
-          {
-            "id": 30,
-            "name": "software",
-            "cidr": "10.30.1.0/24",
-            "note": "Most privileged group, isolated in its own block."
-          }
-        ]
-      },
-      "bandwidth": {
-        "downMbps": 250,
-        "upMbps": 250,
-        "drivers": [
-          "deployments",
-          "CI/CD (priority 1, 250-600 Mbit)"
-        ]
-      },
-      "firewalls": [
-        {
-          "segment": "perimeter",
-          "chosen": {
-            "product": "nftables on Kali Linux (central router/firewall)",
-            "vendor": "Netfilter project",
-            "reason": "Stateful default-drop filtering, NAT, packet marking and tc HTB QoS on one box; reproducible and testable with nmap/iperf3."
-          },
-          "alternatives": [
-            {
-              "product": "OPNsense",
-              "vendor": "Deciso",
-              "reason": "Web UI and plugins for the same job; heavier than a single script. (Reviewer-added comparison; not in the student's original submission.)"
-            },
-            {
-              "product": "pfSense CE",
-              "vendor": "Netgate",
-              "reason": "Classic open-source firewall with traffic shaper and VPN. (Reviewer-added comparison; not in the student's original submission.)"
-            },
-            {
-              "product": "FortiGate 60F",
-              "vendor": "Fortinet",
-              "reason": "Commercial NGFW appliance, IPS and SD-WAN, for a real deployment. (Reviewer-added comparison; not in the student's original submission.)"
-            },
-            {
-              "product": "Sophos XGS 116",
-              "vendor": "Sophos",
-              "reason": "Small-office appliance with easy UI and synchronized endpoint protection. (Reviewer-added comparison; not in the student's original submission.)"
-            }
-          ],
-          "rules": [
-            {
-              "action": "allow",
-              "direction": "forward",
-              "proto": "any",
-              "from": "software",
-              "to": "any",
-              "note": "Software team may reach every group; deployments are latency sensitive."
+              "note": "Students never reach teachers, staff, labs, servers or management (R07)."
             },
             {
               "action": "allow",
               "direction": "forward",
               "proto": "tcp",
-              "port": "22,80,443,8080",
-              "from": "offices",
-              "to": "software",
-              "note": "Offices reach servers only on SSH, web and 8080."
+              "port": "80,443",
+              "from": "students",
+              "to": "internet",
+              "note": "Students get web only; SFQ fair queuing stops one student from taking the whole share (R07)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "udp",
+              "port": 443,
+              "from": "students",
+              "to": "internet",
+              "note": "Students may use QUIC on 443 (R07)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "any",
+              "port": 53,
+              "from": "students",
+              "to": "internet",
+              "note": "Students need DNS to browse (R07)."
             },
             {
               "action": "deny",
               "direction": "forward",
               "proto": "any",
-              "from": "any",
-              "to": "any",
-              "note": "Default rule: everything else is logged and dropped."
+              "from": "lab",
+              "to": "internal",
+              "note": "Labs reach no internal network (R08)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": "22,80,443",
+              "from": "lab",
+              "to": "internet",
+              "note": "Labs use git over SSH and web packages (R08)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "any",
+              "port": 53,
+              "from": "lab",
+              "to": "internet",
+              "note": "Labs need DNS (R08)."
+            },
+            {
+              "action": "deny",
+              "direction": "forward",
+              "proto": "any",
+              "from": "teachers",
+              "to": "internal",
+              "note": "Teachers reach no internal network (R09)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": "80,443,587,993,995",
+              "from": "teachers",
+              "to": "internet",
+              "note": "Teachers get web and mail (R09)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "udp",
+              "port": "443,3478-3481,8801-8810",
+              "from": "teachers",
+              "to": "internet",
+              "note": "Teachers get video conferencing ports for live lessons (R09)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "any",
+              "port": 53,
+              "from": "teachers",
+              "to": "internet",
+              "note": "Teachers need DNS (R09)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": "80,443,445",
+              "from": "staff",
+              "to": "offices",
+              "note": "Staff reach office web and file services for administrative work (R10)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": "80,443,587,993,995",
+              "from": "staff",
+              "to": "internet",
+              "note": "Staff get web and mail (R10)."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "any",
+              "port": 53,
+              "from": "staff",
+              "to": "internet",
+              "note": "Staff need DNS (R10)."
+            },
+            {
+              "action": "deny",
+              "direction": "forward",
+              "proto": "any",
+              "note": "Default rule (R16): everything else is logged (rate-limited) and dropped."
             }
           ]
         }
@@ -524,14 +1392,22 @@
     }
   ],
   "remoteAccess": {
-    "type": "site-to-site-vpn",
-    "note": "Inter-branch links are assumed to be VPN (WireGuard for London is on the roadmap); SSH to the firewall only from the software and Ankara networks."
+    "type": "role-based-vpn",
+    "note": "No public SSH. Admins use a role-based VPN with MFA into a bastion in the Istanbul management VLAN; developers and staff get separate VPN pools that reach only their own segments. Every site builds its own IPsec tunnel to the Istanbul hub over both ISPs (SD-WAN failover)."
   },
   "monitoring": {
-    "siem": "nftables counters and rate-limited kernel log prefixes (FW-INPUT-DROP, FW-FWD-DROP) read with journalctl; Prometheus/Grafana and Wazuh/Graylog are on the roadmap.",
-    "owner": "The lab operator who runs company_fw.sh reviews the drop counters and logs; no 24/7 owner exists in the original design.",
-    "alertSink": "journald on the firewall host (Alertmanager planned).",
-    "appVsSecurity": "Not separated yet; QoS class counters (tc -s class) cover bandwidth while FW-* log prefixes cover security events."
+    "siem": "Wazuh as the SIEM with FortiAnalyzer for firewall logs; FW-* log prefixes and tc counters in the lab. Log retention: hot 90 days in the SIEM, then a hashed read-only archive until the retention period ends (2 years for campus, guest and office access logs under Law 5651; 1 year for hosting and admin audit logs; UK GDPR logs 12 months unless a longer need is documented).",
+    "owner": "Campus SOC (2 analysts) owns security alerts; branch IT owns uptime and bandwidth. Every alert has a named owner and escalation goes through the SOC runbook.",
+    "alertSink": "Wazuh dashboard for triage; a Telegram channel only for high-severity blocks (VPN and management denies, WAF spikes), with outbound ALLOW and DNS noise filtered out.",
+    "appVsSecurity": "Application and bandwidth monitoring (uptime, tc and shaper counters, Prometheus/Grafana planned) goes to branch IT; security events (FW-* logs, WAF and ModSecurity blocks, VPN and management denies) go to the SOC in Wazuh. Operations also cover KVKK and UK GDPR privacy duties, nightly encrypted config backup stored at another site with a tested restore, and a monthly patch and firmware window with out-of-cycle patching for exploited vulnerabilities."
   },
+  "cveWatch": [
+    {
+      "id": "CVE-2026-24858",
+      "product": "FortiOS, FortiManager and FortiAnalyzer (FortiCloud SSO)",
+      "status": "mitigated",
+      "note": "Authentication bypass in the FortiCloud SSO login, exploited in the wild. Temporary mitigation: FortiCloud SSO administrative login off, management interfaces reachable only from the management VLAN through the bastion, MFA for administrators. Permanent fix: upgrade to a fixed release (7.4.11 or 7.6.6 and later; check Fortinet advisory FG-IR-26-060 for your branch) in the next out-of-cycle window, passive HA unit first, then review administrator accounts and rotate credentials."
+    }
+  ],
   "slug": "multi-branch-nftables-lab"
 }

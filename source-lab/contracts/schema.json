@@ -1,0 +1,922 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "EvidenceSpan": {
+      "type": "object",
+      "properties": {
+        "file": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "line": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "col": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "end_line": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "end_col": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "symbol": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "artifact": {
+          "type": "string"
+        },
+        "snippet": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "binary_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "offset": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "image": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "process_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "address": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "artifact"
+      ]
+    },
+    "FindingScope": {
+      "type": "object",
+      "properties": {
+        "origin": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "frame": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "world": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "process": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "target_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": []
+    },
+    "TargetIdentity": {
+      "type": "object",
+      "properties": {
+        "identifier": {
+          "type": "string",
+          "minLength": 1
+        },
+        "repo": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "commit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "artifact_sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "signing_identity": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "package_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "build_arch": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "acquisition_method": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "identifier",
+        "acquisition_method"
+      ]
+    },
+    "Finding": {
+      "type": "object",
+      "properties": {
+        "finding_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "platform": {
+          "type": "string",
+          "enum": [
+            "browser-extension",
+            "windows-app",
+            "macos-app",
+            "android-app",
+            "ios-app"
+          ]
+        },
+        "target": {
+          "$ref": "#/$defs/TargetIdentity"
+        },
+        "phase": {
+          "enum": [
+            "static",
+            "dynamic",
+            "correlation"
+          ]
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "capability",
+            "static_lead",
+            "runtime_observation",
+            "correlated_behavior",
+            "not_observed_under_test"
+          ]
+        },
+        "severity": {
+          "type": "string",
+          "enum": [
+            "info",
+            "low",
+            "medium",
+            "high",
+            "critical",
+            "review"
+          ]
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceSpan"
+          },
+          "minItems": 1
+        },
+        "scope": {
+          "$ref": "#/$defs/FindingScope"
+        },
+        "hypothesis": {
+          "type": "string",
+          "minLength": 1
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "schema_version": {
+          "type": "integer",
+          "const": 2
+        },
+        "rule_id": {
+          "type": "string"
+        },
+        "remediation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "alternative_explanations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "created_at": {
+          "type": "string"
+        },
+        "heuristic": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "verification": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "finding_id",
+        "platform",
+        "target",
+        "phase",
+        "state",
+        "severity",
+        "confidence",
+        "evidence",
+        "scope",
+        "hypothesis",
+        "limitations",
+        "schema_version",
+        "alternative_explanations",
+        "created_at",
+        "rule_id"
+      ]
+    },
+    "Coverage": {
+      "type": "object",
+      "properties": {
+        "platform": {
+          "type": "string",
+          "enum": [
+            "browser-extension",
+            "windows-app",
+            "macos-app",
+            "android-app",
+            "ios-app"
+          ]
+        },
+        "target": {
+          "$ref": "#/$defs/TargetIdentity"
+        },
+        "analyzer_version": {
+          "type": "string"
+        },
+        "rule_version": {
+          "type": "string"
+        },
+        "parser_mode": {
+          "type": "string"
+        },
+        "scanned_files": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "skipped_files": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failed_stages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "baseline_identity": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "schema_version": {
+          "type": "integer",
+          "const": 2
+        },
+        "timestamp": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "platform",
+        "target",
+        "analyzer_version",
+        "rule_version",
+        "parser_mode",
+        "scanned_files",
+        "skipped_files",
+        "failed_stages",
+        "limitations",
+        "schema_version",
+        "timestamp"
+      ]
+    },
+    "ReturnShape": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source": {
+          "type": "string"
+        },
+        "shape": {
+          "anyOf": [
+            {},
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "source"
+      ]
+    },
+    "Param": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "Symbol": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "line": {
+          "type": "integer"
+        },
+        "end_line": {
+          "type": "integer"
+        },
+        "exported": {
+          "type": "boolean"
+        },
+        "params": {
+          "type": "array",
+          "items": {}
+        },
+        "returns": {
+          "$ref": "#/$defs/ReturnShape"
+        },
+        "decorators": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "access": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "meta": {
+          "type": "object",
+          "additionalProperties": {}
+        }
+      },
+      "required": [
+        "kind",
+        "name",
+        "line",
+        "end_line",
+        "exported",
+        "params",
+        "returns",
+        "decorators",
+        "members"
+      ]
+    },
+    "ImportRef": {
+      "type": "object",
+      "properties": {
+        "specifier": {
+          "type": "string"
+        },
+        "line": {
+          "type": "integer"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "resolved": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "external": {
+          "type": "boolean"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "specifier",
+        "line",
+        "kind",
+        "names",
+        "external"
+      ]
+    },
+    "Role": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "confidence",
+        "evidence"
+      ]
+    },
+    "FileMap": {
+      "type": "object",
+      "properties": {
+        "lang": {
+          "type": "string"
+        },
+        "parser": {
+          "type": "string"
+        },
+        "loc": {
+          "type": "integer"
+        },
+        "sloc": {
+          "type": "integer"
+        },
+        "role": {
+          "$ref": "#/$defs/Role"
+        },
+        "exports": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "symbols": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Symbol"
+          }
+        },
+        "imports": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ImportRef"
+          }
+        }
+      },
+      "required": [
+        "lang",
+        "parser",
+        "loc",
+        "sloc",
+        "role",
+        "exports",
+        "symbols",
+        "imports"
+      ]
+    },
+    "Target": {
+      "type": "object",
+      "properties": {
+        "platform": {
+          "type": "string"
+        },
+        "root": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "source_roots": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "binary_only": {
+          "type": "boolean"
+        },
+        "entrypoints": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "applicability": {
+          "type": "string"
+        },
+        "applicability_reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "platform",
+        "root",
+        "confidence",
+        "evidence",
+        "source_roots",
+        "binary_only",
+        "entrypoints",
+        "applicability",
+        "applicability_reason"
+      ]
+    },
+    "AnalysisV2": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 2
+        },
+        "target": {
+          "$ref": "#/$defs/TargetIdentity"
+        },
+        "coverage": {
+          "$ref": "#/$defs/Coverage"
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Finding"
+          }
+        },
+        "scorecard": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "schema_version",
+        "target",
+        "coverage",
+        "findings"
+      ]
+    },
+    "RepoMapV1": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 1
+        },
+        "root": {
+          "type": "string"
+        },
+        "toolchain": {
+          "type": "object"
+        },
+        "stats": {
+          "type": "object"
+        },
+        "files": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/FileMap"
+          }
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Target"
+          }
+        },
+        "coverage": {
+          "type": "object",
+          "properties": {
+            "files_scanned": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "files_parsed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "applicability": {
+              "enum": [
+                "full",
+                "partial",
+                "not_applicable"
+              ]
+            },
+            "limitations": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "files_scanned",
+            "files_parsed",
+            "applicability",
+            "limitations"
+          ]
+        },
+        "types": {
+          "type": "object"
+        },
+        "entrypoints": {
+          "type": "array"
+        },
+        "cycles": {
+          "type": "array"
+        },
+        "filter": {
+          "type": "object"
+        },
+        "tree": {
+          "type": "array"
+        },
+        "edges": {
+          "type": "array"
+        },
+        "externals": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "schema_version",
+        "root",
+        "toolchain",
+        "stats",
+        "files",
+        "targets",
+        "coverage",
+        "types",
+        "entrypoints",
+        "cycles",
+        "filter",
+        "tree",
+        "edges",
+        "externals"
+      ]
+    }
+  }
+}

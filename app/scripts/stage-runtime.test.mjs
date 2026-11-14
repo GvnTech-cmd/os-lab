@@ -28,9 +28,41 @@ test("launcher grants each Tauri command it calls", () => {
   const launcher = readFileSync(join(base, "ui", "launcher.js"), "utf8");
   const capability = JSON.parse(readFileSync(join(base, "src-tauri", "capabilities", "launcher.json"), "utf8"));
   const manifest = readFileSync(join(base, "src-tauri", "build.rs"), "utf8");
+  const declared = readFileSync(join(base, "src-tauri", "permissions", "app_updates.toml"), "utf8");
   const commands = [...launcher.matchAll(/invoke\("([a-z_]+)"/g)].map((match) => match[1]);
   for (const command of commands) {
     assert.ok(capability.permissions.includes(`allow-${command.replaceAll("_", "-")}`), command);
-    assert.ok(manifest.includes(`"${command}"`), `build.rs: ${command}`);
+    assert.ok(manifest.includes(`"${command}"`) || declared.includes(`"${command}"`), command);
   }
+});
+
+test("the container warning has an explicit, persistent opt-out", () => {
+  const base = join(import.meta.dirname, "..");
+  const html = readFileSync(join(base, "ui", "index.html"), "utf8");
+  const launcher = readFileSync(join(base, "ui", "launcher.js"), "utf8");
+  assert.match(html, /id="dont-show-row"[^>]*hidden/);
+  assert.match(launcher, /container_warning_hidden/);
+  assert.match(launcher, /container_warning_set_hidden/);
+});
+
+test("Source Lab ships with its core and private state is excluded", () => {
+  const selected = select(["source-lab/run.py", "source-lab/list_inputs.py", "source-lab/engine/source_lab/paths.py", "source-lab/engine/source_lab/collectors/browser/canary.js", "source-lab/storage/control/session-hmac.key", "source-lab/resources/private.csv", "source-lab/legacy/snapshot.json", "source-lab/targets/third-party.apk"]);
+  assert.deepEqual(selected, ["source-lab/run.py", "source-lab/list_inputs.py", "source-lab/engine/source_lab/paths.py", "source-lab/engine/source_lab/collectors/browser/canary.js"]);
+  for (const path of ["source-lab/run.py", "source-lab/list_inputs.py", "console/source_api.py", "console/source_manifest_specs.json"]) assert.ok(REQUIRED.includes(path), path);
+});
+
+test("Cleanup Lab engine and catalog ship with the desktop runtime", () => {
+  const selected = select([
+    "cleanup-lab/engine/cleanup_lab/__init__.py",
+    "cleanup-lab/engine/cleanup_lab/cli.py",
+    "cleanup-lab/catalog/system.json",
+    "cleanup-lab/storage/history.sqlite3",
+    "cleanup-lab/.private/history.key",
+  ]);
+  assert.deepEqual(selected, [
+    "cleanup-lab/engine/cleanup_lab/__init__.py",
+    "cleanup-lab/engine/cleanup_lab/cli.py",
+    "cleanup-lab/catalog/system.json",
+  ]);
+  for (const path of selected) assert.ok(REQUIRED.includes(path), path);
 });

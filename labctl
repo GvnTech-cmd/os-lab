@@ -28,12 +28,15 @@ Usage:
   ./labctl <lab> <command> [options]
   ./labctl all <command> [options]
   ./labctl ui [--port N]      Open the web console (default port 5050)
+  ./labctl cleanup <command>  Cleanup Lab readiness (see below)
 
 Labs:
   win | windows      Windows VM lab (win-lab/)
   android | apk      Android security lab (android-lab/lab/)
   ios | ios-lab      iOS/macOS lab (ios-lab/); native macOS uses make -C ios-lab mac-*
   linux | lin        Linux VM lab (linux-lab/)
+  source             Local source/package analysis (source-lab/)
+  cleanup            Cleanup Lab disk scan/clean engine (cleanup-lab/)
   all                Run a command for Linux-host labs
 
 Commands:
@@ -81,6 +84,10 @@ Profiles:
   android:  lightweight, development, performance
   ios:      lightweight, development, performance
   linux:    lightweight, development, performance
+
+Cleanup Lab commands (read-only; scanning and cleaning arrive with CLN-03/CLN-13):
+  ./labctl cleanup status [--json]   One-screen readiness summary; exit 0 ready, 1 problem
+  ./labctl cleanup doctor [--json]   Every check, path and hint
 
 Examples:
   ./labctl win profile use lightweight
@@ -998,13 +1005,18 @@ cmd_all() {
     start|stop|restart|status|doctor|profiles)
       local lab rc=0 labs=(android win linux)
       if [ "$(uname -s)" = "Linux" ]; then labs+=(ios); fi
+      if [ "$cmd" = "status" ] || [ "$cmd" = "doctor" ]; then labs+=(source); fi
       for lab in "${labs[@]}"; do
-        "$ROOT/labctl" "$lab" "$cmd" "$@" || rc=$?
+        if [ "$lab" = "source" ]; then
+          "$ROOT/labctl" source "$cmd" || rc=$?
+        else
+          "$ROOT/labctl" "$lab" "$cmd" "$@" || rc=$?
+        fi
       done
       return "$rc"
       ;;
     monitor)
-      local once=0 interval=5 status_args=() labs=(android win linux)
+      local once=0 interval=5 status_args=() labs=(android win linux source)
       if [ "$(uname -s)" = "Linux" ]; then labs+=(ios); fi
       while [ $# -gt 0 ]; do
         case "$1" in
@@ -1019,7 +1031,11 @@ cmd_all() {
       while :; do
         if [ "$once" = "0" ] && [ -t 1 ]; then clear 2>/dev/null || printf '\033[H\033[J'; fi
         for lab in "${labs[@]}"; do
-          "$ROOT/labctl" "$lab" status "${status_args[@]}"
+          if [ "$lab" = "source" ]; then
+            "$ROOT/labctl" source status
+          else
+            "$ROOT/labctl" "$lab" status "${status_args[@]}"
+          fi
           printf '\n'
         done
         [ "$once" = "1" ] && break
@@ -1048,6 +1064,16 @@ cmd_ui() {
   exec "$py" "$ROOT/android-lab/lab/web_ui.py" "$port"
 }
 
+# Cleanup Lab: the engine is stdlib-only and, until CLN-13, read-only. Prefer the checkout's
+# virtualenv so the probe reports the interpreter the console will use.
+cmd_cleanup() {
+  local py="${OSLAB_CLEANUP_PYTHON:-}"
+  if [ -z "$py" ]; then
+    if [ -x "$ROOT/.venv/bin/python" ]; then py="$ROOT/.venv/bin/python"; else py="python3"; fi
+  fi
+  PYTHONPATH="$ROOT/cleanup-lab/engine${PYTHONPATH:+:$PYTHONPATH}" exec "$py" -m cleanup_lab.cli "$@"
+}
+
 main() {
   [ $# -gt 0 ] || { usage; exit 0; }
   case "$1" in
@@ -1059,6 +1085,13 @@ main() {
   shift
   if [ "$target" = "all" ]; then
     cmd_all "$@"
+    return
+  fi
+  if [ "$target" = "source" ] || [ "$target" = "source-lab" ]; then
+    exec "${SOURCE_LAB_PYTHON:-python3}" "$ROOT/source-lab/run.py" "$@"
+  fi
+  if [ "$target" = "cleanup" ] || [ "$target" = "cleanup-lab" ]; then
+    cmd_cleanup "$@"
     return
   fi
   set_lab "$target"

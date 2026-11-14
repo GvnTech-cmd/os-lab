@@ -55,8 +55,11 @@ export const ruleAction = (action: FirewallAction, locale: FirewallLocale) => ac
 export const ruleDirection = (direction: RuleDirection, locale: FirewallLocale) => directions[locale][direction];
 export const cveStatus = (status: string, locale: FirewallLocale) => statuses[locale][status] ?? status;
 
-export const firewallPath = (locale: FirewallLocale, slug?: string) =>
-  `${locale === "en" ? "/firewall/" : `/${locale}/firewall/`}${slug ? `${slug}/` : ""}`;
+export const firewallPath = (locale: FirewallLocale, slug?: string) => {
+  const path = `${locale === "en" ? "/firewall/" : `/${locale}/firewall/`}${slug ? `${slug}/` : ""}`;
+  const base = import.meta.env.PUBLIC_SITE_MODE === "pages" ? import.meta.env.BASE_URL.replace(/\/$/, "") : "";
+  return base && !path.startsWith(`${base}/`) ? `${base}${path}` : path;
+};
 
 const sourceCopy = {
   en: {

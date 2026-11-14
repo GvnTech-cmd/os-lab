@@ -84,8 +84,8 @@ export function ContentPanel() {
   }
 
   const available = Boolean(state?.latest && state.latest.sequence > state.sequence);
-  // The card exists only while there is something to install; the auto-check above still runs.
-  if (!available) return null;
+  // The card appears when something is installable and stays for the result of an action.
+  if (!available && !result) return null;
   return (
     <Section
       id="content"

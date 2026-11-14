@@ -1,6 +1,6 @@
 # Terms of Use and Legal Notice
 
-_Last updated: November 3, 2026_
+_Last updated: November 9, 2026_
 
 These terms explain the legal position of **os-lab** (the labs, `labctl`, the
 installers, the web console and the dashboard in this repository, together the
@@ -15,7 +15,9 @@ the source code.
 os-lab is open-source software that you download and run on your own computer
 or server. It builds isolated security labs (an Android analysis stack, Windows,
 Linux and macOS/iOS virtual machines) with Docker and KVM, and a web console
-that controls them.
+that controls them. Source Lab adds local static source/package analysis,
+structural maps and explicitly invoked repository/evidence workflows; it does
+not require a guest for static analysis.
 
 - There is **no hosted service**. The project does not operate servers that
   receive your data, and the web console listens only on `127.0.0.1` on the

@@ -7,6 +7,8 @@
   var statusEl = $("status"), spinner = $("spinner"), problem = $("problem");
   var detail = $("detail"), where = $("where"), filesWhere = $("files-where"), resetBtn = $("reset"), pythonBtn = $("python");
   var containerBtn = $("container"), recoverBtn = $("recover"), continueBtn = $("continue"), consoleInfo = null;
+  var dontShowRow = $("dont-show-row"), dontShow = $("dont-show");
+  var warningHidden = false, skipContainerWarning = false;
   var language = (navigator.languages || [navigator.language || "en"])
     .map(function (value) { return value.toLowerCase().split("-")[0]; })
     .find(function (value) { return ["en", "tr", "de", "fr", "es", "it", "fa", "ar"].indexOf(value) !== -1; }) || "en";
@@ -36,14 +38,14 @@
   };
   var pt = pythonStrings[language] || pythonStrings.en;
   var containerStrings = {
-    en: ["Get container runtime", "Continue to dashboard", "A container runtime is needed for the VM and Android labs. Get the verified Docker Desktop installer, complete its setup, then retry. Host virtualization may need enabling.", "Downloading Docker Desktop…", "Docker Desktop installer opened. Complete its setup, then retry."],
-    tr: ["Konteyner çalışma ortamını edin", "Panoya devam et", "VM ve Android laboratuvarları için bir konteyner çalışma ortamı gerekir. Doğrulanmış Docker Desktop yükleyicisini edinip kurulumu tamamlayın, ardından yeniden deneyin.", "Docker Desktop indiriliyor…", "Docker Desktop yükleyicisi açıldı. Kurulumu tamamlayıp yeniden deneyin."],
-    de: ["Container-Laufzeit laden", "Zum Dashboard", "Für VM- und Android-Labs wird eine Container-Laufzeit benötigt. Laden Sie den geprüften Docker-Desktop-Installer, schließen Sie die Einrichtung ab und versuchen Sie es erneut.", "Docker Desktop wird geladen…", "Docker-Desktop-Installer geöffnet. Schließen Sie die Einrichtung ab und versuchen Sie es erneut."],
-    fr: ["Obtenir le moteur de conteneurs", "Continuer vers le tableau de bord", "Les labs VM et Android nécessitent un moteur de conteneurs. Obtenez l’installateur Docker Desktop vérifié, terminez l’installation, puis réessayez.", "Téléchargement de Docker Desktop…", "Installateur Docker Desktop ouvert. Terminez l’installation, puis réessayez."],
-    es: ["Obtener motor de contenedores", "Continuar al panel", "Los laboratorios de VM y Android necesitan un motor de contenedores. Obtén el instalador verificado de Docker Desktop, completa la instalación y reintenta.", "Descargando Docker Desktop…", "Se abrió el instalador de Docker Desktop. Completa la instalación y reintenta."],
-    it: ["Scarica il runtime container", "Continua alla dashboard", "I lab VM e Android richiedono un runtime container. Scarica il programma di installazione verificato di Docker Desktop, completa l'installazione e riprova.", "Download di Docker Desktop…", "Installer di Docker Desktop aperto. Completa l'installazione e riprova."],
-    fa: ["دریافت محیط کانتینر", "ادامه به داشبورد", "آزمایشگاه‌های VM و Android به محیط کانتینر نیاز دارند. نصب‌کنندهٔ تأییدشدهٔ Docker Desktop را دریافت و نصب کنید، سپس دوباره تلاش کنید.", "Docker Desktop در حال دریافت است…", "نصب‌کنندهٔ Docker Desktop باز شد. نصب را کامل کنید و دوباره تلاش کنید."],
-    ar: ["الحصول على بيئة الحاويات", "المتابعة إلى لوحة المعلومات", "تحتاج مختبرات VM وAndroid إلى بيئة حاويات. احصل على مُثبّت Docker Desktop المتحقق منه وأكمل الإعداد ثم أعد المحاولة.", "جارٍ تنزيل Docker Desktop…", "فُتح مُثبّت Docker Desktop. أكمل الإعداد ثم أعد المحاولة."]
+    en: ["Get container runtime", "Continue to dashboard", "A container runtime is needed for the VM and Android labs. Get the verified Docker Desktop installer, complete its setup, then retry. Host virtualization may need enabling.", "Downloading Docker Desktop…", "Docker Desktop installer opened. Complete its setup, then retry.", "Don't show this warning next time"],
+    tr: ["Konteyner çalışma ortamını edin", "Panoya devam et", "VM ve Android laboratuvarları için bir konteyner çalışma ortamı gerekir. Doğrulanmış Docker Desktop yükleyicisini edinip kurulumu tamamlayın, ardından yeniden deneyin.", "Docker Desktop indiriliyor…", "Docker Desktop yükleyicisi açıldı. Kurulumu tamamlayıp yeniden deneyin.", "Bu uyarıyı bir daha gösterme"],
+    de: ["Container-Laufzeit laden", "Zum Dashboard", "Für VM- und Android-Labs wird eine Container-Laufzeit benötigt. Laden Sie den geprüften Docker-Desktop-Installer, schließen Sie die Einrichtung ab und versuchen Sie es erneut.", "Docker Desktop wird geladen…", "Docker-Desktop-Installer geöffnet. Schließen Sie die Einrichtung ab und versuchen Sie es erneut.", "Diese Warnung nicht mehr anzeigen"],
+    fr: ["Obtenir le moteur de conteneurs", "Continuer vers le tableau de bord", "Les labs VM et Android nécessitent un moteur de conteneurs. Obtenez l’installateur Docker Desktop vérifié, terminez l’installation, puis réessayez.", "Téléchargement de Docker Desktop…", "Installateur Docker Desktop ouvert. Terminez l’installation, puis réessayez.", "Ne plus afficher cet avertissement"],
+    es: ["Obtener motor de contenedores", "Continuar al panel", "Los laboratorios de VM y Android necesitan un motor de contenedores. Obtén el instalador verificado de Docker Desktop, completa la instalación y reintenta.", "Descargando Docker Desktop…", "Se abrió el instalador de Docker Desktop. Completa la instalación y reintenta.", "No volver a mostrar este aviso"],
+    it: ["Scarica il runtime container", "Continua alla dashboard", "I lab VM e Android richiedono un runtime container. Scarica il programma di installazione verificato di Docker Desktop, completa l'installazione e riprova.", "Download di Docker Desktop…", "Installer di Docker Desktop aperto. Completa l'installazione e riprova.", "Non mostrare più questo avviso"],
+    fa: ["دریافت محیط کانتینر", "ادامه به داشبورد", "آزمایشگاه‌های VM و Android به محیط کانتینر نیاز دارند. نصب‌کنندهٔ تأییدشدهٔ Docker Desktop را دریافت و نصب کنید، سپس دوباره تلاش کنید.", "Docker Desktop در حال دریافت است…", "نصب‌کنندهٔ Docker Desktop باز شد. نصب را کامل کنید و دوباره تلاش کنید.", "این هشدار را دیگر نشان نده"],
+    ar: ["الحصول على بيئة الحاويات", "المتابعة إلى لوحة المعلومات", "تحتاج مختبرات VM وAndroid إلى بيئة حاويات. احصل على مُثبّت Docker Desktop المتحقق منه وأكمل الإعداد ثم أعد المحاولة.", "جارٍ تنزيل Docker Desktop…", "فُتح مُثبّت Docker Desktop. أكمل الإعداد ثم أعد المحاولة.", "عدم إظهار هذا التحذير مرة أخرى"]
   };
   var ct = containerStrings[language] || containerStrings.en;
   var existingEngine = {
@@ -64,17 +66,19 @@
   containerBtn.textContent = dockerInstallText;
   recoverBtn.textContent = recoverText[0];
   continueBtn.textContent = ct[1];
+  $("dont-show-label").textContent = ct[5];
 
   function show(message, isError) {
     statusEl.textContent = message;
     spinner.hidden = !!isError;
     problem.hidden = !isError;
+    dontShowRow.hidden = true;
   }
 
   function fail(err) {
     show(t.failed, true);
     var message = String(err && err.message ? err.message : err);
-    pythonBtn.hidden = message.indexOf("Python 3.9 or newer was not found") === -1;
+    pythonBtn.hidden = message.indexOf("Python 3.11 or newer was not found") === -1;
     containerBtn.hidden = true;
     recoverBtn.hidden = true;
     continueBtn.hidden = !consoleInfo;
@@ -98,19 +102,23 @@
     containerBtn.hidden = !canDownload;
     recoverBtn.hidden = !canRecover;
     continueBtn.hidden = false;
+    dontShowRow.hidden = false;
+    dontShow.checked = warningHidden;
   }
 
   function start() {
     consoleInfo = null;
     show(t.starting, false);
     if (!invoke) { return fail(t.bridge); }
+    var skipWarning = skipContainerWarning;
+    skipContainerWarning = false;
     invoke("console_files_dir").then(function (path) { filesWhere.textContent = t.filesLabel + ": " + path; }, fail);
     invoke("console_start").then(function (info) {
       consoleInfo = info;
       where.textContent = info.source + ": " + info.root;
       resetBtn.hidden = info.source !== "chosen";
       invoke("container_status").then(function (status) {
-        if (status && !status.ready) showContainerSetup(status.detail || (status.cli_present ? (existingEngine[language] || existingEngine.en) : ct[2]), status.can_download, Boolean(status.recovery));
+        if (status && !status.ready && !skipWarning) showContainerSetup(status.detail || (status.cli_present ? (existingEngine[language] || existingEngine.en) : ct[2]), status.can_download, Boolean(status.recovery));
         else openDashboard();
       }, openDashboard);
     }, fail);
@@ -137,6 +145,15 @@
     });
   });
   continueBtn.addEventListener("click", openDashboard);
+  dontShow.addEventListener("change", function () {
+    var hidden = dontShow.checked;
+    warningHidden = hidden;
+    invoke("container_warning_set_hidden", { hidden: hidden }).then(function () {}, function (err) {
+      warningHidden = !hidden;
+      dontShow.checked = !hidden;
+      detail.textContent = String(err && err.message ? err.message : err);
+    });
+  });
   $("choose").addEventListener("click", function () {
     invoke("console_choose_root").then(function (path) { if (path) start(); }, fail);
   });
@@ -226,5 +243,14 @@
     detail.textContent = "";
     if (invoke) invoke("console_files_dir").then(function (path) { filesWhere.textContent = t.filesLabel + ": " + path; }, fail);
     else fail(t.bridge);
-  } else start();
+  } else if (!invoke) {
+    start();
+  } else {
+    invoke("container_warning_hidden").then(function (hidden) {
+      warningHidden = !!hidden;
+      dontShow.checked = warningHidden;
+      if (settings !== "container") skipContainerWarning = warningHidden;
+      start();
+    }, start);
+  }
 })();

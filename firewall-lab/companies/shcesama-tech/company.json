@@ -1,0 +1,1158 @@
+{
+  "schemaVersion": 1,
+  "slug": "shcesama-tech",
+  "name": "Shcesama-tech",
+  "sector": "Technology / Education",
+  "author": {
+    "name": "Batuhan Seydi",
+    "course": "BGT207",
+    "github": "Shcesama"
+  },
+  "summary": "Shcesama-tech bünyesinde 4 ana fiziksel yerleşke (İstanbul Genel Merkez, Ankara DR Merkezi, Londra Uluslararası Ofis ve 10.000 öğrencili Akademik Şube) ile şubeler genelinde faaliyet gösteren 2 kritik uzmanlık birimi (150 kişilik Yazılım Ekibi ve 87 kişilik Ar-Ge Ekibi) olmak üzere toplam 11.600 kullanıcıya hizmet veren kurumsal ağ güvenliği ve NGFW mimarisidir. Tüm yerleşkeler Hub-and-Spoke SD-WAN/IPsec ile İstanbul Merkez Hub (FortiGate 400F HA) ve Ankara DR Hub (FortiGate 200F HA) kümelerine bağlanır; her şubede VLAN mikro-segmentasyonu, iç segmentasyon güvenlik duvarları (ISFW), Ar-Ge için fiziksel 10G port ayrımı ve DLP/CDR, rol tabanlı VPN, 7/24 NOC/SOC izleme ve en sonda Implicit Deny kuralı uygulanır.",
+  "branches": [
+    {
+      "id": "istanbul-hq",
+      "name": "02 - İstanbul Ofisi (Genel Merkez)",
+      "role": "headquarters",
+      "location": "İstanbul, Turkey",
+      "population": {
+        "staff": 340,
+        "students": 0,
+        "software": 60,
+        "rnd": 20
+      },
+      "network": {
+        "cidr": "10.20.0.0/16",
+        "dmz": true,
+        "vlans": [
+          {
+            "id": 10,
+            "name": "ist-mgmt-soc",
+            "cidr": "10.20.10.0/24",
+            "note": "35 Teknik + 25 Güvenlik (Merkez SOC); Merkezi SIEM, FortiManager ve altyapı yönetimi (yalnızca MFA + VPN/Bastion)."
+          },
+          {
+            "id": 20,
+            "name": "ist-admin",
+            "cidr": "10.20.20.0/23",
+            "note": "280 İdari Personel (840 aktif cihaz: PC, IP telefon, mobil); FSSO kimlik bazlı erişim."
+          },
+          {
+            "id": 30,
+            "name": "ist-software",
+            "cidr": "10.20.30.0/24",
+            "note": "60 Yazılım Mühendisi (185 cihaz); Bastion Host (10.20.30.10) üzerinden CI/CD erişimi."
+          },
+          {
+            "id": 35,
+            "name": "ist-cicd-srv",
+            "cidr": "10.20.35.0/24",
+            "note": "Ana GitLab, Harbor Container Registry ve Kubernetes derleme sunucuları (25 sunucu)."
+          },
+          {
+            "id": 40,
+            "name": "ist-rd-vault",
+            "cidr": "10.20.40.0/24",
+            "note": "20 Ar-Ge Araştırmacısı (60 cihaz); FG-400F x7 fiziksel ayrı 10G port, Beyaz Liste ve DLP korumalı."
+          },
+          {
+            "id": 45,
+            "name": "ist-patent-vault",
+            "cidr": "10.20.45.0/24",
+            "note": "Merkez Patent Kasası ve AI kümesi (20 sunucu); internete tamamen kapalı, yalnızca Staging (10.20.40.250) ile CDR sonrası dosya alır."
+          },
+          {
+            "id": 50,
+            "name": "ist-dc-srv",
+            "cidr": "10.20.50.0/24",
+            "note": "Ana Veri Merkezi (90 sunucu): Active Directory, Kurumsal ERP, Veritabanı, Merkezi SIEM ve FortiAnalyzer."
+          },
+          {
+            "id": 60,
+            "name": "ist-dmz",
+            "cidr": "10.20.60.0/24",
+            "note": "Dış Web ve E-Posta Geçidi (SMTP/TLS); iç ağa bağlantı başlatması kesinlikle engellidir."
+          },
+          {
+            "id": 90,
+            "name": "ist-guest",
+            "cidr": "172.16.20.0/23",
+            "note": "Misafir Wi-Fi (~60 misafir); iç ağa tamamen kapalı, yalnızca internet ve 100 Mbps QoS hız sınırlı."
+          }
+        ]
+      },
+      "bandwidth": {
+        "downMbps": 5000,
+        "upMbps": 5000,
+        "drivers": [
+          "ERP ve 4K Video Konferans (1.26 Gbps)",
+          "Yazılım CI/CD, Docker ve Konteyner (900 Mbps)",
+          "Ana Veri Merkezi ve SD-WAN/DR Hub Replikasyonu (850 Mbps)",
+          "Ar-Ge Merkez Patent Kasası ve AI Kümesi (450 Mbps)",
+          "Merkez SOC 11.600 Kullanıcı SIEM Log Akışı (350 Mbps)",
+          "Misafir Wi-Fi ve Güncellemeler (140 Mbps) — Formül: 3.95 Gbps, Hat: 5+5 Gbps"
+        ]
+      },
+      "firewalls": [
+        {
+          "segment": "perimeter",
+          "chosen": {
+            "product": "FortiGate 400F (HA)",
+            "vendor": "Fortinet",
+            "throughputGbps": 9.0,
+            "priceUsd": 26000,
+            "reason": "NP7 + CP9 ASIC donanım hızlandırması ile 9.0 Gbps Threat Protection, 8.0 Gbps SSL Inspection ve 55 Gbps IPsec VPN kapasitesi sunar; İstanbul Merkezin 3.95 Gbps formül ihtiyacını ve 5+5 Gbps (10 Gbps) çift fiber hatlarını tüm güvenlik filtreleri açıkken sıfır darboğazla taşır ve üzerinde 8x 10G SFP+ port barındırır."
+          },
+          "alternatives": [
+            {
+              "product": "FortiGate 200F (HA)",
+              "vendor": "Fortinet",
+              "throughputGbps": 3.0,
+              "priceUsd": 14500,
+              "reason": "Ankara ve Londra şubeleri için idealdir ancak Threat Protection hızı 3.0 Gbps olduğu için İstanbul Merkezin 3.95 Gbps gereksinimi ve 5 Gbps hatları karşısında darboğaz yaratır."
+            },
+            {
+              "product": "PA-1420 (HA)",
+              "vendor": "Palo Alto Networks",
+              "throughputGbps": 6.2,
+              "priceUsd": 34000,
+              "reason": "SSL şifre çözme hızı (~3.8 Gbps) tam 3.95 Gbps sınırında kalmakta ve IPsec VPN kapasitesi (4.8 Gbps) FortiGate 400F'in (55 Gbps) çok gerisinde bulunmaktadır."
+            },
+            {
+              "product": "Quantum 6700 (HA)",
+              "vendor": "Check Point",
+              "throughputGbps": 6.5,
+              "priceUsd": 38000,
+              "reason": "10G SFP+ portlar için ek genişleme kartı gerektirmesi, SSL Inspection hızının ~4.5 Gbps seviyesinde kalması ve yüksek lisans maliyeti nedeniyle elenmiştir."
+            },
+            {
+              "product": "Secure Firewall 3120 (HA)",
+              "vendor": "Cisco",
+              "throughputGbps": 11.0,
+              "priceUsd": 36000,
+              "reason": "SSL/TLS şifre çözme hızı (3.2 Gbps), İstanbul Merkezin 3.95 Gbps formül ihtiyacının altında kaldığı ve ayrı yönetim sunucusu (FMC) maliyeti çıkardığı için elenmiştir."
+            }
+          ],
+          "rules": [
+            {
+              "action": "allow",
+              "direction": "in",
+              "proto": "udp",
+              "port": "67:68",
+              "from": "internal-vlans",
+              "to": "ist-dc-srv",
+              "note": "İç VLAN'lardaki istemcilerin merkez DHCP sunucusundan IP alabilmesi için zorunludur; kapatılırsa cihazlar ağa katılamaz."
+            },
+            {
+              "action": "allow",
+              "direction": "out",
+              "proto": "udp",
+              "port": 53,
+              "from": "internal-vlans",
+              "to": "ist-dc-srv",
+              "note": "İç ağlar yalnızca merkez Active Directory DNS sunucusunu kullanır; DNS Sinkhole ile C2 ve oltalama alan adları engellenir."
+            },
+            {
+              "action": "allow",
+              "direction": "out",
+              "proto": "udp",
+              "port": 123,
+              "from": "any",
+              "to": "ntp-pool",
+              "note": "Adli bilişim (forensics), 5651 log geçerliliği ve TLS sertifika doğrulaması için kurumsal NTP zaman senkronizasyonu zorunludur."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": "22,443,6514",
+              "from": "ist-mgmt-soc",
+              "to": "all-firewalls-and-dc",
+              "note": "Kural 01: VLAN 10'daki 25 Güvenlik (SOC) ve 35 Teknik uzman MFA zorunluluğu ile FortiManager, SIEM ve tüm şube güvenlik duvarlarını yönetir."
+            },
+            {
+              "action": "deny",
+              "direction": "in",
+              "proto": "any",
+              "from": "any",
+              "to": "ist-mgmt-soc",
+              "note": "Yönetim düzlemi koruması (Trusted Hosts): WAN ve yetkisiz iç VLAN'lardan yönetim ağına (VLAN 10) doğrudan erişim kesinlikle engellidir."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": "443,1433,8443",
+              "from": "ist-admin",
+              "to": "ist-dc-srv",
+              "note": "Kural 02: 280 İdari personel (VLAN 20) FSSO kimlik doğrulaması ve IPS/DLP denetimiyle VLAN 50'deki kurumsal ERP ve İK/Finans sistemlerine erişir."
+            },
+            {
+              "action": "allow",
+              "direction": "out",
+              "proto": "tcp",
+              "port": "80,443",
+              "from": "ist-admin",
+              "to": "sd-wan",
+              "note": "Kural 03: İdari personel SSL Inspection, IPS, Antivirüs, Sandbox ve Web Filter arkasından internete ve M365/Teams servislerine çıkar (Tor/P2P yasak)."
+            },
+            {
+              "action": "allow",
+              "direction": "out",
+              "proto": "tcp",
+              "port": "22,443",
+              "from": "ist-software",
+              "to": "sd-wan-and-cloud",
+              "note": "Kural 04: 60 kişilik İstanbul Yazılım ekibi SSL Inspection, IPS ve Kod DLP denetimiyle kurumsal Git, Docker, K8s ve AWS/Azure bulut ortamlarına erişir."
+            },
+            {
+              "action": "allow",
+              "direction": "out",
+              "proto": "tcp",
+              "port": 443,
+              "from": "ist-rd-vault",
+              "to": "wan1-whitelist",
+              "note": "Kural 05: 20 kişilik Ar-Ge ekibi (VLAN 40) fiziksel ayrı x7 portundan yalnızca Beyaz Liste (IEEE, Patent) sitelerine erişir; 1 MB üstü HTTP POST/Upload kapalıdır."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "udp",
+              "port": "500,4500",
+              "from": "ist-dc-srv",
+              "to": "ankara-dr-srv",
+              "note": "Kural 06: Ana Veri Merkezi (VLAN 50) ile Ankara Felaket Kurtarma Merkezi (VLAN 50 DR) arasında NP7 hızlandırmalı IPsec üzerinden gerçek zamanlı veritabanı ve VM replikasyonu."
+            },
+            {
+              "action": "allow",
+              "direction": "in",
+              "proto": "tcp",
+              "port": "443,636,6514,8443",
+              "from": "branch-ipsec-tunnels",
+              "to": "ist-dc-srv",
+              "note": "Kural 07: Ankara, Londra ve Akademik şubelerden gelen IPsec tünellerinin merkez Active Directory, ERP ve Merkezi SIEM log sunucularına erişimi."
+            },
+            {
+              "action": "limit",
+              "direction": "in",
+              "proto": "tcp",
+              "port": "25,443",
+              "from": "any",
+              "to": "ist-dmz",
+              "note": "Kural 08: İnternetten DMZ'deki (VLAN 60) Kurumsal Web (HTTPS) ve E-Posta Geçidine (SMTP/TLS) gelen trafik Inbound SSL Inspection, DoS Policy (Rate-Limit) ve WAF/IPS ile korunur."
+            },
+            {
+              "action": "deny",
+              "direction": "forward",
+              "proto": "any",
+              "from": "ist-dmz",
+              "to": "internal-vlans",
+              "note": "Kural 09: DMZ'den iç ağlara (VLAN 10-50) doğru hiçbir bağlantı başlatılamaz; DMZ sunucusu ele geçirilse dahi iç ağa sızma engellenir ve P1 kritik alarm üretilir."
+            },
+            {
+              "action": "deny",
+              "direction": "forward",
+              "proto": "any",
+              "from": "ist-admin",
+              "to": "ist-software-and-rd",
+              "note": "Departmanlar arası Sıfır Güven: İdari ağdan (VLAN 20) Yazılım (VLAN 30) ve Ar-Ge (VLAN 40) ağlarına doğrudan geçiş engellidir."
+            },
+            {
+              "action": "deny",
+              "direction": "forward",
+              "proto": "any",
+              "from": "ist-guest",
+              "to": "internal-vlans",
+              "note": "Misafir Wi-Fi (VLAN 90) iç kurumsal ağlara erişemez; yalnızca 100 Mbps QoS sınırı ile internete çıkabilir."
+            },
+            {
+              "action": "deny",
+              "direction": "in",
+              "proto": "any",
+              "from": "any",
+              "to": "any",
+              "note": "Kural 99 (Implicit Deny): Açıkça izin verilmeyen her türlü trafik varsayılan olarak düşürülür (drop) ve SIEM'e loglanır."
+            }
+          ]
+        },
+        {
+          "segment": "software",
+          "chosen": {
+            "product": "Palo Alto PA-460 (HA)",
+            "vendor": "Palo Alto Networks",
+            "throughputGbps": 2.4,
+            "priceUsd": 9200,
+            "reason": "4 şubedeki toplam 150 Yazılım Mühendisinin (2.12 Gbps toplam CI/CD, Git ve Docker trafiği) derleme sunucularını genel ofis ağından ayırmak için Çift Üretici (Dual-Vendor Defense-in-Depth) iç segmentasyon güvenlik duvarı (ISFW) olarak seçilmiştir; App-ID ile Git push/pull alt komutlarını denetler."
+          },
+          "alternatives": [
+            {
+              "product": "FortiGate 200F (ISFW)",
+              "vendor": "Fortinet",
+              "throughputGbps": 3.0,
+              "priceUsd": 14500,
+              "reason": "10G SFP+ portları ve 3.0 Gbps Threat Protection hızıyla güçlü bir iç segmentasyon alternatifidir ancak CI/CD katmanında farklı üretici (Dual-Vendor) derinliği sağlamak için PA-460 tercih edilmiştir."
+            },
+            {
+              "product": "Quantum 3600 (HA)",
+              "vendor": "Check Point",
+              "throughputGbps": 1.5,
+              "priceUsd": 13500,
+              "reason": "1.5 Gbps Threat Prevention hızı, 150 kişilik yazılım ekibinin 2.12 Gbps toplam CI/CD ve konteyner yükünün altında kaldığı için elenmiştir."
+            },
+            {
+              "product": "Secure Firewall 1210CE",
+              "vendor": "Cisco",
+              "throughputGbps": 4.5,
+              "priceUsd": 11000,
+              "reason": "DevOps uygulama alt komutları (App-ID) derinliği Palo Alto ve Fortinet kadar esnek olmadığı ve ayrı yönetim konsolu gerektirdiği için elenmiştir."
+            },
+            {
+              "product": "XGS 3100 (HA)",
+              "vendor": "Sophos",
+              "throughputGbps": 2.0,
+              "priceUsd": 10500,
+              "reason": "2.0 Gbps Threat Protection hızı 2.12 Gbps toplam yazılım trafiği için sınırda kalmakta ve mevcut Fortinet/Palo Alto yapımızla bütünleşmemektedir."
+            }
+          ],
+          "rules": [
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": "22,443",
+              "from": "ist-software",
+              "to": "bastion-host-10.20.30.10",
+              "note": "Yazılım Kural 01: Yazılım mühendisleri doğrudan CI/CD sunucularına erişemez; önce MFA doğrulamalı Bastion Host (10.x.30.10) sunucusuna SSH/HTTPS ile bağlanır."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": "22,443,6443",
+              "from": "bastion-host-10.20.30.10",
+              "to": "ist-cicd-srv",
+              "note": "Yazılım Kural 02: Yalnızca Bastion Host üzerinden CI/CD derleme sunucularına (10.x.35.0/24) SSH ve Kubernetes-API erişimine izin verilir ve tüm terminal oturumları SIEM'de kaydedilir."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": 443,
+              "from": "ist-software",
+              "to": "ist-cicd-srv",
+              "note": "Yazılım Kural 03: Geliştiriciler kendi bilgisayarlarından CI/CD sunucularının yalnızca HTTPS Web Arayüzüne (GitLab/Jenkins UI) erişebilir; doğrudan SSH engellidir."
+            },
+            {
+              "action": "allow",
+              "direction": "out",
+              "proto": "tcp",
+              "port": 443,
+              "from": "ist-cicd-srv",
+              "to": "approved-package-repos",
+              "note": "Yazılım Kural 04: CI/CD derleme sunucuları dış dünyaya yalnızca onaylı paket depoları (docker, github, npm, pypi, maven, apt) için SSL Inspection ve Sandbox denetimiyle çıkabilir."
+            },
+            {
+              "action": "deny",
+              "direction": "out",
+              "proto": "any",
+              "from": "ist-cicd-srv",
+              "to": "any",
+              "note": "Yazılım Kural 05 (Reverse Shell / C2 Engeli): CI/CD sunucularından dış dünyadaki rastgele IP/portlara başlatılan tüm bağlantılar tedarik zinciri saldırılarını önlemek için kesilir ve P1 alarm üretir."
+            },
+            {
+              "action": "allow",
+              "direction": "out",
+              "proto": "tcp",
+              "port": 443,
+              "from": "ist-software",
+              "to": "corporate-git-only-push",
+              "note": "Yazılım Kural 07: App-ID ve Kod DLP ile kurumsal GitHub/GitLab organizasyonuna Push/Pull izni verilirken, kişisel harici Git hesaplarına kaynak kod yükleme (git push) engellenir."
+            },
+            {
+              "action": "deny",
+              "direction": "in",
+              "proto": "any",
+              "from": "other-vlans",
+              "to": "ist-software-and-cicd",
+              "note": "Yazılım Kural 08: İdari ve öğrenci ağlarından yazılım geliştirici VLAN'ına ve CI/CD sunucularına geçiş kesinlikle yasaktır."
+            }
+          ]
+        },
+        {
+          "segment": "rnd",
+          "chosen": {
+            "product": "Check Point Quantum 6600 (HA)",
+            "vendor": "Check Point",
+            "throughputGbps": 3.7,
+            "priceUsd": 22000,
+            "reason": "4 şubedeki toplam 87 Ar-Ge araştırmacısının (1.86 Gbps toplam trafik) geliştirdiği patent ve AI modellerini korumak üzere ikinci katman (Defense-in-Depth ISFW) olarak seçilmiştir; yerleşik SandBlast Threat Extraction (CDR) ile indirilen belgelerdeki makroları söker ve Multi-blade DLP ile CAD/kod sızıntısını %100 engeller."
+          },
+          "alternatives": [
+            {
+              "product": "FortiGate 400F / 3500F (VDOM)",
+              "vendor": "Fortinet",
+              "throughputGbps": 9.0,
+              "priceUsd": 26000,
+              "reason": "Şube sınırında fiziksel 10G port (x7/port4/x4) ve VDOM izolasyonu için zaten kullanılmaktadır; iç laboratuvar önünde farklı üretici CDR/DLP katmanı sağlamak için Check Point ile tamamlanmıştır."
+            },
+            {
+              "product": "PA-1410 (HA)",
+              "vendor": "Palo Alto Networks",
+              "throughputGbps": 4.3,
+              "priceUsd": 24000,
+              "reason": "Tehdit tespitinde başarılıdır ancak Check Point SandBlast CDR gibi yerleşik dosya içeriği silahsızlandırma (Content Disarm & Reconstruction) özelliği sunmadığı için elenmiştir."
+            },
+            {
+              "product": "Secure Firewall 3110 (HA)",
+              "vendor": "Cisco",
+              "throughputGbps": 9.0,
+              "priceUsd": 25000,
+              "reason": "Yerleşik kurumsal DLP (belge parmak izi) ve CDR (Threat Extraction) modülleri bulunmadığı için Ar-Ge iç kalkanı olarak elenmiştir."
+            },
+            {
+              "product": "XGS 3100 (HA)",
+              "vendor": "Sophos",
+              "throughputGbps": 2.0,
+              "priceUsd": 10500,
+              "reason": "Yalnızca temel DLP özellikleri sunmakta ve CAD/CAM parmak izi ile CDR gereksinimlerini karşılamamaktadır."
+            }
+          ],
+          "rules": [
+            {
+              "action": "deny",
+              "direction": "out",
+              "proto": "any",
+              "from": "ist-patent-vault",
+              "to": "any",
+              "note": "Ar-Ge Kural 01 (Air-Gap Benzeri Koruma): Patent Veri Kasası ve Prototip Donanım (VLAN 45/55) ağlarının internete çıkışı %100 kapalıdır; deneme anında P1 kritik alarm üretilir."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": "22,443",
+              "from": "ist-rd-vault",
+              "to": "ist-patent-vault",
+              "note": "Ar-Ge Kural 02: 87 Ar-Ge araştırmacısı kendi şubesindeki Patent Kasası ve AI GPU kümesine yalnızca kimlik doğrulamalı HTTPS, iç Git ve kayıtlı SSH ile erişebilir."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": "22,443",
+              "from": "ist-rd-vault",
+              "to": "staging-server-10.20.40.250",
+              "note": "Ar-Ge Kural 03: Dışarıdan indirilen teknik belgeler ve veri setleri doğrudan kasa ağına sokulmaz; önce Ara Kontrol (Staging - 10.x.x.250) sunucusuna bırakılarak Sandbox ve CDR (Threat Extraction) ile makrolardan arındırılır."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": 22,
+              "from": "ist-patent-vault",
+              "to": "staging-server-10.20.40.250",
+              "note": "Ar-Ge Kural 04: Patent kasası ve prototip ağı, yalnızca Staging sunucusunda CDR tarafından temizlenmiş güvenli dosyaları Read-Only SFTP ile çekebilir."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "udp",
+              "port": "500,4500",
+              "from": "ist-patent-vault",
+              "to": "ankara-dr-patent-vault",
+              "note": "Ar-Ge Kural 05: 4 şubedeki Ar-Ge veri kasaları arasındaki şifreli patent yedeklemesi yalnızca gece 01:00-04:00 saatleri arasında açılan çift katmanlı IPsec tünel üzerinden yapılır."
+            },
+            {
+              "action": "limit",
+              "direction": "out",
+              "proto": "tcp",
+              "port": 443,
+              "from": "ist-rd-vault",
+              "to": "whitelist-scientific-sites",
+              "note": "Ar-Ge Kural 06: Araştırmacılar yalnızca Beyaz Liste (IEEE, Google Scholar, EPO/USPTO Patent) sitelerine SSL Inspection ve Katı DLP ile erişebilir; 1 MB üzerindeki tüm HTTP POST/PUT (Upload) işlemleri kesilir."
+            },
+            {
+              "action": "deny",
+              "direction": "out",
+              "proto": "any",
+              "from": "ist-rd-vault",
+              "to": "any",
+              "note": "Ar-Ge Kural 07: Beyaz liste dışındaki tüm web siteleri, bulut depolama (Drive, WeTransfer), kişisel e-posta ve sosyal medya erişimleri veri sızıntısını önlemek için tamamen engellidir."
+            },
+            {
+              "action": "deny",
+              "direction": "in",
+              "proto": "any",
+              "from": "other-vlans",
+              "to": "ist-rd-vault",
+              "note": "Ar-Ge Kural 08: İdari, Yazılım ve Öğrenci VLAN'larından Ar-Ge ağlarına geçiş kesinlikle yasaktır ve P1 alarm üretir."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ankara-dr",
+      "name": "01 - Ankara Ofisi (Kamu & DR Merkezi)",
+      "role": "branch",
+      "location": "Ankara, Turkey",
+      "population": {
+        "staff": 175,
+        "students": 0,
+        "software": 30,
+        "rnd": 15
+      },
+      "network": {
+        "cidr": "10.10.0.0/16",
+        "dmz": false,
+        "vlans": [
+          {
+            "id": 10,
+            "name": "ank-mgmt",
+            "cidr": "10.10.10.0/24",
+            "note": "20 Teknik + 15 Güvenlik Uzmanı (Ankara DR SOC); ağ cihazları ve Firewall yönetimi (FW01: 10.10.10.2, FW02: 10.10.10.3)."
+          },
+          {
+            "id": 20,
+            "name": "ank-admin",
+            "cidr": "10.10.20.0/23",
+            "note": "140 İdari Personel + IP Telefonlar (420 aktif cihaz); kamu projeleri ve standart kurumsal erişim."
+          },
+          {
+            "id": 30,
+            "name": "ank-software",
+            "cidr": "10.10.30.0/24",
+            "note": "30 Yazılım Mühendisi (90 cihaz); Bastion Host (10.10.30.10) ve DR Git/Runner (10.10.35.0/24) erişimi."
+          },
+          {
+            "id": 40,
+            "name": "ank-rd-iso",
+            "cidr": "10.10.40.0/24",
+            "note": "15 Ar-Ge Araştırmacısı (45 cihaz); FG-200F x4 fiziksel ayrı 10G SFP+ port, Beyaz Liste ve DLP korumalı."
+          },
+          {
+            "id": 50,
+            "name": "ank-dr-srv",
+            "cidr": "10.10.50.0/24",
+            "note": "Felaket Kurtarma (DR) Sunucuları ve Depolama (35 sunucu); sadece İstanbul Merkez replikasyonuna açıktır."
+          },
+          {
+            "id": 90,
+            "name": "ank-guest",
+            "cidr": "172.16.10.0/24",
+            "note": "Misafir Wi-Fi (~30 misafir); iç ağa tamamen kapalı, yalnızca internet ve 50 Mbps QoS hız sınırlı."
+          }
+        ]
+      },
+      "bandwidth": {
+        "downMbps": 2000,
+        "upMbps": 2000,
+        "drivers": [
+          "İdari Personel ERP, Video ve Web (490 Mbps)",
+          "Yazılım Ekibi CI/CD, Git ve Docker (360 Mbps)",
+          "Ar-Ge CAD, Veri Seti ve Kasa Senkronu (225 Mbps)",
+          "Teknik Ekip ve İstanbul DR Veri Replikasyonu (220 Mbps)",
+          "Ankara DR SOC SIEM ve Tehdit İstihbaratı (120 Mbps)",
+          "Misafir Wi-Fi ve Güncellemeler (85 Mbps) — Formül: 1.50 Gbps, Hat: 2+1 Gbps"
+        ]
+      },
+      "firewalls": [
+        {
+          "segment": "perimeter",
+          "chosen": {
+            "product": "FortiGate 200F (HA)",
+            "vendor": "Fortinet",
+            "throughputGbps": 3.0,
+            "priceUsd": 14500,
+            "reason": "3.0 Gbps Threat Protection, 4.0 Gbps SSL Inspection ve 13.0 Gbps IPsec VPN kapasitesiyle Ankara ofisinin 1.50 Gbps formül ihtiyacını ve 2+1 Gbps (3 Gbps) fiber hatlarını %100 güvenlik payıyla karşılar; 4x 10G SFP+ portu ile 2 Gbps birincil Metro Ethernet hattını ve izole Ar-Ge portunu (x4) doğrudan sonlandırır."
+          },
+          "alternatives": [
+            {
+              "product": "FortiGate 100F (HA)",
+              "vendor": "Fortinet",
+              "throughputGbps": 1.0,
+              "priceUsd": 9000,
+              "reason": "Threat Protection ve SSL Inspection hızı 1.0 Gbps ile sınırlı olduğundan Ankara'nın 1.50 Gbps formül gereksinimi ve 2 Gbps birincil hattında 500 Mbps darboğaz yaratır."
+            },
+            {
+              "product": "PA-1410 (HA)",
+              "vendor": "Palo Alto Networks",
+              "throughputGbps": 4.3,
+              "priceUsd": 24000,
+              "reason": "Performans olarak yeterli olsa da tüm şubelerde Fortinet Security Fabric ve Merkezi SD-WAN standartlaştırıldığı için operasyonel bütünlük ve yüksek maliyet (TCO) nedeniyle elenmiştir."
+            },
+            {
+              "product": "Quantum 6600 (HA)",
+              "vendor": "Check Point",
+              "throughputGbps": 3.7,
+              "priceUsd": 22000,
+              "reason": "10G SFP+ fiber portların ek modül gerektirmesi ve şube sınırında yüksek lisans maliyeti nedeniyle elenmiştir."
+            },
+            {
+              "product": "Secure Firewall 3110 (HA)",
+              "vendor": "Cisco",
+              "throughputGbps": 9.0,
+              "priceUsd": 25000,
+              "reason": "SSL şifre çözme hızının (2.6 Gbps) FortiGate 200F'in (4.0 Gbps) gerisinde kalması ve ayrı yönetim sunucusu (FMC) maliyeti nedeniyle elenmiştir."
+            }
+          ],
+          "rules": [
+            {
+              "action": "allow",
+              "direction": "in",
+              "proto": "udp",
+              "port": "67:68",
+              "from": "internal-vlans",
+              "to": "dhcp-server",
+              "note": "Şube iç VLAN'larındaki istemcilerin IP adresi alabilmesi için DHCP trafiğine izin verilir."
+            },
+            {
+              "action": "allow",
+              "direction": "out",
+              "proto": "udp",
+              "port": "53,123",
+              "from": "internal-vlans",
+              "to": "dns-and-ntp",
+              "note": "İç çözümleyici üzerinden güvenli DNS sorguları ve kurumsal NTP zaman senkronizasyonu için zorunludur."
+            },
+            {
+              "action": "allow",
+              "direction": "in",
+              "proto": "tcp",
+              "port": "443,1433,902",
+              "from": "istanbul-hq-ipsec",
+              "to": "ank-dr-srv",
+              "note": "Kural 01: İstanbul Genel Merkezden IPsec tüneli üzerinden gelen VMware/Veeam replikasyon ve veritabanı senkronizasyon trafiğine IPS Sunucu Koruma Profili ile izin verilir."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": "22,443,3389,6514",
+              "from": "ank-mgmt",
+              "to": "all-servers-and-siem",
+              "note": "Kural 02: VLAN 10'daki 20 Teknik ve 15 Güvenlik (DR SOC) uzmanı MFA zorunluluğu ile DR sunucularını ve SIEM altyapısını yönetir."
+            },
+            {
+              "action": "allow",
+              "direction": "out",
+              "proto": "tcp",
+              "port": "80,443",
+              "from": "ank-admin",
+              "to": "sd-wan",
+              "note": "Kural 03: 140 İdari personel (VLAN 20) SSL Inspection (4.0 Gbps), IPS, Antivirüs, Zero-Day Sandbox ve Web Filter arkasından M365, Teams, ERP ve resmi kurum sitelerine erişir."
+            },
+            {
+              "action": "allow",
+              "direction": "out",
+              "proto": "tcp",
+              "port": "22,443",
+              "from": "ank-software",
+              "to": "sd-wan-and-cloud",
+              "note": "Kural 04: 30 Yazılım mühendisi (VLAN 30) SSL Inspection, IPS ve DLP denetimiyle Git, Docker, CI/CD ve bulut servislerine erişir."
+            },
+            {
+              "action": "limit",
+              "direction": "out",
+              "proto": "tcp",
+              "port": 443,
+              "from": "ank-rd-iso",
+              "to": "wan1-whitelist",
+              "note": "Kural 05: 15 Ar-Ge araştırmacısı (VLAN 40, fiziksel ayrı x4 portu) yalnızca Beyaz Liste teknik kaynaklara erişebilir; dosya yükleme (Upload) Katı DLP ile kapalıdır."
+            },
+            {
+              "action": "deny",
+              "direction": "forward",
+              "proto": "any",
+              "from": "ank-admin-and-software",
+              "to": "ank-rd-and-dr-srv",
+              "note": "Kural 06: İdari (VLAN 20) ve Yazılım (VLAN 30) ağlarından Ar-Ge (VLAN 40) ve Felaket Kurtarma Sunucularına (VLAN 50 DR) geçiş fidye yazılımı yayılımını (SMB 445) önlemek için kesinlikle yasaktır."
+            },
+            {
+              "action": "deny",
+              "direction": "forward",
+              "proto": "any",
+              "from": "ank-guest",
+              "to": "internal-vlans",
+              "note": "Misafir Wi-Fi (VLAN 90) iç kurumsal ağlara erişemez."
+            },
+            {
+              "action": "limit",
+              "direction": "out",
+              "proto": "tcp",
+              "port": "80,443",
+              "from": "ank-guest",
+              "to": "wan2-1gbps",
+              "note": "Kural 07: Misafir ağı yalnızca WAN2 (1 Gbps yedek hat) üzerinden Web Filter ve 50 Mbps QoS hız sınırı ile internete çıkabilir."
+            },
+            {
+              "action": "deny",
+              "direction": "in",
+              "proto": "any",
+              "from": "any",
+              "to": "any",
+              "note": "Kural 99 (Implicit Deny): Açıkça izin verilmeyen her türlü trafik engellenir ve loglanır."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "london-office",
+      "name": "03 - Londra Ofisi (Uluslararası Operasyonlar & UK-GDPR)",
+      "role": "branch",
+      "location": "London, UK",
+      "population": {
+        "staff": 168,
+        "students": 0,
+        "software": 30,
+        "rnd": 12
+      },
+      "network": {
+        "cidr": "10.30.0.0/16",
+        "dmz": false,
+        "vlans": [
+          {
+            "id": 10,
+            "name": "lon-mgmt-soc",
+            "cidr": "10.30.10.0/24",
+            "note": "18 Teknik + 15 Güvenlik Uzmanı (UK-SOC); UK-GDPR denetimi, Switch, AP ve Firewall yönetimi (FW01: 10.30.10.2, FW02: 10.30.10.3)."
+          },
+          {
+            "id": 20,
+            "name": "lon-admin",
+            "cidr": "10.30.20.0/23",
+            "note": "135 İdari Personel + IP Telefonlar (405 aktif cihaz); küresel satış, finans ve SaaS Local Breakout ağı."
+          },
+          {
+            "id": 30,
+            "name": "lon-software",
+            "cidr": "10.30.30.0/24",
+            "note": "30 Yazılım Mühendisi (90 cihaz); Bastion Host (10.30.30.10) ve AWS eu-west-2 / Azure UK geliştirme ağı."
+          },
+          {
+            "id": 40,
+            "name": "lon-rd-iso",
+            "cidr": "10.30.40.0/24",
+            "note": "12 Ar-Ge Araştırmacısı (37 cihaz); FG-200F x4 fiziksel ayrı 10G SFP+ port, Beyaz Liste ve DLP korumalı."
+          },
+          {
+            "id": 50,
+            "name": "lon-local-srv",
+            "cidr": "10.30.50.0/24",
+            "note": "Yerel RODC, Dosya, Bulut Geçidi ve UK-GDPR Denetim/Log sunucuları (23 sunucu)."
+          },
+          {
+            "id": 90,
+            "name": "lon-guest",
+            "cidr": "172.16.30.0/24",
+            "note": "Misafir Wi-Fi (~25 misafir); UK-GDPR gereği kurumsal ağdan tamamen izole, 50 Mbps QoS hız sınırlı."
+          }
+        ]
+      },
+      "bandwidth": {
+        "downMbps": 2000,
+        "upMbps": 2000,
+        "drivers": [
+          "İdari Personel Küresel CRM, Video ve M365 Local Breakout (445 Mbps)",
+          "Yazılım Ekibi Cloud DevOps, Git ve Docker (360 Mbps)",
+          "Ar-Ge Tasarım, Simülasyon ve Kasa Senkronu (180 Mbps)",
+          "Teknik Ekip ve İstanbul Merkez SD-WAN Tüneli (180 Mbps)",
+          "UK-SOC Güvenlik İzleme ve SIEM Telemetri (120 Mbps)",
+          "Misafir Wi-Fi ve Güncellemeler (65 Mbps) — Formül: 1.35 Gbps, Hat: 2+1 Gbps"
+        ]
+      },
+      "firewalls": [
+        {
+          "segment": "perimeter",
+          "chosen": {
+            "product": "FortiGate 200F (HA)",
+            "vendor": "Fortinet",
+            "throughputGbps": 3.0,
+            "priceUsd": 14500,
+            "reason": "3.0 Gbps Threat Protection ve 4.0 Gbps SSL Inspection kapasitesi ile Londra ofisinin 1.35 Gbps formül ihtiyacını ve 2+1 Gbps (BT Openreach + Virgin Media) hatlarını iki katından fazla güvenlik payıyla karşılar; Ankara şubesiyle %100 donanım standardizasyonu ve 13 Gbps sınır ötesi IPsec VPN hızı sağlar."
+          },
+          "alternatives": [
+            {
+              "product": "FortiGate 100F (HA)",
+              "vendor": "Fortinet",
+              "throughputGbps": 1.0,
+              "priceUsd": 9000,
+              "reason": "Threat Protection hızı 1.0 Gbps olduğu için Londra ofisinin 1.35 Gbps formül ihtiyacını ve 2 Gbps birincil BT Leased Line hattını tam kapasitede taşıyamaz."
+            },
+            {
+              "product": "PA-1410 (HA)",
+              "vendor": "Palo Alto Networks",
+              "throughputGbps": 4.3,
+              "priceUsd": 24000,
+              "reason": "İstanbul (400F), Ankara (200F) ve Akademik (3500F) yerleşkeleriyle kurulan tek merkezli Fortinet Security Fabric ve SD-WAN mimarisini bozmamak adına elenmiştir."
+            },
+            {
+              "product": "Quantum 6600 (HA)",
+              "vendor": "Check Point",
+              "throughputGbps": 3.7,
+              "priceUsd": 22000,
+              "reason": "10G SFP+ fiber portların opsiyonel modül gerektirmesi ve yurt dışı şubede farklı üretici yönetim maliyeti oluşturması nedeniyle elenmiştir."
+            },
+            {
+              "product": "XGS 3100 (HA)",
+              "vendor": "Sophos",
+              "throughputGbps": 2.0,
+              "priceUsd": 10500,
+              "reason": "Threat Protection hızı (2.0 Gbps) ve SSL Inspection hızı (2.47 Gbps) FortiGate 200F'in gerisinde kaldığı ve çift PSU opsiyonel olduğu için elenmiştir."
+            }
+          ],
+          "rules": [
+            {
+              "action": "allow",
+              "direction": "in",
+              "proto": "udp",
+              "port": "67:68",
+              "from": "internal-vlans",
+              "to": "lon-local-srv",
+              "note": "Londra iç VLAN istemcilerinin yerel sunuculardan DHCP ile IP alabilmesi için zorunludur."
+            },
+            {
+              "action": "allow",
+              "direction": "out",
+              "proto": "udp",
+              "port": "53,123",
+              "from": "internal-vlans",
+              "to": "lon-local-srv",
+              "note": "Yerel RODC DNS çözümlemesi ve UK-GDPR denetim logları için NTP zaman senkronizasyonu."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": "22,443,6514",
+              "from": "lon-mgmt-soc",
+              "to": "lon-servers-and-hq-siem",
+              "note": "Kural 01: Londra'daki 15 Güvenlik (UK-SOC) ve 18 Teknik uzman (VLAN 10) MFA zorunluluğu ile Londra sunucularını ve merkez SIEM/FortiAnalyzer bağlantılarını yönetir."
+            },
+            {
+              "action": "allow",
+              "direction": "out",
+              "proto": "tcp",
+              "port": "80,443",
+              "from": "lon-admin",
+              "to": "sd-wan-local-breakout",
+              "note": "Kural 02 (SaaS Local Breakout): 135 İdari personelin M365, Teams, Zoom ve Salesforce trafiği İstanbul'a dolaştırılmadan, SSL Inspection ve UK-GDPR DLP denetiminden geçerek doğrudan Londra 2 Gbps BT hattından (<5 ms) çıkarılır."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": "443,8443",
+              "from": "lon-admin",
+              "to": "istanbul-hq-ipsec",
+              "note": "Kural 03: İdari personel IKEv2 (AES-256-GCM) şifreli SD-WAN tüneli üzerinden İstanbul Merkezdeki kurumsal ERP, iç portal ve veritabanına erişir."
+            },
+            {
+              "action": "allow",
+              "direction": "out",
+              "proto": "tcp",
+              "port": "22,443",
+              "from": "lon-software",
+              "to": "sd-wan-and-uk-cloud",
+              "note": "Kural 04: 30 Yazılım mühendisi (VLAN 30) SSL Inspection, IPS ve Kod DLP ile Git, Docker ve AWS/Azure UK bölgesine erişir."
+            },
+            {
+              "action": "limit",
+              "direction": "out",
+              "proto": "tcp",
+              "port": 443,
+              "from": "lon-rd-iso",
+              "to": "wan1-whitelist",
+              "note": "Kural 05: 12 Ar-Ge araştırmacısı (VLAN 40, fiziksel ayrı x4 portu) yalnızca Beyaz Liste teknik/patent sitelerine erişebilir; dosya yükleme (Upload) Katı DLP ve Sandbox ile kapalıdır."
+            },
+            {
+              "action": "deny",
+              "direction": "forward",
+              "proto": "any",
+              "from": "lon-admin-and-software",
+              "to": "lon-rd-iso",
+              "note": "Kural 06: Diğer birimlerden (VLAN 20 ve 30) Londra Ar-Ge ağına (VLAN 40) geçiş kesinlikle yasaktır ve alarm üretir."
+            },
+            {
+              "action": "deny",
+              "direction": "forward",
+              "proto": "any",
+              "from": "lon-guest",
+              "to": "internal-vlans",
+              "note": "UK-GDPR izolasyonu: Misafir Wi-Fi (VLAN 90) hiçbir kurumsal iç ağa erişemez."
+            },
+            {
+              "action": "limit",
+              "direction": "out",
+              "proto": "tcp",
+              "port": "80,443",
+              "from": "lon-guest",
+              "to": "wan2-1gbps",
+              "note": "Kural 07: Misafir ağı yalnızca WAN2 (1 Gbps) üzerinden Web Filter ve 50 Mbps QoS sınırı ile internete çıkar."
+            },
+            {
+              "action": "deny",
+              "direction": "in",
+              "proto": "any",
+              "from": "any",
+              "to": "any",
+              "note": "Kural 99 (Implicit Deny): Açıkça izin verilmeyen tüm trafik reddedilir ve UK-GDPR denetimi için loglanır."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "academic-branch",
+      "name": "04 - Akademik Şube (Üniversite-Sanayi Kampüsü)",
+      "role": "campus",
+      "location": "İstanbul, Turkey",
+      "population": {
+        "staff": 680,
+        "students": 10000,
+        "software": 30,
+        "rnd": 40
+      },
+      "network": {
+        "cidr": "10.40.0.0/13",
+        "dmz": false,
+        "vlans": [
+          {
+            "id": 10,
+            "name": "aka-mgmt",
+            "cidr": "10.40.10.0/23",
+            "note": "60 Teknik Uzman + 650 Wi-Fi 6E AP ve Switch yönetimi (Güvenlik = 0 olduğu için İstanbul ve Ankara SOC tarafından uzaktan yönetilir)."
+          },
+          {
+            "id": 20,
+            "name": "aka-admin",
+            "cidr": "10.40.20.0/23",
+            "note": "220 İdari Personel (440 cihaz); öğrenci işleri, rektörlük ve kampüs yönetim sistemleri."
+          },
+          {
+            "id": 30,
+            "name": "aka-faculty",
+            "cidr": "10.40.30.0/22",
+            "note": "400 Akademisyen (Faculty - 1.050 cihaz); akademik araştırma ve canlı ders yayın ağı."
+          },
+          {
+            "id": 40,
+            "name": "aka-software",
+            "cidr": "10.40.40.0/24",
+            "note": "30 Yazılım Mühendisi (80 cihaz); Bastion Host (10.40.40.10) ve kampüs CI/CD ağı (10.40.45.0/24)."
+          },
+          {
+            "id": 50,
+            "name": "aka-rd-lab",
+            "cidr": "10.40.50.0/24",
+            "note": "40 Ar-Ge Araştırmacısı (90 cihaz - Ana Ar-Ge Merkezi); FG-3500F port4 fiziksel ayrı 10G SFP+ port ile 10.000 öğrenciden %100 yalıtılmış."
+          },
+          {
+            "id": 55,
+            "name": "aka-rd-gpu",
+            "cidr": "10.40.55.0/24",
+            "note": "Teknopark Prototip Lab ve Ana AI GPU Kümesi (40 sunucu); internete kapalı, Staging (10.40.50.250) üzerinden CDR ile dosya alır."
+          },
+          {
+            "id": 60,
+            "name": "aka-hpc-dc",
+            "cidr": "10.40.60.0/24",
+            "note": "Bilimsel Hesaplama (HPC) Kümesi ve Kampüs Veri Merkezi (180 sunucu, 50 Gbps LACP); öğrenci ağından doğrudan erişime kapalıdır."
+          },
+          {
+            "id": 100,
+            "name": "aka-students",
+            "cidr": "10.44.0.0/18",
+            "note": "10.000 Öğrenci (VLAN 100-110, 19.300 BYOD laptop/telefon + lab PC için 16.382 IP'lik /18 blok); İstemci İzolasyonlu (Client Isolation), /27 PBA NAT havuzlu ve 5651 loglu."
+          }
+        ]
+      },
+      "bandwidth": {
+        "downMbps": 30000,
+        "upMbps": 30000,
+        "drivers": [
+          "10.000 Öğrenci Kampüs Wi-Fi, 4K/HD Eğitim ve Web (21.50 Gbps)",
+          "400 Akademisyen Canlı Yayın, IEEE/CERN ve Bulut (2.80 Gbps)",
+          "40 Ar-Ge Araştırmacısı Büyük AI Veri Seti ve Simülasyon (1.00 Gbps)",
+          "220 İdari Personel Öğrenci İşleri, ERP ve Video (770 Mbps)",
+          "60 Teknik Ekip ve Kampüs Veri Merkezi / HPC Senkronu (720 Mbps)",
+          "30 Yazılım Mühendisi Kampüs Uygulamaları ve CI/CD (500 Mbps) — Formül: 27.29 Gbps, Hat: 30+10 Gbps"
+        ]
+      },
+      "firewalls": [
+        {
+          "segment": "perimeter",
+          "chosen": {
+            "product": "FortiGate 3500F (HA)",
+            "vendor": "Fortinet",
+            "throughputGbps": 60.0,
+            "priceUsd": 165000,
+            "reason": "60.0 Gbps Threat Protection, 52.0 Gbps SSL Inspection ve 140 Milyon eşzamanlı oturum (saniyede 1 Milyon yeni oturum) kapasitesiyle Akademik Şubenin 27.29 Gbps formül ihtiyacını, 30+10 Gbps (40 Gbps) omurga hatlarını ve 10.000 öğrencinin (~22.225 cihaz) yoğun trafiğini çoklu NP7 ASIC donanım DDoS kalkanıyla sıfır darboğazla taşır."
+          },
+          "alternatives": [
+            {
+              "product": "FortiGate 1800F (HA)",
+              "vendor": "Fortinet",
+              "throughputGbps": 15.0,
+              "priceUsd": 78000,
+              "reason": "Threat Protection hızı 15.0 Gbps ve SSL Inspection hızı 20.0 Gbps olduğu için Akademik Şubenin 27.29 Gbps formül ihtiyacında ve 30 Gbps birincil hattında ~12 Gbps darboğaz yaratır."
+            },
+            {
+              "product": "PA-5430 (HA)",
+              "vendor": "Palo Alto Networks",
+              "throughputGbps": 38.5,
+              "priceUsd": 220000,
+              "reason": "SSL şifre çözme açıkken hızı ~25.0 Gbps seviyesine düşerek 27.29 Gbps ihtiyacın altında kalmakta, eşzamanlı oturum kapasitesi (15 Milyon) 3500F'in (140 Milyon) onda biri seviyesinde kalmakta ve maliyeti çok yüksek olmaktadır."
+            },
+            {
+              "product": "Quantum 16200 (HA)",
+              "vendor": "Check Point",
+              "throughputGbps": 20.0,
+              "priceUsd": 185000,
+              "reason": "Threat Prevention (20.0 Gbps) ve SSL Inspection (~18.0 Gbps) hızları Akademik Şubenin 27.29 Gbps gereksiniminin ve 30 Gbps birincil hattının altında kalmaktadır."
+            },
+            {
+              "product": "Secure Firewall 4145 (HA)",
+              "vendor": "Cisco",
+              "throughputGbps": 35.0,
+              "priceUsd": 195000,
+              "reason": "SSL Inspection hızı 16.0 Gbps ile sınırlı olduğundan 27.29 Gbps şifreli kampüs trafiğini çözemez."
+            }
+          ],
+          "rules": [
+            {
+              "action": "allow",
+              "direction": "in",
+              "proto": "udp",
+              "port": "67:68",
+              "from": "all-campus-vlans",
+              "to": "dhcp-server",
+              "note": "Kampüsteki 22.225 cihazın (10.000 öğrenci BYOD dahil) IP alabilmesi için DHCP servisi açık tutulmalıdır; kapatılırsa kampüs Wi-Fi ağı tamamen durur."
+            },
+            {
+              "action": "allow",
+              "direction": "out",
+              "proto": "udp",
+              "port": "53,123",
+              "from": "all-campus-vlans",
+              "to": "dns-and-ntp",
+              "note": "DNS Sinkhole filtreli iç ad çözümleme ve 5651 sayılı yasa uyumlu zaman damgalı loglama için NTP senkronizasyonu."
+            },
+            {
+              "action": "allow",
+              "direction": "in",
+              "proto": "tcp",
+              "port": "22,443,6514",
+              "from": "istanbul-and-ankara-soc-ipsec",
+              "to": "aka-mgmt",
+              "note": "Kural 01: Akademik şubede yerel güvenlik personeli (Security = 0) bulunmadığı için FortiGate 3500F HA çifti IPsec üzerinden İstanbul (25 uzman) ve Ankara (15 uzman) Merkez SOC tarafından FortiManager/SIEM ile 7/24 yönetilir."
+            },
+            {
+              "action": "allow",
+              "direction": "forward",
+              "proto": "tcp",
+              "port": "22,443",
+              "from": "aka-mgmt",
+              "to": "campus-switches-ap-hpc",
+              "note": "Kural 02: Kampüsteki 60 Teknik uzman (VLAN 10) yalnızca kampüs switch, 650 adet Wi-Fi 6E AP ve HPC sunucu altyapısını yönetir."
+            },
+            {
+              "action": "allow",
+              "direction": "out",
+              "proto": "tcp",
+              "port": "80,443",
+              "from": "aka-faculty-and-hpc",
+              "to": "sd-wan-30plus10gbps",
+              "note": "Kural 03: 400 Akademisyen (VLAN 30) ve Bilimsel Hesaplama Kümesi (VLAN 60 HPC), SSL Inspection, IPS ve Garantili 5 Gbps (Öncelik 1 QoS) ile bilimsel veri havuzlarına (IEEE/CERN) ve canlı ders yayınlarına erişir."
+            },
+            {
+              "action": "allow",
+              "direction": "out",
+              "proto": "tcp",
+              "port": "80,443,8443",
+              "from": "aka-admin",
+              "to": "sd-wan-and-istanbul-hq",
+              "note": "Kural 04: 220 İdari personel (VLAN 20) Öğrenci Bilgi Sistemi, İstanbul Merkez ERP, M365 ve web servislerine SSL Inspection ve IPS/AV ile erişir."
+            },
+            {
+              "action": "allow",
+              "direction": "out",
+              "proto": "tcp",
+              "port": "22,443",
+              "from": "aka-software",
+              "to": "sd-wan-and-cloud",
+              "note": "Kural 05: 30 Yazılım mühendisi (VLAN 40) SSL Inspection, IPS ve Kod DLP ile Git, Docker, K8s ve paket depolarına erişir."
+            },
+            {
+              "action": "limit",
+              "direction": "out",
+              "proto": "tcp",
+              "port": 443,
+              "from": "aka-rd-lab",
+              "to": "wan1-whitelist",
+              "note": "Kural 06: 40 Ar-Ge araştırmacısı (VLAN 50, fiziksel ayrı port4 10G SFP+) yalnızca Beyaz Liste bilimsel/patent sitelerine erişebilir; dosya yükleme (Upload) Katı DLP ve Sandbox ile kapalıdır."
+            },
+            {
+              "action": "deny",
+              "direction": "forward",
+              "proto": "any",
+              "from": "aka-students",
+              "to": "internal-vlans-10-to-60",
+              "note": "Kural 07: 10.000 öğrencinin bulunduğu VLAN 100-110 (10.44.0.0/18) ağından Akademisyen, İdari, Yazılım, 40 kişilik Ar-Ge ve HPC sunucu ağlarına geçiş kesinlikle yasaktır ve alarm üretir."
+            },
+            {
+              "action": "deny",
+              "direction": "out",
+              "proto": "any",
+              "from": "all-campus-vlans",
+              "to": "p2p-torrent-cryptomining-tor",
+              "note": "Kural 08: Kampüs genelinde 30+10 Gbps omurgayı korumak için BitTorrent, P2P, kripto madenciliği ve Tor trafiği Application Control ve DNS Sinkhole ile sıfır baytta bloklanır."
+            },
+            {
+              "action": "limit",
+              "direction": "out",
+              "proto": "tcp",
+              "port": "80,443",
+              "from": "aka-students",
+              "to": "sd-wan-30plus10gbps",
+              "note": "Kural 09: 10.000 öğrenci Web Filter, IPS, /27 (32 gerçek IP) PBA NAT havuzu (port tükenmesini önler), kişi başı 25 Mbps hız sınırı (toplam 20 Gbps tavan; WAN1 koparsa 5 Gbps tavan) ve 5651 loglama ile internete çıkar."
+            },
+            {
+              "action": "deny",
+              "direction": "in",
+              "proto": "any",
+              "from": "any",
+              "to": "any",
+              "note": "Kural 99 (Implicit Deny): Açıkça izin verilmeyen her türlü trafik çoklu NP7 donanım katmanında düşürülür ve loglanır."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "remoteAccess": {
+    "type": "role-based-vpn",
+    "note": "WAN arayüzlerinden yönetim erişimi (HTTPS, SSH, Ping) kesinlikle kapalıdır (Trusted Hosts). Tüm yerleşkeler Hub-and-Spoke SD-WAN ve IKEv2 (AES-256-GCM) IPsec VPN tünelleriyle İstanbul Merkez Hub (FortiGate 400F HA) ve Ankara DR Hub (FortiGate 200F HA) kümelerine bağlıdır. Uzaktan yönetim ve geliştirici erişimi yalnızca RADIUS/LDAP + MFA doğrulamalı rol tabanlı VPN ve her şubedeki Bastion Host (Jump Server - 10.x.30.10) üzerinden yapılır; tüm terminal oturumları merkezi SIEM'de kaydedilir."
+  },
+  "monitoring": {
+    "siem": "Merkezi SIEM & SOAR, FortiAnalyzer ve FortiManager (İstanbul Merkez VLAN 10 üzerinde konumlandırılmış) + Zabbix/PRTG (30 saniyelik SNMPv3 & Streaming Telemetry sorguları) + her gece saat 03:00'te şifreli kasaya (Vault) otomatik konfigürasyon yedeklemesi ve kural değişikliklerinde otomatik Önceki/Sonraki Hali (Diff) bildirimi.",
+    "owner": "Toplam 55 Güvenlik Uzmanı (25 İstanbul Merkez SOC, 15 Ankara DR SOC, 15 Londra UK-SOC) ve 133 Teknik Uzman (35 İstanbul, 20 Ankara, 18 Londra, 60 Akademik Şube). Akademik Şubede yerel güvenlik personeli (Security = 0) bulunmadığı için 10.750 kişilik kampüsün FortiGate 3500F HA kümesi 7/24 İstanbul ve Ankara SOC ekipleri tarafından uzaktan izlenir. Günlük (09:00 ve vardiya değişimi), haftalık (Cuma Shadow IT ve kapasite), aylık (90 gün Hit Count=0 kural temizliği ve PSIRT yama) ve çeyreklik (canlı HA/WAN kablo çekme tatbikatı) denetimler uygulanır.",
+    "alertSink": "P1 Kritik (HA çökmesi, fidye yazılımı, veri sızıntısı: ≤5 dk ilk müdahale, ≤30 dk izolasyon): Otomatik Telefon Araması + SMS + SIEM Alarmı ve SOAR ile otomatik Karantina VLAN'ına (VLAN 99) alma; P2 Yüksek (Tek İSS kopması, DDoS, port taraması: ≤15 dk müdahale): SMS + SOC Anlık Mesajlaşma Kanalı + E-posta; P3 Orta (CPU/RAM >%75: ≤1 saat): SOC Ticket + E-posta; P4 Düşük (≤4 saat): Günlük Özet Raporu.",
+    "appVsSecurity": "Ağ ve donanım performansı (CPU >%70/%85, RAM >%75/%85, WAN bant genişliği >%80/%92, SD-WAN Latency >80ms/150ms, PSU/Fan/Isı >65°C) Zabbix/PRTG (NMS) üzerinden 133 kişilik Teknik/Ağ ekibine yönlendirilirken; siber güvenlik olayları (1 dakikada >10 başarısız giriş Brute-Force 24 saat otomatik Blocklist, DNS C2 Sinkhole tetiklemesi ve SOAR port karantinası, VLAN'lar arası SMB/Port Scan yanal hareket ve DLP/CDR alarmları) Syslog/SIEM üzerinden 55 kişilik SOC ekibine düşer."
+  },
+  "cveWatch": [
+    {
+      "id": "CVE-2024-21762",
+      "product": "Fortinet FortiOS SSL VPN (Out-of-bounds Write RCE)",
+      "status": "patched",
+      "note": "WAN arayüzlerinde yönetim kapalıdır ve uzaktan erişimde SSL VPN yerine IKEv2 IPsec + MFA tercih edilerek yüzey daraltılmıştır. Geçici önlem olarak FortiGuard IPS imzası ve Geo-IP kısıtlaması uygulanmış; kalıcı çözüm olarak tüm FortiGate (400F, 200F, 3500F) kümeleri aylık PSIRT bakım penceresinde Önerilen Kararlı Sürüme (Mature Release, SHA-256 doğrulanmış) güncellenmiştir."
+    },
+    {
+      "id": "CVE-2024-3400",
+      "product": "Palo Alto Networks PAN-OS GlobalProtect (Command Injection)",
+      "status": "not-affected",
+      "note": "Yazılım ekibi (150 kişi) iç segmentasyonunda kullanılan Palo Alto PA-460 HA çifti yalnızca iç ağda (ISFW / DevOps Zone) konumlandırılmıştır ve üzerinde GlobalProtect özelliği aktif değildir; yine de cihazlar tavsiye edilen yamalı PAN-OS sürümünde tutulmaktadır."
+    }
+  ]
+}

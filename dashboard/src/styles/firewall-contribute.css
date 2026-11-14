@@ -10,11 +10,14 @@
 @keyframes fw-ring { 0% { opacity: .7; transform: scale(.96); } 70%, 100% { opacity: 0; transform: scale(1.08); } }
 
 /* modal */
-.cm-backdrop { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 16px; background: rgba(10,10,12,.55); backdrop-filter: blur(6px); animation: cm-fade .2s both; }
 .cm { position: relative; width: min(680px, 100%); max-height: min(88vh, 820px); overflow-y: auto; padding: 30px 30px 26px; border: 1px solid var(--iux-border); border-radius: 20px; background: var(--iux-background); color: var(--iux-foreground); box-shadow: 0 40px 90px -30px rgba(0,0,0,.55); animation: cm-pop .38s cubic-bezier(.2,1.2,.4,1) both; outline: none; }
+dialog.cm { position: fixed; inset: 0; margin: auto; }
+dialog.cm::backdrop { background: rgba(10,10,12,.55); backdrop-filter: blur(6px); animation: cm-fade .2s both; }
 .cm::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 4px; border-radius: 20px 20px 0 0; background: linear-gradient(90deg, #f36c21, #ffb36b, #f36c21); background-size: 200% 100%; animation: cm-shine 4s linear infinite; }
 .cm-x { position: absolute; top: 14px; right: 14px; display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid var(--iux-border); border-radius: 99px; background: var(--iux-card); color: inherit; cursor: pointer; transition: transform .2s, border-color .2s; }
 .cm-x:hover { transform: rotate(90deg); border-color: #f36c21; color: #f36c21; }
+.cm-x:focus-visible { outline: 3px solid #f36c21; outline-offset: 3px; }
+@media (pointer: coarse) { .cm-x { width: 46px; height: 46px; } }
 .cm-eyebrow { color: #f36c21; font-size: 10px; font-weight: 700; letter-spacing: .17em; text-transform: uppercase; }
 .cm-head h2 { margin: 8px 0 6px; font-size: clamp(24px, 4vw, 32px); font-weight: 650; letter-spacing: -.045em; line-height: 1.1; }
 .cm-head p { margin: 0; color: var(--iux-muted-foreground); font-size: 13px; }
@@ -45,7 +48,7 @@
 @keyframes cm-up { from { opacity: 0; transform: translateY(8px); } }
 @keyframes cm-shine { to { background-position: 200% 0; } }
 @media (max-width: 520px) { .cm { padding: 24px 18px; } .cm-steps { grid-template-columns: 1fr; } }
-@media (prefers-reduced-motion: reduce) { .cm-backdrop, .cm, .cm::before, .cm li, .fw-cta::after { animation: none !important; } .fw-cta, .cm a, .cm-x { transition: none; } }
+@media (prefers-reduced-motion: reduce) { dialog.cm::backdrop, .cm, .cm::before, .cm li, .fw-cta::after { animation: none !important; } .fw-cta, .cm a, .cm-x { transition: none; } }
 
 /* gap impact modal */
 .gm { width: min(620px, 100%); }

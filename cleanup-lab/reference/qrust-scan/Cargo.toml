@@ -1,0 +1,19 @@
+[package]
+name = "qrust-scan"
+version = "0.1.0"
+edition = "2021"
+description = "Cleanup Lab disk-usage scan engine: parallel walk, allocated-size-on-disk, size tree, glob seek, cleanup candidates (dua-cli scan/seek logic, cross-platform)."
+
+[lib]
+name = "qrust_scan"
+
+[dependencies]
+jwalk = "0.8"
+rayon = "1.10"
+globset = "0.4"
+ignore = "0.4"
+
+# Allocated size and hard-link identity on Windows. On unix the same numbers come
+# straight from `std::os::unix::fs::MetadataExt`, so nothing extra is linked there.
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62", features = ["Win32_Foundation", "Win32_Storage_FileSystem"] }

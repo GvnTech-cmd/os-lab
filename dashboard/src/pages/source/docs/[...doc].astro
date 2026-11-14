@@ -1,0 +1,11 @@
+---
+import Base from "../../../layouts/Base.astro";
+import { SourceDocs } from "../../../views/source/docs";
+import { SOURCE_DOCS, sourceDocHtml } from "../../../lib/source-docs";
+const files = import.meta.glob<{ compiledContent: () => Promise<string> }>("../../../../../source-lab/*.md", { eager: true });
+export function getStaticPaths() { return [{ params: { doc: undefined } }, ...SOURCE_DOCS.map(doc => ({ params: { doc: doc.slug } }))]; }
+const doc = SOURCE_DOCS.find(item => item.slug === Astro.params.doc) ?? SOURCE_DOCS[0];
+const entry = Object.entries(files).find(([path]) => path.endsWith(`/${doc.file}`));
+const html = sourceDocHtml(entry ? await entry[1].compiledContent() : "", "en");
+---
+<Base title={`Source Lab · ${doc.title}`}><SourceDocs html={html} slug={doc.slug} client:only="react" /></Base>

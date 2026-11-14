@@ -1,0 +1,127 @@
+{
+  "version": 1,
+  "engines": {
+    "docker": {
+      "build-cache": {
+        "id": "containers.docker.build-cache",
+        "preview": [
+          "buildx",
+          "du",
+          "--format=json"
+        ],
+        "prune": [
+          "builder",
+          "prune",
+          "--force"
+        ],
+        "risk": "medium"
+      },
+      "dangling-images": {
+        "id": "containers.docker.dangling-images",
+        "preview": [
+          "image",
+          "ls",
+          "--filter",
+          "dangling=true",
+          "--format",
+          "{{json .}}"
+        ],
+        "prune": [
+          "image",
+          "prune",
+          "--force"
+        ],
+        "risk": "low"
+      },
+      "stopped-containers": {
+        "id": "containers.docker.stopped-containers",
+        "preview": [
+          "ps",
+          "-a",
+          "--filter",
+          "status=exited",
+          "--format",
+          "{{json .}}"
+        ],
+        "prune": [
+          "container",
+          "prune",
+          "--force"
+        ],
+        "risk": "medium"
+      },
+      "dangling-volumes": {
+        "id": "containers.docker.dangling-volumes",
+        "preview": [
+          "volume",
+          "ls",
+          "--filter",
+          "dangling=true",
+          "--format",
+          "{{json .}}"
+        ],
+        "prune": [
+          "volume",
+          "prune",
+          "--all",
+          "--force"
+        ],
+        "risk": "high"
+      }
+    },
+    "podman": {
+      "dangling-images": {
+        "id": "containers.podman.dangling-images",
+        "preview": [
+          "image",
+          "ls",
+          "--filter",
+          "dangling=true",
+          "--format",
+          "json"
+        ],
+        "prune": [
+          "image",
+          "prune",
+          "--force"
+        ],
+        "risk": "low"
+      },
+      "stopped-containers": {
+        "id": "containers.podman.stopped-containers",
+        "preview": [
+          "ps",
+          "-a",
+          "--filter",
+          "status=exited",
+          "--format",
+          "json"
+        ],
+        "prune": [
+          "container",
+          "prune",
+          "--force"
+        ],
+        "risk": "medium"
+      },
+      "dangling-volumes": {
+        "id": "containers.podman.dangling-volumes",
+        "preview": [
+          "volume",
+          "ls",
+          "--filter",
+          "dangling=true",
+          "--format",
+          "json"
+        ],
+        "prune": [
+          "volume",
+          "prune",
+          "--all",
+          "--force"
+        ],
+        "risk": "high"
+      }
+    }
+  }
+}

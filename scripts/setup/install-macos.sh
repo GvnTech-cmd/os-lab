@@ -226,10 +226,11 @@ provision_venv() {
   fi
   # shellcheck disable=SC1091
   . "$VENV_DIR/bin/activate"
-  python -m pip install --quiet --upgrade pip wheel 2>/dev/null || true
   if [ "$MINIMAL" -eq 1 ]; then
     ok "minimal mode — web console runs on the standard library, no extra deps"
+    python "$REPO_ROOT/source-lab/run.py" doctor || warn "Source Lab needs Python 3.11+ and writable private storage"
   elif [ -f "$req" ]; then
+    python -m pip install --quiet --upgrade pip wheel 2>/dev/null || true
     step "installing tool dependencies (this can take a few minutes)"
     python -m pip install --quiet -r "$req" \
       && ok "tool dependencies installed" \

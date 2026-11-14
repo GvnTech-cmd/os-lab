@@ -20,6 +20,10 @@ The lab runs in several modes depending on host capabilities.
   that provisions a VirtualBox/Podman userland lab without elevation; runbook
   [[android-lab/lab/README-WINDOWS.md]]. It is UTF-8 **with BOM** so it parses
   under Windows PowerShell 5.1, and defines `Send-VmKeyString` at script scope.
+  `lab.ps1 win-preflight` runs [[android-lab/lab/scripts/win_preflight.py]]
+  (PENT-23): a read-only, no-admin VT-x/Hyper-V/VirtualBox/WSL2/Podman
+  readiness check that marks each fix admin or no-admin and recommends a lab
+  model; scenarios replay from `tests/fixtures/win_preflight/`.
 - **Ubuntu Server:** host provisioning via [[android-lab/lab/scripts/setup-ubuntu.sh]]
   and runbook [[android-lab/lab/README-UBUNTU.md]].
 

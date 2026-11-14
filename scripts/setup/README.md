@@ -70,3 +70,21 @@ Environment overrides (all hosts): `OSLAB_REPO`, `OSLAB_DIR`, `OSLAB_BRANCH`,
 - **Windows PowerShell 5.1** is supported; `install.ps1` is saved UTF-8 with a
   BOM so 5.1 parses it correctly.
 - Re-running is the supported update path — the installer is idempotent.
+
+## Source Lab
+
+The desktop runtime includes Source Lab's Python engine, schemas, browser probe
+and console adapters; it does not require the private source repository. Source
+private storage and resource inputs are never staged, even if accidentally tracked.
+Updates preserve existing private Source storage.
+
+Minimal mode uses the standard library and committed dashboard, skips pip
+upgrades/dependency installs, and reports Source readiness without downloads.
+Source Lab requires Python 3.11+ and writable private storage. Set
+`SOURCE_LAB_PYTHON` to select another supported interpreter. Git is needed only
+for repository acquisition; optional tree-sitter grammars improve parsing, and
+Playwright plus Chromium are installed separately for live browser collection.
+Static detection never requires Node, containers or virtualization.
+
+Native macOS/Windows installer acceptance remains a release verification step;
+Linux packaging tests do not establish native host support.

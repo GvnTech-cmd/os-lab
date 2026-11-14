@@ -1,5 +1,8 @@
 ---
 import Base from "../layouts/Base.astro";
 import HostPage from "../views/host-page";
+import PublicHome from "../views/public-home";
 ---
-<Base title="This computer"><HostPage client:only="react" /></Base>
+<Base title={import.meta.env.PUBLIC_SITE_MODE === "pages" ? "Home" : "This computer"} description={import.meta.env.PUBLIC_SITE_MODE === "pages" ? "Download os-lab, install the local security lab console, and explore Firewall Lab." : undefined}>
+  {import.meta.env.PUBLIC_SITE_MODE === "pages" ? <PublicHome client:only="react" /> : <HostPage client:only="react" />}
+</Base>

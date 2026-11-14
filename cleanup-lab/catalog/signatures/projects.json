@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "family": "projects",
+  "entries": [
+    {"id":"projects.node-modules","names":["node_modules"],"ecosystem":"Node.js","regenerate":"npm / pnpm / yarn / bun install","siblingMarkers":["package.json"]},
+    {"id":"projects.rust-target","names":["target"],"ecosystem":"Rust","regenerate":"cargo build","siblingMarkers":["Cargo.toml"]},
+    {"id":"projects.maven-target","names":["target"],"ecosystem":"Maven","regenerate":"mvn package","siblingMarkers":["pom.xml"]},
+    {"id":"projects.gradle-cache","names":[".gradle"],"ecosystem":"Gradle","regenerate":"gradle build","siblingMarkers":["build.gradle","build.gradle.kts","settings.gradle","settings.gradle.kts"]},
+    {"id":"projects.gradle-build","names":["build"],"ecosystem":"Gradle","regenerate":"gradle build","siblingMarkers":["build.gradle","build.gradle.kts"]},
+    {"id":"projects.python-venv","names":[".venv","venv"],"ecosystem":"Python","regenerate":"python -m venv and reinstall requirements","innerMarkers":["pyvenv.cfg"]},
+    {"id":"projects.python-tox","names":[".tox"],"ecosystem":"Python","regenerate":"tox","siblingMarkers":["tox.ini","pyproject.toml","setup.cfg"]},
+    {"id":"projects.python-pycache","names":["__pycache__"],"ecosystem":"Python","regenerate":"Recreated on import","siblingMarkers":["pyproject.toml","setup.py","setup.cfg"]},
+    {"id":"projects.next-build","names":[".next"],"ecosystem":"Next.js","regenerate":"next build","siblingMarkers":["package.json"]},
+    {"id":"projects.nuxt-build","names":[".nuxt",".output"],"ecosystem":"Nuxt","regenerate":"nuxt build","siblingMarkers":["nuxt.config.ts","nuxt.config.js"]},
+    {"id":"projects.svelte-kit","names":[".svelte-kit"],"ecosystem":"SvelteKit","regenerate":"vite build","siblingMarkers":["svelte.config.js","svelte.config.ts"]},
+    {"id":"projects.js-tool-cache","names":[".turbo",".parcel-cache",".angular"],"ecosystem":"JavaScript tooling","regenerate":"Rebuilt on next build","siblingMarkers":["package.json"]},
+    {"id":"projects.dart-tool","names":[".dart_tool"],"ecosystem":"Dart/Flutter","regenerate":"dart pub get","siblingMarkers":["pubspec.yaml"]},
+    {"id":"projects.swiftpm-build","names":[".build"],"ecosystem":"SwiftPM","regenerate":"swift build","siblingMarkers":["Package.swift"]},
+    {"id":"projects.zig-cache","names":["zig-cache",".zig-cache","zig-out"],"ecosystem":"Zig","regenerate":"zig build","siblingMarkers":["build.zig"]},
+    {"id":"projects.elixir-build","names":["_build","deps"],"ecosystem":"Elixir","regenerate":"mix deps.get and mix compile","siblingMarkers":["mix.exs"]},
+    {"id":"projects.terraform-providers","names":[".terraform"],"ecosystem":"Terraform","regenerate":"terraform init","siblingMarkers":["main.tf","versions.tf","terraform.tf"]},
+    {"id":"projects.cachedir-tag","names":[],"ecosystem":"Tagged cache","regenerate":"The tool that wrote CACHEDIR.TAG","cachedirTag":true}
+  ]
+}

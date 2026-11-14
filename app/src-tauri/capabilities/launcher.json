@@ -16,6 +16,8 @@
     "allow-console-choose-files-dir",
     "allow-python-install",
     "allow-container-status",
+    "allow-container-warning-hidden",
+    "allow-container-warning-set-hidden",
     "allow-container-recover",
     "allow-container-get",
     "allow-app-update-check",

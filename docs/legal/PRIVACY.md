@@ -1,6 +1,6 @@
 # Privacy Notice
 
-_Last updated: November 3, 2026_
+_Last updated: November 9, 2026_
 
 os-lab is software you run yourself. The project does not operate a hosted
 service, has no accounts, and **does not collect telemetry, analytics or crash
@@ -24,10 +24,13 @@ requests of its own.
 | Data | Where | How long |
 |------|-------|----------|
 | Host report: OS, CPU, memory, disk, KVM, WSL distributions, installed tools | Console memory | Recomputed every few seconds; not written to disk |
-| Lab jobs: command, output (secrets from lab `.env` files are redacted), exit status | Console memory | The 50 most recent, until the console stops |
+| Lab jobs: command, output (configured credentials are redacted), exit status | Console memory; Source Lab also journals under private storage `control/jobs.json` | The 50 most recent; Source records remain until the operator removes them |
 | Android workbench log | Console memory | Last 1,000 lines, until cleared or the console stops |
 | APKs you upload | `android-lab/lab/apks/` | Until you delete them |
 | Analysis results, reports, traffic captures | `android-lab/lab/artifacts/` and each lab's folders | Until you delete them (`make clean` for Android) |
+| Source Lab analysis reports, cloned workspaces, merged lab extensions and runtime sessions | `source-lab/storage/` by default, or the operator-configured storage root | Until you delete them; the project does not receive them |
+| Source Lab opt-in import journals and rollback backups | Private storage `control/imports/` and `control/import-backups/` | Retained after import/rollback until the operator removes them |
+| Source Lab input catalogs and local targets | Operator-provided resource/target paths; no third-party datasets are bundled | Managed by the operator |
 | Lab configuration, including passwords you set | Each lab's `.env` | Until you change it; shown masked in the console |
 | VM disks, backups and shared folders | Each lab's `storage/`, `backups/`, `shared/` | Until you delete them |
 
@@ -47,6 +50,19 @@ preferences in your browser's local storage, which never leave your browser:
 
 Clearing your browser's site data removes them.
 
+Source Lab page selections (target, repository, file, tab, node and filters) can
+appear in the local page URL and browser history. No graph or provider snapshot
+is saved to browser storage by Source Lab. Clear browser history to remove those
+URL records.
+
+The **How to use** page builds a prompt in browser memory from your task and
+public project context. It does not save the task, include live host data, call an
+LLM or send the task to a server. Submitting copies the generated prompt to your
+system clipboard if permission allows; it remains there according to your
+system/clipboard-history settings. Clear it there if needed. If you paste it into
+an external LLM, that provider handles it under its own policies; review the
+prompt and remove private data before sharing.
+
 ## 4. Network connections made on your behalf
 
 Installing, updating and running the labs contacts third parties. Each one
@@ -63,7 +79,14 @@ receives your IP address and the request, under its own privacy policy:
   download installation media or recovery images.
 - **Google** (`dl.google.com`): Android platform tools, downloaded when `adb`
   is missing (set `OSLAB_NO_DOWNLOAD=1` to prevent it), and emulator images.
-- **The targets you analyse** and any service a guest or app connects to.
+- **Source Lab repository acquisition and metadata**: explicitly invoking its crawler
+  or merge acquisition can contact GitHub for selected repositories. Local static
+  detection and structural mapping do not contact a network service. Source Lab
+  setup and readiness checks do not download or install software.
+- **The targets you analyse** and any service a guest or app connects to. Source
+  Lab's optional live browser canary visits only the test URL the operator passes;
+  its session events and artifacts stay in local output storage. Simulated canary
+  fallback is labeled and excluded from runtime correlation.
 
 **Docker-Android analytics.** The Android emulator image reports usage analytics
 to its maintainers (Google Forms) unless disabled, including the host's OS
@@ -88,3 +111,11 @@ The maintainers do not receive or hold data from your installation. Questions
 about this notice: [GitHub issues](https://github.com/keyvanarasteh/os-lab/issues).
 If you contact the project through GitHub, GitHub's privacy statement applies
 to that communication.
+
+Source Lab runtime settings and its managed session signing key stay in private
+storage under `control/`. Key files use mode 0600 where supported. Keys never
+appear in API responses. Environment-owned keys remain operator-managed.
+Changing a signing key prevents verification of prior sessions with that key;
+retain originals securely if earlier evidence must remain verifiable. Source
+jobs report interrupted work after a console restart; partial outputs remain
+local for review. Explicit browser canary runs contact the selected test URL.

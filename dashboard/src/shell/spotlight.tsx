@@ -20,6 +20,7 @@ import { cn, type SidebarGroup } from "./sidebar";
 
 export interface SpotlightRecord {
   id: string;
+  href?: string;
   /** Id of the sidebar section this record belongs to. */
   section: string;
   title: string;
@@ -52,6 +53,8 @@ export interface SpotlightMeta {
 
 interface SpotlightProps {
   open: boolean;
+  onQueryChange?: (query: string) => void;
+  searchError?: string;
   onOpenChange: (open: boolean) => void;
   groups: SidebarGroup[];
   /** Descriptions and aliases per section id, so "connector" finds MCP servers. */
@@ -308,9 +311,10 @@ export function Spotlight({
   commands = [],
   records,
   tips = [],
-  onNavigate
+  onNavigate, onQueryChange, searchError
 }: SpotlightProps) {
   const [query, setQuery] = useState("");
+  useEffect(() => { onQueryChange?.(query); }, [query, onQueryChange]);
   const [drill, setDrill] = useState<string | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
   const [recents, setRecents] = useState<Recent[]>([]);
@@ -579,6 +583,7 @@ export function Spotlight({
             <kbd className={kbd}>Esc</kbd>
           </div>
 
+          {searchError && <p role="status" className="px-4 py-2 text-sm">{searchError}</p>}
           <div
             ref={listRef}
             id="spotlight-list"

@@ -8,10 +8,11 @@ export function getStaticPaths() {
     { params: { lab: "windows" }, props: { title: "Windows Lab" } },
     { params: { lab: "linux" }, props: { title: "Linux Lab" } },
     { params: { lab: "ios" }, props: { title: "iOS Lab" } },
+    { params: { lab: "source" }, props: { title: "Source Lab" } },
     { params: { lab: "macos" }, props: { title: "macOS Lab" } }
   ];
 }
-const { lab } = Astro.params as { lab: "android" | "windows" | "linux" | "ios" | "macos" };
+const { lab } = Astro.params as { lab: "android" | "windows" | "linux" | "ios" | "macos" | "source" };
 const { title } = Astro.props;
 ---
 <Base title={title}><LabPage lab={lab} client:only="react" /></Base>

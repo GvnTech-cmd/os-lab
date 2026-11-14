@@ -30,11 +30,14 @@ ACTIONS = ("allow", "deny", "reject", "limit")
 
 def collect() -> dict:
     rows: list[dict] = []
+    contributors: list[dict] = []
     for folder in sorted(p for p in COMPANIES.iterdir() if p.is_dir()):
         manifest = folder / "company.json"
         if not manifest.exists():
             continue
         c = json.loads(manifest.read_text(encoding="utf-8"))
+        if c.get("author", {}).get("github") and c.get("author", {}).get("name") != "Seed Example":
+            contributors.append({"slug": c["slug"], "company": c["name"], "github": c["author"]["github"]})
         for b in c["branches"]:
             for fw in b["firewalls"]:
                 action_counts = Counter(r["action"] for r in fw["rules"])
@@ -80,6 +83,7 @@ def collect() -> dict:
 
     return {
         "generatedBy": "firewall-lab/scripts/catalog.py",
+        "contributors": contributors,
         "summary": {
             "companies": len({r["companySlug"] for r in rows}),
             "branches": len({(r["companySlug"], r["branchId"]) for r in rows}),

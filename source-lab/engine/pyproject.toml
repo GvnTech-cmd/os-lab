@@ -1,0 +1,10 @@
+[project]
+name = "os-lab-source-engine"
+version = "0.1.0"
+description = "Source Lab multi-platform static analysis and evidence engine"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.pytest.ini_options]
+pythonpath = [".", "tests"]
+testpaths = ["tests"]

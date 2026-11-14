@@ -14,7 +14,7 @@ const { title, description = "os-lab: host overview and every lab in one console
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="description" content={description} />
     <meta name="theme-color" content="#ffffff" />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href={`${import.meta.env.BASE_URL}favicon.svg`} type="image/svg+xml" />
     <title>{title} · os-lab</title>
     <script>import "../i18n/client";</script>
     <script is:inline>

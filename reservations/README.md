@@ -3,7 +3,7 @@
 This folder is how a contributor **claims a roadmap task so nobody else takes it**.
 Each reservation is one file: `reservations/<TASK-ID>.json`. The task ids are the ones
 on the dashboard **Contribute → Roadmap & TODOs** tab (and in [`CONTRIBUTING.md`](../CONTRIBUTING.md)),
-e.g. `PENT-02`, `OS-11`, `FW-16`.
+e.g. `PENT-02`, `OS-11`, `FW-16`, Cleanup Lab `CLN-04`, or Source Lab bonus `SRC-B01`.
 
 The dashboard reads every file here at build time and shows each task as
 **Available**, **Reserved**, **PR open** or **Done**. One file per task means two people
@@ -46,7 +46,7 @@ may be released by a maintainer.
 
 ## Students (midterm)
 
-If this is your **MYO062 / BGT207 / MYO203 midterm** reservation, add `"course"` and, when several
+If this is your **MYO062 / BGT207 / MYO203 midterm** reservation (or a **MYO063** Cleanup Lab bonus task), add `"course"` and, when several
 exam options map to the same task id, put your option number in `"note"`
 (e.g. `"note": "MYO062 vize seçenek 17"`). See the course's `vize/vize-projesi.md` for the options
 and the PR acceptance gate (verification + proof video required).

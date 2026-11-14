@@ -33,24 +33,29 @@ export function useRun() {
   const [apk] = useApk();
   const { data } = androidLogsStore.use();
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const run = async (action: string, openConsole = true) => {
+    if (submitting || data?.running) return;
     setError(null);
+    setSubmitting(true);
     try {
       await api.run(action, apk);
       await androidLogsStore.refresh();
       if (openConsole) window.location.assign(localePath("/android/console/", localeFromPath(window.location.pathname)));
     } catch (e) {
       setError(message(e));
+    } finally {
+      setSubmitting(false);
     }
   };
-  return { run, running: Boolean(data?.running), error };
+  return { run, running: Boolean(data?.running) || submitting, error };
 }
 
 export function RunButton({ action, label, variant }: { action: string; label?: string; variant?: "brand" | "outline" }) {
-  const { run, running } = useRun();
+  const { run, running, error } = useRun();
   const a = ACTIONS[action];
   const brand = (variant ?? (a.primary ? "brand" : "outline")) === "brand";
-  return (
+  return (<>
     <button
       type="button"
       disabled={running}
@@ -65,7 +70,8 @@ export function RunButton({ action, label, variant }: { action: string; label?: 
       <PlayIcon size={14} weight="fill" />
       {label ?? a.label}
     </button>
-  );
+    {error ? <Status value={{ ok: false, text: error }} /> : null}
+  </>);
 }
 
 export function ActionTile({ id }: { id: string }) {

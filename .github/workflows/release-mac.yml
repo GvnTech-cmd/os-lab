@@ -21,7 +21,7 @@ permissions:
 
 jobs:
   macos-pr:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
@@ -53,8 +53,8 @@ jobs:
           if-no-files-found: error
 
   macos:
-    # The repository owner enables tag publishing after adding the Apple secrets below.
-    if: github.event_name == 'workflow_dispatch' || vars.MACOS_RELEASE_CI_ENABLED == 'true'
+    # Tag pushes publish automatically once this workflow is enabled and the secrets below exist.
+    if: github.event_name != 'pull_request'
     runs-on: macos-15
     permissions:
       contents: write

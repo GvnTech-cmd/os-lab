@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowUpRightIcon,
   BookOpenIcon,
@@ -15,6 +15,7 @@ import {
 import { COMPANIES } from "../firewall/companies.generated";
 import type { FirewallLocale } from "../firewall/locale";
 import { contributeUi } from "../firewall/contribute-ui";
+import { keepModalFocus } from "./modal-focus";
 
 const REPO = "https://github.com/keyvanarasteh/os-lab";
 const blob = (p: string) => `${REPO}/blob/master/${p}`;
@@ -39,25 +40,40 @@ const LINKS = [
 
 export function ContributeModal({ onClose, locale = "en" }: { onClose: () => void; locale?: FirewallLocale }) {
   const ui = contributeUi[locale];
-  const box = useRef<HTMLDivElement>(null);
+  const box = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    document.addEventListener("keydown", onKey);
+    const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    box.current?.showModal();
     box.current?.focus();
     return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
+      if (box.current?.open) box.current.close();
+      document.body.style.overflow = previousOverflow;
       prev?.focus();
     };
-  }, [onClose]);
+  }, []);
 
-  const people = COMPANIES.filter((c) => c.author.github && c.author.name !== "Seed Example");
+  const [people, setPeople] = useState(() => COMPANIES.filter((c) => c.author.github && c.author.name !== "Seed Example")
+    .map((c) => ({ slug: c.slug, company: c.name, github: c.author.github! })));
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(`https://raw.githubusercontent.com/keyvanarasteh/os-lab/master/firewall-lab/catalog.json?t=${Date.now()}`, { signal: controller.signal, cache: "no-store" })
+      .then((response) => { if (!response.ok) throw new Error(`Catalog: ${response.status}`); return response.json(); })
+      .then((catalog: { contributors?: typeof people }) => {
+        if (Array.isArray(catalog.contributors)) setPeople(Array.from(new Map(catalog.contributors
+          .filter((c) => c.slug && c.company && /^[\w-]+$/.test(c.github))
+          .map((c) => [c.github.toLowerCase(), c])).values()));
+      })
+      .catch(() => { /* The bundled list remains available offline. */ });
+    return () => controller.abort();
+  }, []);
 
   return (
-    <div className="cm-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="cm" role="dialog" aria-modal="true" aria-labelledby="cm-title" ref={box} tabIndex={-1}>
+    <dialog className="cm" aria-labelledby="cm-title" ref={box} tabIndex={-1} onClose={onClose} onKeyDown={keepModalFocus} onMouseDown={(e) => {
+      const rect = e.currentTarget.getBoundingClientRect();
+      if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) { e.preventDefault(); onClose(); }
+    }}>
         <button className="cm-x" type="button" onClick={onClose} aria-label={ui.close}><XIcon size={16} weight="bold" /></button>
         <header className="cm-head">
           <span className="cm-eyebrow">{ui.contribute}</span>
@@ -79,9 +95,9 @@ export function ContributeModal({ onClose, locale = "en" }: { onClose: () => voi
           <ul className="cm-people">
             {people.map((c, i) => (
               <li key={c.slug} style={{ animationDelay: `${300 + i * 45}ms` }}>
-                <a href={`https://github.com/${c.author.github}`} target="_blank" rel="noreferrer">
-                  <img src={`https://github.com/${c.author.github}.png?size=64`} alt="" width="32" height="32" loading="lazy" />
-                  <span><strong>@{c.author.github}</strong><small>{c.name}</small></span>
+                <a href={`https://github.com/${c.github}`} target="_blank" rel="noreferrer">
+                  <img src={`https://github.com/${c.github}.png?size=64`} alt="" width="32" height="32" loading="lazy" />
+                  <span><strong>@{c.github}</strong><small>{c.company}</small></span>
                 </a>
               </li>
             ))}
@@ -102,7 +118,6 @@ export function ContributeModal({ onClose, locale = "en" }: { onClose: () => voi
             ))}
           </ul>
         </section>
-      </div>
-    </div>
+    </dialog>
   );
 }

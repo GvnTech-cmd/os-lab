@@ -3,7 +3,7 @@ import type { FirewallLocale } from "../firewall/locale";
 
 type Dictionary = Record<string, string>;
 const dictionaries = import.meta.glob<{ default: Dictionary }>("./generated/*.json");
-const ROUTE = /^\/(?:$|(?:jobs|contribute|content|health|legal|labs|android|firewall)(?:\/|$))/;
+const ROUTE = /^\/(?:$|(?:jobs|contribute|how-to-use|feedback|content|health|legal|labs|android|source|cleanup|firewall)(?:\/|$))/;
 const SKIP = "script, style, pre, code, kbd, samp, textarea, [translate='no'], [data-no-translate]";
 
 function localizeLink(anchor: HTMLAnchorElement, locale: FirewallLocale) {
@@ -76,4 +76,7 @@ if (locale !== "en") {
   const key = `./generated/${locale}.json`;
   const load = dictionaries[key];
   if (load) void load().then((module) => start(module.default, locale));
+} else if (import.meta.env.PUBLIC_SITE_MODE === "pages") {
+  // Public pages are served below the repository base path even in English.
+  start({}, "en");
 }

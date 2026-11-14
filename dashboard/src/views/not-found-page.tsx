@@ -32,7 +32,7 @@ export function NotFoundPage() {
       <div>
         <h1 style={{ fontSize: 20, fontWeight: 600 }}>Page not found</h1>
         <p style={{ marginTop: 8, opacity: 0.7 }}>
-          <a href="/" style={{ textDecoration: "underline" }}>Back to this computer</a>
+          <a href={import.meta.env.PUBLIC_SITE_MODE === "pages" ? import.meta.env.BASE_URL : "/"} style={{ textDecoration: "underline" }}>Back to {import.meta.env.PUBLIC_SITE_MODE === "pages" ? "os-lab" : "this computer"}</a>
         </p>
       </div>
     </main>

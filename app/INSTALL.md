@@ -25,14 +25,28 @@ content, managed Python and local lab data.
 
 ## Windows
 
-Use the x64 `-setup.exe` or `.msi`. Run one installer and then launch **os-lab** from the Start menu.
+Two x64 installers are published. They run the same app; the difference is who gets it and whether
+Windows asks for administrator approval.
+
+| Installer | Installs for | Program files | Administrator |
+|-----------|--------------|---------------|---------------|
+| `os-lab_<version>_windows_x64-setup.exe` (NSIS) | the current user only | `%LOCALAPPDATA%\os-lab` | not needed |
+| `os-lab_<version>_windows_x64.msi` (WiX) | every user of the computer | `C:\Program Files\os-lab` | required |
+
+Run one installer and then launch **os-lab** from the Start menu. Choose the `-setup.exe` when you
+cannot or should not elevate, when an administrator manages the machine, or when several people
+share it and each wants their own copy: it needs no UAC prompt and keeps its uninstall entry under
+`HKCU`. Choose the `.msi` when an administrator installs the app once for everyone. Install one
+rather than both: the setup program removes an existing all-users MSI copy before it installs the
+per-user one.
+
 If an installer is unsigned, Windows SmartScreen may show **More info → Run anyway**.
 The app can download managed Python when needed. Docker or Podman with Compose is needed for
 container labs, and WSL2 is needed for the Linux-backed VM labs.
 
 Uninstall from **Settings → Apps → Installed apps**. Your chosen Files folder remains until you
-remove it separately. If you installed the MSI for all users, Windows may require administrator
-authorization to uninstall it.
+remove it separately. The user who installed the `-setup.exe` can remove it without elevation; an
+all-users MSI install may need administrator authorization.
 
 ## Linux
 

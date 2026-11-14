@@ -13,6 +13,8 @@ fn main() {
             "console_choose_files_dir",
             "python_install",
             "container_status",
+            "container_warning_hidden",
+            "container_warning_set_hidden",
             "container_recover",
             "container_get",
         ]),

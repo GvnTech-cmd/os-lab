@@ -14,6 +14,7 @@ let pending: Promise<Company[] | null> | undefined;
 
 /** The downloaded companies, or null when there are none (or no console). Fetched once per page load. */
 export function liveCompanies(): Promise<Company[] | null> {
+  if (import.meta.env.PUBLIC_SITE_MODE === "pages") return Promise.resolve(null);
   pending ??= api
     .contentCompanies()
     .then((r) => (r.source === "downloaded" && Array.isArray(r.companies) && r.companies.length ? (r.companies as Company[]) : null))

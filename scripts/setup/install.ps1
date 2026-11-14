@@ -197,10 +197,12 @@ function Provision-Venv {
     if ($LASTEXITCODE -ne 0) { Die "failed to create virtualenv" }
   } else { Step "reusing virtualenv: $venv" }
   $py = Join-Path $venv "Scripts\python.exe"
-  & $py -m pip install --quiet --upgrade pip wheel 2>$null
   if ($Minimal) {
     Ok "minimal mode - web console runs on the standard library, no extra deps"
+    & $py (Join-Path $script:RepoRoot "source-lab\run.py") doctor
+    if ($LASTEXITCODE -ne 0) { Warn "Source Lab needs Python 3.11+ and writable private storage" }
   } elseif (Test-Path $req) {
+    & $py -m pip install --quiet --upgrade pip wheel 2>$null
     Step "installing tool dependencies (this can take a few minutes)"
     & $py -m pip install --quiet -r $req
     if ($LASTEXITCODE -eq 0) { Ok "tool dependencies installed" }

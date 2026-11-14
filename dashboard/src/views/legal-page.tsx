@@ -3,6 +3,9 @@ import { ScalesIcon } from "@phosphor-icons/react";
 import { AppShell } from "../shell/app-shell";
 import { TopBar } from "../shell/top-bar";
 import { LEGAL_DOCS, REPO_BLOB, type LegalSlug } from "../lib/legal";
+import { localeFromPath, localePath } from "../i18n/paths";
+
+const legalHref = (slug: string) => localePath(`/legal/${slug}/`, typeof window === "undefined" ? "en" : localeFromPath(window.location.pathname));
 
 function Tabs({ active }: { active?: LegalSlug }) {
   return (
@@ -10,9 +13,9 @@ function Tabs({ active }: { active?: LegalSlug }) {
       {LEGAL_DOCS.map((doc) => (
         <a
           key={doc.slug}
-          href={`/legal/${doc.slug}/`}
+          href={legalHref(doc.slug)}
           aria-current={doc.slug === active ? "page" : undefined}
-          className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+          className={`iux-touch-target inline-flex items-center rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-colors ${
             doc.slug === active
               ? "bg-[#f36c21] text-white"
               : "border border-(--iux-border) bg-(--iux-card) text-(--iux-muted-foreground) hover:text-(--iux-foreground)"
@@ -66,7 +69,7 @@ export function LegalIndexPage() {
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             {LEGAL_DOCS.map((doc) => (
-              <a key={doc.slug} href={`/legal/${doc.slug}/`} className="apk-crosshair-box iux-card gap-1.5 p-5 transition-colors hover:border-[#f36c21]/40">
+              <a key={doc.slug} href={legalHref(doc.slug)} className="apk-crosshair-box iux-card gap-1.5 p-5 transition-colors hover:border-[#f36c21]/40">
                 <span className="text-sm font-semibold">{doc.title}</span>
                 <span className="text-xs text-(--iux-muted-foreground)">{doc.description}</span>
               </a>

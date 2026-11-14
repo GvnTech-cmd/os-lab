@@ -73,12 +73,32 @@ Bant genişliği hesaplanırken **eşzamanlılık oranı (concurrency factor)**,
 
 Her şubenin klasöründe **Top 5 Güvenlik Duvarı** detaylı throughput ve maliyet analizleriyle karşılaştırılmıştır. Aşağıda her şube için **1. sırada seçilen (Tercih Edilen)** model ve **diğer 4 adayın neden tercih edilmediği** özetlenmiştir:
 
-| Şube | Seçilen NGFW (Active-Passive HA) | Neden Seçildi? | Diğer Adaylar Neden Tercih Edilmedi? (Özet) |
-| :--- | :--- | :--- | :--- |
-| **İstanbul Merkez** | **Palo Alto PA-5410** (2x HA) | 15+ Gbps Threat Prevention, App-ID ile Yazılım/Ar-Ge mikro-segmentasyonu, gelişmiş SSL Inspection. | **FortiGate:** Derin App-ID granülerliği PA kadar esnek değil.<br>**Check Point:** SSL Inspection açıkken throughput düşüşü.<br>**Cisco Firepower:** Yönetim arayüzü (FMC) karmaşıklığı.<br>**Sophos:** Veri merkezi ölçeğinde ASIC/donanım hızlandırma sınırı. |
-| **Ankara Ofis** | **FortiGate 1000F** (2x HA) | Yüksek IPSec VPN performansı (ASIC SPU), SD-WAN yerleşikliği ve fiyat/performans dengesi. | **Palo Alto:** Bu ölçekte lisans maliyeti bütçe üstü.<br>**Check Point:** SD-WAN yetenekleri ek lisans ve karmaşa yaratıyor.<br>**Cisco:** Lisanslama ve yönetim maliyeti yüksek.<br>**Forcepoint:** Yerel destek ve ekosistem entegrasyonu daha dar. |
-| **Londra Ofis** | **Palo Alto PA-1410** (2x HA) | İstanbul Merkez (Panorama) ile %100 uyumlu merkezi politika yönetimi ve GlobalProtect ZTNA. | **FortiGate:** Merkezdeki Panorama ile tek ekrandan (Single Pane of Glass) yönetilememesi.<br>**Check Point:** Küçük-orta şubede yönetim yükü.<br>**Cisco Meraki:** Derin paket inceleme (DPI) ve özel kural yazımında kısıtlı.<br>**SonicWall:** Kurumsal SOC/SIEM entegrasyon derinliği yetersiz. |
-| **Akademik Şube** | **FortiGate 2600F** (2x HA) | 10.000 öğrencinin oluşturduğu milyonlarca eşzamanlı oturumu (Concurrent Sessions) ve 30 Gbps trafiği donanımsal NP7 işlemciyle darboğazsız işlemesi. | **Palo Alto:** 30 Gbps Threat Prevention kapasiteli modellerin (PA-5440+) eğitim bütçesini aşması.<br>**Check Point:** Yüksek NAT/Session sayısında CPU darboğazı.<br>**Cisco:** Kampüs BYOD trafiğinde lisans maliyeti.<br>**pfSense/OPNsense:** 30 Gbps DPI/IDS/IPS trafiğinde donanımsal ASIC olmaması nedeniyle paket kaybı. |
+| Şube | Seçilen NGFW (Active-Passive HA) | Birim Fiyat (`priceUsd`) | Neden Seçildi? | Diğer Adaylar Neden Tercih Edilmedi? (Özet) |
+| :--- | :--- | :---: | :--- | :--- |
+| **İstanbul Merkez** | **Palo Alto PA-5410** (2x HA) | **$68,000** | 22.5 Gbps Threat Prevention, App-ID ile Yazılım/Ar-Ge mikro-segmentasyonu, gelişmiş SSL Inspection. | **FortiGate 1800F ($39,500):** Derin App-ID granülerliği PA kadar esnek değil.<br>**Check Point 6900 ($44,000):** SSL Inspection açıkken throughput düşüşü.<br>**Cisco 3130 ($46,500):** Yönetim arayüzü (FMC) karmaşıklığı.<br>**Sophos XGS 5500 ($19,400):** Veri merkezi ölçeğinde ASIC/donanım hızlandırma sınırı. |
+| **Ankara Ofis** | **FortiGate 1000F** (2x HA) | **$24,500** | Yüksek IPSec VPN performansı (55 Gbps ASIC SPU), SD-WAN yerleşikliği ve fiyat/performans dengesi. | **Palo Alto PA-3430 ($42,000):** Bu ölçekte lisans maliyeti bütçe üstü.<br>**Check Point 6600 ($28,000):** SD-WAN yetenekleri ek lisans ve karmaşa yaratıyor.<br>**Cisco 3110 ($26,500):** 6.5 Gbps VPN kapasitesi DR büyümesi için sınırlı.<br>**Forcepoint 1402 ($21,000):** Yerel destek ve ekosistem entegrasyonu daha dar. |
+| **Londra Ofis** | **Palo Alto PA-1410** (2x HA) | **$11,800** | İstanbul Merkez (Panorama) ile %100 uyumlu merkezi politika yönetimi, 4.6 Gbps Threat Prevention ve GlobalProtect ZTNA. | **FortiGate 400F ($12,700):** Merkezdeki Panorama ile tek ekrandan (Single Pane of Glass) yönetilememesi.<br>**Check Point 6200 ($10,500):** Küçük-orta şubede yönetim yükü.<br>**Cisco Meraki MX250 ($9,800):** Derin paket inceleme (DPI) ve özel kural yazımında kısıtlı.<br>**SonicWall NSa 4700 ($8,900):** Kurumsal SOC/SIEM entegrasyon derinliği yetersiz. |
+| **Akademik Şube** | **FortiGate 3500F** (2x HA) | **$165,000** | 10.000 öğrencinin oluşturduğu milyonlarca eşzamanlı oturumu ve **30 Gbps** trafiği **63 Gbps Threat Prevention** (NP7 ASIC) ile darboğazsız işlemesi. | **Palo Alto PA-5430 ($195,000):** 38 Gbps kapasiteli ancak eğitim bütçesini aşıyor.<br>**FortiGate 2600F ($78,000):** 28 Gbps Threat Prevention hızı 30 Gbps toplam hat hızının altında kalıyor.<br>**Check Point 16200 ($135,000):** 25 Gbps hız < 30 Gbps hat.<br>**Cisco 4125 ($142,000):** 26 Gbps hız < 30 Gbps hat ve BYOD lisans maliyeti. |
+
+---
+
+## 5. Web Siteleri, Mobil Uygulamalar, API Gateway ve WAF Koruması
+
+Kurumumuzun dış dünyaya açık dijital varlıkları doğrudan iç ağa (LAN) değil, **İstanbul Merkez (`VLAN 90 - 10.10.90.0/24`)** ve **Akademik Kampüs (`VLAN 490 - 10.42.90.0/24`)** üzerindeki izole **DMZ** bölgelerine yerleştirilmiştir:
+* **Kurumsal Web Sitesi (`www`) ve Öğrenci Bilgi Sistemi (OBS / LMS Web Portalı):** Önünde **Cloudflare WAF (Web Application Firewall)** ve **FortiWeb** konumlandırılmıştır. OWASP Top 10 (SQLi, XSS, RCE), Layer-7 DDoS ve bot saldırılarını filtreler.
+* **iOS & Android Mobil Uygulamaları (Kurumsal Mobil App & Kampüs Öğrenci Mobil App):** Mobil uygulamaların konuştuğu REST/GraphQL uç noktaları **API Gateway (`10.10.90.10` ve `10.42.90.10`)** arkasında mTLS, JWT kimlik doğrulama ve **Rate-Limiting (`limit` kuralları)** ile korunur.
+* **DMZ İzolasyonu:** DMZ sunucularından iç ağa (LAN) doğru hiçbir bağlantı başlatılamaz (`DMZ -> LAN Deny`); yalnızca ters vekil sunucu (Reverse Proxy) üzerinden belirli uygulama portlarına kontrollü erişim sağlanır.
+
+---
+
+## 6. Operasyonel Süreçler: Yedekleme, Yama Yönetimi, Log Saklama ve Güncel CVE Takibi
+
+* **Konfigürasyon Yedekleme (Backup & DR):** Tüm Palo Alto ve FortiGate güvenlik duvarlarının kural ve sistem konfigürasyonları her gece (`02:00`) otomatik olarak (`config-export`) şifreli Git deposuna ve S3 nesne depolama alanına yedeklenir. Ayda bir kez felaket kurtarma geri yükleme testi (Restore Drill) yapılır.
+* **Yama ve Firmware Yönetimi (Patching Routine):** Üretici güvenlik bültenleri (PSIRT) günlük takip edilir. Her ayın ikinci Cumartesi gecesi düzenli **Firmware/Patch Bakım Penceresi** uygulanır; Active-Passive HA yapısı sayesinde önce Passive cihaz güncellenip test edilir, ardından kesintisiz failover ile Active cihaz güncellenir.
+* **Log Saklama Süresi (Log Retention) ve Yasal Uyumluluk (5651 / KVKK / UK-GDPR / ISO 27001):** Tüm güvenlik duvarı, VPN, DHCP ve CGNAT logları SIEM üzerinde **90 gün sıcak (Hot Storage)**, **2 yıl (730 gün) TÜBİTAK KamuSM zaman damgalı soğuk arşiv (Cold Archive)** olarak saklanır.
+* **Takip Edilen Güncel CVE Kayıtları (`cveWatch`):**
+  1. **`CVE-2024-3400` (Palo Alto Networks PAN-OS GlobalProtect Komut Enjeksiyonu):** İlk aşamada geçici önlem (*Mitigation*) olarak Threat Prevention `95187/95189` imzaları aktif edilmiş ve cihaz telemetrisi kapatılmıştır; ardından acil bakım penceresinde kalıcı yama (*Permanent Patch*: `PAN-OS 11.1.2-h3`) uygulanmıştır (`status: patched`).
+  2. **`CVE-2024-21762` (Fortinet FortiOS SSL-VPN Out-of-Bounds Write RCE):** Geçici önlem (*Mitigation*) olarak SSL-VPN web-mode kapatılmış ve uzaktan erişim yalnızca MFA zorunlu IPSec IKEv2 ile sınırlandırılmıştır; ardından Ankara ve Akademik Kampüs HA kümeleri kalıcı olarak `FortiOS 7.4.3` sürümüne yamalanmıştır (`status: patched`).
 
 
 # Istanbul HQ (Software and R&D Center)
@@ -90,13 +110,14 @@ Her şubenin klasöründe **Top 5 Güvenlik Duvarı** detaylı throughput ve mal
 
 | Departman / Rol | Kişi Sayısı | Ortalama Cihaz / Kişi | Toplam Uç Nokta (Endpoint) | Ağ Segmenti (VLAN) |
 | :--- | :---: | :---: | :---: | :---: |
-| **İdari & Yönetim Personeli** (İK, Finans, Hukuk, Satış) | 220 | 2 (PC + Mobil) | 440 | `VLAN 10` (`10.10.10.0/24`) |
-| **Yazılım Geliştirme Ekibi** (Backend, Frontend, Mobile, QA) | 180 | 3 (Workstation, Test Cihazı, Mobil) | 540 | `VLAN 20` (`10.10.20.0/23`) |
-| **Ar-Ge (R&D) Ekibi** (AI/ML, Kriptografi, Donanım Prototip) | 90 | 3 (GPU İstasyonu, IoT/DevBoard, PC) | 270 | `VLAN 30` (`10.10.30.0/24`) |
-| **Teknik / IT, DevOps & Siber Güvenlik (SOC)** | 45 | 3 (Admin PC, Bastion, Mobil) | 135 | `VLAN 99` (`10.10.99.0/24`) |
-| **Misafir & Toplantı Odaları** | Değişken (~50) | 1 | 50 | `VLAN 200` (`172.16.200.0/24`) |
-| **Sunucu & Veri Merkezi (DMZ / Internal DC)** | - | 120 Fiziksel/Sanal Sunucu | 120 | `VLAN 100` (`10.10.100.0/24`) |
-| **TOPLAM** | **535 Kişi** | - | **~1.555 Aktif Uç** | - |
+| **İdari & Operasyon Personeli** (İK, Finans, Hukuk, Satış) | 220 | 2 (PC + Mobil) | 440 | `VLAN 10` (`10.10.10.0/24`) |
+| **Yazılım Geliştirme Ekibi (Software)** (Backend, Frontend, Mobile, QA) | 180 | 3 (Workstation, Test Cihazı, Mobil) | 540 | `VLAN 20` (`10.10.20.0/23`) |
+| **Ar-Ge (R&D) Ekibi** (AI/ML, Kriptografi, Donanım Prototip - Proxy Egress) | 90 | 3 (GPU İstasyonu, IoT/DevBoard, PC) | 270 | `VLAN 30` (`10.10.30.0/24`) |
+| **DMZ Sunucuları** (Kurumsal Web, iOS/Android Mobil API Gateway - Cloudflare WAF) | - | 15 Sunucu | 15 | `VLAN 90` (`10.10.90.0/24`) |
+| **Teknik / IT, DevOps & SOC Yönetim Ağı (Management VLAN)** | 45 | 3 (Admin PC, Bastion `10.10.99.20`, SIEM) | 135 | `VLAN 99` (`10.10.99.0/24`) |
+| **İç Sunucu & Veri Merkezi (Internal DC)** (ERP, GitLab, DLP Proxy, DHCP/DNS/NTP `10.10.100.5`) | - | 120 Fiziksel/Sanal Sunucu | 120 | `VLAN 100` (`10.10.100.0/24`) |
+| **Misafir & IoT / Toplantı Odaları (Guest Wi-Fi)** | Değişken (~50) | 1 | 50 | `VLAN 200` (`10.10.200.0/24`) |
+| **TOPLAM** | **535 Kişi** | - | **~1.570 Aktif Uç** | **Ana Blok: `10.10.0.0/16`** |
 
 ---
 
@@ -179,11 +200,12 @@ Ankara Ofisi; kurumun **Savunma/Kamu Bilişim Projeleri**, yoğun **Ar-Ge (R&D) 
 | Departman / Rol | Kişi Sayısı | Ortalama Cihaz / Kişi | Toplam Uç Nokta (Endpoint) | Ağ Segmenti (VLAN) |
 | :--- | :---: | :---: | :---: | :---: |
 | **İdari & Kamu İlişkileri Personeli** | 85 | 2 (PC + Mobil) | 170 | `VLAN 10` (`10.20.10.0/24`) |
-| **Yazılım Geliştirme Ekibi** (Gömülü Sistemler, Kamu G2B) | 95 | 2.5 (Workstation, Test Cihazı) | 240 | `VLAN 20` (`10.20.20.0/24`) |
-| **Ar-Ge (R&D) Ekibi** (Siber Güvenlik, Savunma & Donanım Ar-Ge) | 110 | 3 (Lab PC, FPGA/Donanım, Mobil) | 330 | `VLAN 30` (`10.20.30.0/24`) |
-| **Teknik / Sistem & Ağ Ekibi** | 25 | 2.5 (Admin PC, Mobil) | 65 | `VLAN 99` (`10.20.99.0/24`) |
-| **Felaket Kurtarma (DR) Sunucuları** | - | 60 Sunucu | 60 | `VLAN 100` (`10.20.100.0/24`) |
-| **TOPLAM** | **315 Kişi** | - | **~865 Aktif Uç** | - |
+| **Yazılım Geliştirme Ekibi (Software)** (Gömülü Sistemler, Kamu G2B) | 95 | 2.5 (Workstation, Test Cihazı) | 240 | `VLAN 20` (`10.20.20.0/24`) |
+| **Ar-Ge (R&D) Ekibi** (Savunma & Siber Güvenlik - DLP Proxy Egress) | 110 | 3 (Lab PC, FPGA/Donanım, Mobil) | 330 | `VLAN 30` (`10.20.30.0/24`) |
+| **Teknik / Sistem & Ağ Yönetim Ekibi (Management VLAN)** | 25 | 2.5 (Admin PC, Mobil) | 65 | `VLAN 99` (`10.20.99.0/24`) |
+| **Felaket Kurtarma (DR) & Altyapı Sunucuları** (DHCP/DNS/NTP `10.20.100.5`, Proxy `10.20.100.10`) | - | 60 Sunucu | 60 | `VLAN 100` (`10.20.100.0/24`) |
+| **Misafir & IoT Ağı (Guest Wi-Fi)** | Değişken (~30) | 1 | 30 | `VLAN 200` (`10.20.200.0/24`) |
+| **TOPLAM** | **315 Kişi** | - | **~895 Aktif Uç** | **Ana Blok: `10.20.0.0/16`** |
 
 ---
 
@@ -258,11 +280,12 @@ Londra Ofisi; şirketin **Avrupa ve Global pazarlara** açılan kapısı, ulusla
 
 | Departman / Rol | Kişi Sayısı | Ortalama Cihaz / Kişi | Toplam Uç Nokta (Endpoint) | Ağ Segmenti (VLAN) |
 | :--- | :---: | :---: | :---: | :---: |
-| **İdari, Global Satış & Hukuk (GDPR)** | 60 | 2 (Laptop + Mobil) | 120 | `VLAN 10` (`10.30.10.0/24`) |
-| **Yazılım Ekibi** (Cloud-Native, FinTech & SaaS) | 45 | 2.5 (MacBook Pro, Test VM) | 115 | `VLAN 20` (`10.30.20.0/24`) |
-| **Ar-Ge (R&D) Ekibi** (Global AI & Kuantum Güvenlik) | 25 | 3 (Workstation, Mobil) | 75 | `VLAN 30` (`10.30.30.0/24`) |
-| **Teknik / CloudOps & DevSecOps Ekibi** | 15 | 2.5 (Admin Laptop, Mobil) | 40 | `VLAN 99` (`10.30.99.0/24`) |
-| **TOPLAM** | **145 Kişi** | - | **~350 Aktif Uç** | - |
+| **İdari, Global Satış & Hukuk (UK-GDPR)** | 60 | 2 (Laptop + Mobil) | 120 | `VLAN 10` (`10.30.10.0/24`) |
+| **Yazılım Ekibi (Software)** (Cloud-Native, FinTech & SaaS) | 45 | 2.5 (MacBook Pro, Test VM) | 115 | `VLAN 20` (`10.30.20.0/24`) |
+| **Ar-Ge (R&D) Ekibi** (Global AI & Kuantum Güvenlik - DLP Proxy Egress) | 25 | 3 (Workstation, Mobil) | 75 | `VLAN 30` (`10.30.30.0/24`) |
+| **Teknik / CloudOps & Ağ Yönetim Ekibi (Management VLAN)** (DHCP/DNS/NTP `10.30.99.5`) | 15 | 2.5 (Admin Laptop, Mobil) | 40 | `VLAN 99` (`10.30.99.0/24`) |
+| **Misafir & Toplantı Odası Ağı (Guest Wi-Fi & IoT)** | Değişken (~20) | 1 | 20 | `VLAN 200` (`10.30.200.0/24`) |
+| **TOPLAM** | **145 Kişi** | - | **~370 Aktif Uç** | **Ana Blok: `10.30.0.0/16`** |
 
 ---
 
@@ -336,17 +359,19 @@ Akademik Şube; **10.000 öğrencisi**, **450 öğretim üyesi/hocası**, idari 
 > [!IMPORTANT]
 > Kampüs ağlarında en büyük tehdit **içeriden (Internal / Insider Threat)** gelir: 10.000 öğrencinin kişisel bilgisayarları ve telefonları (BYOD), zararlı yazılımlar, torrent/P2P trafiği, sınav/OBS sistemlerine yönelik DDoS veya yetkisiz erişim denemeleri açısından **Sıfır Güven (Zero-Trust)** prensibiyle tamamen izole edilmelidir.
 
-| Grup / Rol | Kişi Sayısı | Ortalama Cihaz / Kişi | Toplam Eşzamanlı Cihaz | Ağ Segmenti (VLAN) |
+| Grup / Rol | Kişi Sayısı | Ortalama Cihaz / Kişi | Toplam Eşzamanlı Cihaz | Ağ Segmenti (VLAN - `10.40.0.0/14` İçinde) |
 | :--- | :---: | :---: | :---: | :---: |
-| **Öğrenciler (Lisans & Lisansüstü)** | **10.000** | 1.6 (Telefon + Laptop) | **~16.000 Cihaz** | `VLAN 400-415` (`10.40.0.0/16` - Öğrenci Wi-Fi / Eduroam) |
+| **Öğrenciler (Lisans & Lisansüstü)** | **10.000** | 1.6 (Telefon + Laptop) | **~16.000 Cihaz** | `VLAN 400` (`10.40.0.0/16` - Öğrenci Wi-Fi / Eduroam, 65.534 IP) |
 | **Bilgisayar Laboratuvarları (Öğrenci Lab)** | - | 600 Sabit PC | **600 Cihaz** | `VLAN 420` (`10.42.0.0/22`) |
-| **Akademisyenler (Hocalar / Araştırmacılar)** | **450** | 2.5 (Ofis PC, Laptop, Mobil) | **~1.125 Cihaz** | `VLAN 430` (`10.43.0.0/22`) |
-| **Kampüs İdari Personeli** (Öğrenci İşleri, Mali İşler, Kütüphane) | **350** | 1.5 (PC + Mobil) | **~525 Cihaz** | `VLAN 440` (`10.44.0.0/23`) |
-| **Akademik Ar-Ge & Teknokent Ekibi** | **60** | 3 (Süper Bilgisayar/Lab) | **180 Cihaz** | `VLAN 450` (`10.45.0.0/24`) |
-| **Kampüs Yazılım Ekibi** (OBS, LMS, Kampüs App) | **40** | 2.5 | **100 Cihaz** | `VLAN 460` (`10.46.0.0/24`) |
-| **Teknik / Kampüs IT & Network Ekibi** | **50** | 2.5 | **125 Cihaz** | `VLAN 499` (`10.49.99.0/24`) |
-| **Kampüs Veri Merkezi (OBS, LMS, Kütüphane DB)** | - | 150 Sunucu | **150 Sunucu** | `VLAN 500` (`10.50.0.0/24`) |
-| **TOPLAM** | **10.950 Kişi** | - | **~18.805 Aktif Uç** | - |
+| **Akademisyenler (Hocalar / Araştırmacılar)** | **450** | 2.5 (Ofis PC, Laptop, Mobil) | **~1.125 Cihaz** | `VLAN 430` (`10.42.4.0/22`) |
+| **Kampüs İdari Personeli** (Öğrenci İşleri, Mali İşler, Kütüphane) | **350** | 1.5 (PC + Mobil) | **~525 Cihaz** | `VLAN 440` (`10.42.8.0/23`) |
+| **Akademik Ar-Ge & Teknokent Ekibi (R&D)** | **60** | 3 (Süper Bilgisayar/Lab) | **180 Cihaz** | `VLAN 450` (`10.42.10.0/24`) |
+| **Kampüs Yazılım Ekibi (Software)** (OBS, LMS, Mobil App) | **40** | 2.5 | **100 Cihaz** | `VLAN 460` (`10.42.11.0/24`) |
+| **Kampüs Misafir & Akıllı Kampüs IoT/Kamera Ağı (Guest & IoT)** | - | ~300 Kamera/Sensör/Misafir | **300 Cihaz** | `VLAN 480` (`10.42.12.0/22`) |
+| **Kampüs DMZ** (OBS, LMS & Online Sınav Web/Mobil API - WAF Arkasında) | - | 25 Sunucu | **25 Sunucu** | `VLAN 490` (`10.42.90.0/24`) |
+| **Teknik / Kampüs IT & Ağ Yönetim Ekibi (Management VLAN)** | **50** | 2.5 | **125 Cihaz** | `VLAN 499` (`10.42.99.0/24`) |
+| **Kampüs İç Veri Merkezi (Internal DC & DB)** (DHCP/DNS/NTP `10.42.100.5`) | - | 150 Sunucu | **150 Sunucu** | `VLAN 500` (`10.42.100.0/24`) |
+| **TOPLAM** | **10.950 Kişi** | - | **~19.130 Aktif Uç** | **Ana Blok: `10.40.0.0/14`** |
 
 ---
 
