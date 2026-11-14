@@ -382,3 +382,145 @@ task. Honest limitation: no monitoring while the console is closed.
 - Trigger id namespace for the maintainer's upcoming triggers — registry
   ids are open (`monitor.triggers` config keyed by id); record their ids in
   this plan as they arrive.
+
+---
+
+## Task 4 — Bookmarks: prioritize, quick-clean, hooks and size alerts (CLNP-14 … CLNP-19)
+
+Let the user bookmark cleanup items (from history cleanups or anything the
+detections support), order them by priority, configure per-bookmark
+behaviour — include in quick cleanup, auto-clean when the free-space hook
+fires, notify above a size threshold — and act on them with one click.
+
+### Current state (grounded in the code)
+
+- Every clean result item already carries its catalog `entryId`
+  (`cleanup_lab/clean.py:325`, mirrored into the history records), and scan
+  results are catalog entries — so "mark from history or detections" can be
+  fully typed without accepting free-form paths.
+- The plan → clean executor accepts catalog ids only
+  (`clean.py:397`: "entryIds must be a non-empty list of detector ids");
+  the catalog refuses `defaultSelected` for `high`, `privacy` and
+  `credentials` risk classes — the same refusal will govern bookmarks that
+  clean automatically.
+- Task 3's monitor (CLNP-09/10) owns the trigger registry, the event store
+  and the warning banner — the size alert and the free-space hook extend
+  that registry instead of inventing a second scheduler.
+- The dashboard's scan cards, results rows and history items are the
+  surfaces where a bookmark affordance attaches.
+
+### Design
+
+**Bookmarks are catalog-entry references, never raw paths.** A bookmark
+record: `{id, entryId, createdAt, priority (1 = first), quickClean: bool,
+autoCleanHook: {enabled, lastRunAt, cooldownUntil} | disabled,
+sizeAlert: {thresholdBytes, armed} | disabled}`. `entryId` is validated
+against the live catalog on every write; resolved paths display from the
+catalog (CLNP-01's permission classification applies here too). A history
+or detection item whose entry no longer exists in the catalog cannot be
+bookmarked (reported, not guessed).
+
+**Quick clean** — a one-click action that builds a plan from every bookmark
+with `quickClean: true`, ordered by priority, then runs the *existing*
+plan → confirm → run flow (Trash default, confirmation still required —
+quick ≠ unattended). The plan review names the bookmark order.
+
+**Auto-clean hook (free-space)** — per-bookmark hook: when the Task 3
+`disk-free-space` trigger crosses its threshold, the runner builds a plan
+from hooked bookmarks (priority order) and runs it **Trash-only, without a
+per-run confirmation click**. This is a deliberate, scoped exception to the
+confirm step, guarded by: the user explicitly enabling the hook per
+bookmark; Trash mode only (permanent delete is never available to hooks);
+`high`/`privacy`/`credentials` entries refused; the existing safety guard,
+plan fingerprinting and owning-app check still applying; a hook cooldown
+(no re-run until the trigger re-arms); engine-ready preconditions; no
+overlapping job; audit history records marked `"automated": true`; and a
+post-run dashboard banner naming exactly what the hook moved to Trash.
+
+**Size alert** — a new registry trigger `bookmark-size`: on its own cadence
+the monitor measures hooked bookmarked entries with an entry-scoped,
+read-only scan (the existing scan machinery, entry ids only) and raises a
+monitor event when a bookmark's size crosses its threshold. Re-arm shares
+Task 3's hysteresis (re-arm on falling back under threshold − margin). The
+dashboard notification offers cleanup actions: "Clean this bookmark now"
+(builds a confirmable plan) and — when the auto-clean hook is enabled —
+adds it to the hook set.
+
+### Rules
+
+1. **Typed end to end** — bookmark writes take `entryId`s only; unknown or
+   no-longer-catalogued ids are `400`/`410` with a reason; no command
+   strings, no paths from the page.
+2. **Automation is Trash-only and visible** — hooks never permanently
+   delete, never touch high/privacy/credentials, never run while another
+   job is active or the engine is not ready, and every automated run is
+   audited and announced.
+3. **One scheduler** — hooks and alerts live in the Task 3 monitor
+   (registry entries + per-trigger cadences); no second timer stack.
+4. **Persistence matches history's store** — bookmarks live in the private
+   state folder as atomic JSON with engine-side schema validation; corrupt
+   store → bookmarks disabled + reported, never guessed.
+5. **Priority is honest** — the plan review and quick-clean dialog show the
+   priority order; the audit record lists items in execution order.
+
+### Sub-tasks
+
+#### CLNP-14 — Engine: bookmarks store (`bookmarks.py`)
+- [ ] Typed bookmark records with priority, `quickClean` flag,
+      `autoCleanHook` and `sizeAlert` config; catalog validation on read
+      and write; atomic JSON store in the state folder; bounded ordering
+      helpers (move up/down, dedupe).
+- [ ] Plan-builder helper: bookmarks → ordered `entryIds` filtered by flag
+      (quick-clean or hook), refusing refused-risk classes with reasons.
+- [ ] `unittest` with temp state folder and fake catalog: validation,
+      ordering, flag filtering, corrupt-store recovery.
+
+#### CLNP-15 — Quick clean from bookmarks (console + dashboard)
+- [ ] Console: `POST /api/cleanup/bookmarks/quick-clean` starts the normal
+      plan → confirm → run flow over `quickClean` bookmarks in priority
+      order (typed job, existing 400/409/410 contract).
+- [ ] Dashboard: "Quick clean" action with a review dialog listing the
+      bookmark order, sizes and skipped reasons.
+
+#### CLNP-16 — Auto-clean hook on the free-space trigger
+- [ ] Monitor extension: on `disk-free-space` crossing, evaluate hooked
+      bookmarks (priority order) → build plan → run Trash-only → record
+      `automated: true` audit entry → emit monitor event; cooldown,
+      engine-ready and no-overlapping-job guards; failure recorded, never
+      silently retried.
+- [ ] Dashboard: hook toggle per bookmark with the Trash-only/risk-class
+      guardrail text inline; post-run banner naming what was cleaned.
+
+#### CLNP-17 — `bookmark-size` trigger (registry)
+- [ ] New registry trigger measuring hooked bookmarked entries on a
+      per-trigger cadence (read-only, entry-scoped scan); threshold config
+      per bookmark; events with size evidence (measured bytes, threshold,
+      path resolution source); re-arm hysteresis shared with Task 3.
+- [ ] Console events surface through `GET /api/cleanup/monitor` (no new
+      endpoint); dashboard alert card offers the cleanup actions.
+
+#### CLNP-18 — Dashboard bookmarks UI
+- [ ] Bookmark affordances on scan cards, results rows and history items
+      (via `entryId`); a Bookmarks section on `/cleanup/` (or its own tab —
+      decide at implementation) with priority up/down, quick-clean
+      checkmark, hook and size-alert configuration, resolved paths and
+      last-run/last-alert info.
+- [ ] Seven-locale translations; Public Pages renders the section as
+      documentation only.
+
+#### CLNP-19 — labctl, tests, docs
+- [ ] `labctl cleanup bookmarks [--json]` (read-only list with resolved
+      paths and flags); engine unittests, console contract cases,
+      `scripts/run-tests.sh`; README/STATUS/VERIFY + `lat.md/cleanup-lab.md`
+      updates; roadmap entries with translations; `lat check`.
+
+### Open questions (decide at implementation start)
+- Bookmarks as a section on `/cleanup/` vs a sixth tab — default: section
+  on the dashboard, tab only if the card outgrows it.
+- Hook evaluation timing: only on the `disk-free-space` warning crossing,
+  or also re-evaluated on a cadence while space stays low (default:
+  crossing-only, per re-arm semantics).
+- Whether "notify" should later include OS notifications — stays on the
+  Task 3 deferral (desktop app plumbing).
+- Confirm dialog for quick clean stays mandatory (default); a "trusted
+  quick clean" without confirmation would need its own explicit ask.
