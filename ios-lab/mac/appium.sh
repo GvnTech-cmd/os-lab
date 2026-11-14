@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Start, stop or inspect the Appium XCUITest server.
+# Start, stop or inspect the shared Appium server (XCUITest for the iOS Lab, mac2 for the macOS Lab).
 #
-#   appium.sh install       install Node (Homebrew), Appium and the XCUITest driver for this user only
+#   appium.sh install       install Node (Homebrew), Appium and the XCUITest/mac2 drivers for this user only
 #   appium.sh start|stop|status
 set -euo pipefail
 
@@ -56,21 +56,25 @@ case "$ACTION" in
     mkdir -p "$APPIUM_PREFIX/home"
     npm install --prefix "$APPIUM_PREFIX" --no-audit --no-fund appium
     export APPIUM_HOME="$APPIUM_PREFIX/home"
-    progress 4 $TOTAL "Installing the XCUITest driver"
-    if "$MANAGED_BIN" driver list --installed 2>&1 | grep -q xcuitest; then
-      say "XCUITest driver already installed"
-    else
-      "$MANAGED_BIN" driver install xcuitest
-    fi
+    progress 4 $TOTAL "Installing the XCUITest and mac2 drivers"
+    for driver in xcuitest mac2; do
+      if "$MANAGED_BIN" driver list --installed 2>&1 | grep -q "$driver"; then
+        say "$driver driver already installed"
+      else
+        "$MANAGED_BIN" driver install "$driver"
+      fi
+    done
     progress 5 $TOTAL "Checking the install"
     "$MANAGED_BIN" --version
     "$MANAGED_BIN" driver list --installed 2>&1 | grep -q xcuitest || die "the XCUITest driver is not installed"
-    say "Appium is ready. Start it from the macOS Lab page (Start Appium)."
+    "$MANAGED_BIN" driver list --installed 2>&1 | grep -q mac2 || die "the mac2 driver is not installed"
+    say "Appium is ready. Start it from the iOS or macOS Lab page (Start Appium)."
     ;;
   start)
-    require_xcode
+    # The server itself needs no Xcode: the iOS Lab gates on Xcode before offering simulator
+    # actions, and the macOS Lab's mac2 sessions only need the driver and Accessibility.
     APPIUM="$(appium_bin)"
-    [ -n "$APPIUM" ] || die "Appium is not installed; use Install Appium in the macOS Lab page"
+    [ -n "$APPIUM" ] || die "Appium is not installed; use Install Appium in the iOS or macOS Lab page"
     if running; then
       say "Appium already running (pid $(cat "$PID_FILE")) on ${APPIUM_HOST}:${APPIUM_PORT}"
       exit 0

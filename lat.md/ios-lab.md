@@ -33,9 +33,18 @@ Optional automation follows the same install/start/stop pattern as Appium:
 `idb.sh install` puts the client in `~/.oslab/idb` and takes the companion
 from Homebrew, `idb.sh start` runs a companion for the booted simulator, and
 `xcuitest.sh smoke` creates a real XCUITest session through the running
-Appium server to prove the whole chain. All three appear on the iOS and
-macOS Lab pages as previewed actions and stay optional — the simulator runs
-without them.
+Appium server to prove the whole chain. All of them appear on the iOS Lab
+page as previewed actions and stay optional — the simulator runs without
+them.
+
+The macOS Lab shares this directory but drives **macOS applications**, not
+the simulator: [[ios-lab/mac/macos-app.sh]] reports status and doctor state and
+runs one Appium mac2 session that activates Finder
+(`macos-app.sh smoke`). Its only requirements are Homebrew, Node and
+Appium (mac2 driver) — Xcode and the iOS runtimes belong to the iOS Lab —
+and mac2 needs Accessibility permission in System Settings to control
+applications. `appium.sh install` installs both the XCUITest and mac2
+drivers, so one Appium server serves both lab pages.
 
 The dashboard's simulator panel (see [[dashboard]]) drives the same scripts:
 `start` accepts a `device` (a UDID or unique name, validated against
