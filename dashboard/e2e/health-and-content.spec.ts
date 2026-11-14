@@ -129,8 +129,19 @@ test("a lab that is missing requirements hides its runtime sections until they a
   await expect(page.getByText("Start, stop and the other actions appear once the missing dependencies are installed.")).toHaveCount(0);
   await expect(page.getByText("Live monitor")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Endpoints" })).not.toBeVisible();
-  await page.getByText("Advanced settings").click();
+  // Advanced settings opens from the header icon as a modal and closes on Escape.
+  await page.getByRole("button", { name: "Advanced settings" }).click();
   await expect(page.getByRole("heading", { name: "Endpoints" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("heading", { name: "Endpoints" })).toHaveCount(0);
+  // The simulator mirror lives in a side panel behind its own header icon.
+  await page.route("**/api/labs/ios/simulator", (route) => route.fulfill({ json: {
+    available: true, configuredDevice: "", runtimes: ["iOS 27.2"],
+    devices: [{ udid: "UDID-1", name: "iPhone 17", runtime: "iOS 27.2", state: "Shutdown" }], booted: []
+  } }));
+  await expect(page.getByRole("button", { name: "Attach simulator" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Simulator", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Attach simulator" })).toBeVisible();
 });
 
 test("setup is offered only when a required dependency is missing", async ({ page }) => {
@@ -149,6 +160,18 @@ test("a missing required dependency offers setup", async ({ page }) => {
   const missing = { id: "runtime", label: "Container runtime", found: false, required: true, hint: "Install it" };
   await mockApi(page, "macos", { ios: { state: "needs-setup", actions: [setup], requirements: [missing] } });
   await page.goto("/labs/ios/");
+  await expect(page.getByRole("button", { name: "Install dependencies" })).toBeVisible();
+});
+
+test("dependencies that are already found stay out of the card", async ({ page }) => {
+  const setup = { id: "setup", label: "Setup", description: "Install prerequisites", privileged: false };
+  const found = { id: "runtime", label: "Container runtime", found: true, required: true, hint: "" };
+  const missing = { id: "python", label: "Python 3.11+", found: false, required: true, hint: "Install it" };
+  await mockApi(page, "macos", { ios: { state: "needs-setup", actions: [setup], requirements: [found, missing] } });
+  await page.goto("/labs/ios/");
+  await expect(page.getByText("Container runtime")).toHaveCount(0);
+  await expect(page.getByText("Python 3.11+")).toBeVisible();
+  await expect(page.getByText("1 of 2 found")).toBeVisible();
   await expect(page.getByRole("button", { name: "Install dependencies" })).toBeVisible();
 });
 
@@ -219,7 +242,9 @@ test("Source readiness keeps optional browser tooling separate from core setup",
   await mockApi(page, "linux");
   await page.goto("/labs/source/");
   await expect(page.getByRole("main").getByRole("heading", { name: "Source Lab", exact: true })).toBeVisible();
-  await expect(page.getByText("Python 3.11+", { exact: true })).toBeVisible();
+  // Found requirements stay out of the card: the summary badge reports them, Playwright is still listed.
+  await expect(page.getByText("Python 3.11+", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("1 of 2 found")).toBeVisible();
   await expect(page.locator("li").filter({ hasText: "Playwright" }).getByText("optional", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Install dependencies" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Doctor", exact: true })).toBeVisible();
