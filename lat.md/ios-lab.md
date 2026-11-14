@@ -31,7 +31,8 @@ and [[ios-lab/mac/stop-simulator.sh]], Appium [[ios-lab/mac/appium.sh]], idb
 
 Optional automation follows the same install/start/stop pattern as Appium:
 `idb.sh install` puts the client in `~/.oslab/idb` and takes the companion
-from Homebrew, `idb.sh start` runs a companion for the booted simulator, and
+from Meta's facebook/fb Homebrew tap, `idb.sh start` runs a companion for the
+booted simulator, and
 `xcuitest.sh smoke` creates a real XCUITest session through the running
 Appium server to prove the whole chain. All of them appear on the iOS Lab
 page as previewed actions and stay optional — the simulator runs without
