@@ -1,7 +1,7 @@
 {
   "name": "os-lab-app",
   "private": true,
-  "version": "0.3.6",
+  "version": "0.3.7",
   "type": "module",
   "description": "os-lab desktop app (Tauri v2): the dashboard in a native window, backed by the os-lab console.",
   "scripts": {
