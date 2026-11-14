@@ -29,6 +29,49 @@ The script reads assets from `app/out/<version>` when present, otherwise downloa
 release with `gh`, verifies every SHA-256 through `app/scripts/build-update-manifest.mjs`, and
 uploads `latest.json` to the `app-updates` prerelease.
 
+## 0.3.5
+
+- Redesign Cleanup Lab's dashboard views. The advanced `/cleanup/scan/` page
+  renders catalog entries as sortable cards — largest-first once a scan exists,
+  or safest-first — with category icons, risk badges, measured sizes and
+  relative size bars. Hints, impacts, resolved paths, sources and privilege
+  notes moved into hover/focus detail popovers, and selection chips (Defaults /
+  All / None) sit beside the card grid.
+- Add a "Measured space" summary with a stacked bar by risk class; results are
+  grouped by category and size-sorted; clean reports show Trashed / Deleted /
+  Skipped / Failed badges; history rows collapse per-run item lists.
+- "Review & clean" builds the plan and opens a focused confirmation dialog
+  listing ready items with sizes and skipped items with their guard reasons
+  (for example a running application), so the selection can be corrected before
+  running. The dashboard's confirm step uses the same dialog. Trash remains the
+  default and the plan's fingerprint checks are unchanged.
+- Name container prune actions from their action ids with the command and risk
+  badge visible before confirming; leftover findings sort by confidence with
+  paths in the detail popover and no delete actions.
+- Fix size formatting: values of one kibibyte and above were previously rendered
+  as "MiB", and sizes now keep their left-to-right order in right-to-left
+  locales. New interface strings are translated in all seven supported locales.
+
+## 0.3.4
+
+- Pin the Windows NSIS setup to per-user installs and verify the per-user mode
+  during install; clear the stored install-path value on uninstall so a
+  reinstall does not inherit a stale path.
+- Add a read-only volume inventory to Cleanup Lab's engine: `GET
+  /api/cleanup/volumes` and `labctl cleanup volumes` list every local volume's
+  capacity and kind, mark the volume holding the home folder, and warn above
+  90% usage.
+- Add typed privileged maintenance actions behind the desktop's own elevation
+  prompt — APT package cache, journald vacuum, apt autoremove, the Spotlight
+  index rebuild and DISM's component store cleanup — with fingerprinted
+  single-use previews and an audited run, plus the read-only macOS Full Disk
+  Access probe. No stored password; an elevated `rm` stays refused.
+- Add cache relocation: move a catalog entry to another volume behind a
+  symlink and back (restore, relink, resume), where every step keeps either
+  the original or a verified copy. These Cleanup Lab capabilities live in the
+  engine, the console API and `labctl`; their dashboard cards follow in a
+  later release.
+
 ## 0.3.3
 
 - Make Cleanup Lab's default page a compact scan, recommendation, plan review,

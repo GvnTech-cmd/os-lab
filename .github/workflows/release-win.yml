@@ -44,13 +44,13 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - name: Build the unsigned installers
+      - name: Build the unsigned installers and check the per-user setup
         shell: pwsh
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         run: |
           npm ci --no-audit --no-fund --prefix dashboard
-          ./app/scripts/release-win.ps1 -NoSign
+          ./app/scripts/release-win.ps1 -NoSign -SmokeInstall
 
       - name: Read the version
         id: v

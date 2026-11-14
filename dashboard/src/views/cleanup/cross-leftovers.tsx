@@ -1,9 +1,18 @@
 import { useEffect, useState } from "react";
-import { Empty, Section, Status } from "../../components/ui";
+import { Badge, Empty, Section, Status } from "../../components/ui";
 import { api, type CleanupAuxJob, type CleanupCrossLeftovers } from "../../lib/api";
+import { bytes } from "./format";
+import { InfoPopover } from "./info-popover";
 
 const errorText = (error: unknown) => error instanceof Error ? error.message : String(error);
-const bytes = (value: number) => value < 1024 ? `${value} B` : `${(value / 1024 ** 2).toFixed(1)} MiB`;
+
+/** Spoken confidence band; the exact percentage stays available on hover and in the popover. */
+function ConfidenceBadge({ value }: { value: number }) {
+  const percent = Math.round(value * 100);
+  const tone = value >= 0.8 ? "success" : value >= 0.4 ? "warning" : undefined;
+  const label = value >= 0.8 ? "Likely leftover" : value >= 0.4 ? "Possible leftover" : "Uncertain";
+  return <Badge tone={tone} title={`Confidence: ${percent}%`}>{label}</Badge>;
+}
 
 export function CrossPlatformLeftovers() {
   const [job, setJob] = useState<CleanupAuxJob<CleanupCrossLeftovers> | null>(null);
@@ -35,6 +44,7 @@ export function CrossPlatformLeftovers() {
     catch (failure) { setError(errorText(failure)); }
   }
 
+  const items = [...(job?.result?.items ?? [])].sort((a, b) => b.confidence - a.confidence || b.sizeBytes - a.sizeBytes);
   return <Section title="Leftovers" description="Report only. No files are deleted here.">
     <div className="flex gap-2">
       <button type="button" className="iux-btn" disabled={submitting || job?.state === "running"} onClick={() => void scan()}>Scan</button>
@@ -48,13 +58,21 @@ export function CrossPlatformLeftovers() {
       {job.result.cancelled && <p>Scan cancelled. Results are partial.</p>}
       {!!job.result.inventorySources?.length && <p>Source: <span translate="no">{job.result.inventorySources.join(", ")}</span></p>}
       {job.result.inventoryErrors?.map((message, index) => <Status key={index} value={{ ok: false, text: message }} />)}
-      {job.result.items.length === 0 ? <Empty>No leftovers were reported.</Empty> : job.result.items.map((item) =>
+      {items.length === 0 ? <Empty>No leftovers were reported.</Empty> : items.map((item) =>
         <div key={item.path} className="border-b border-(--iux-border) py-2 text-sm">
-          <strong>{item.name}</strong> · <span translate="no">{item.status}</span> · {bytes(item.sizeBytes)} · Confidence: {Math.round(item.confidence * 100)}%
-          <p className="break-all" translate="no">{item.path}</p>
-          <p translate="no">{item.rule}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="min-w-0 flex-1 truncate font-medium">{item.name}</span>
+            <Badge><span translate="no">{item.status}</span></Badge>
+            <ConfidenceBadge value={item.confidence} />
+            <span dir="ltr" className="tabular-nums">{bytes(item.sizeBytes)}</span>
+            <InfoPopover>
+              <p className="break-all text-xs" translate="no">{item.path}</p>
+              <p className="mt-1 text-xs" translate="no">{item.rule}</p>
+              <p className="mt-1 text-xs text-(--iux-muted-foreground)">Confidence: {Math.round(item.confidence * 100)}%</p>
+            </InfoPopover>
+          </div>
         </div>)}
-      {!!job.result.unreadable?.length && <p>unreadable paths: <span translate="no">{job.result.unreadable.join(", ")}</span></p>}
+      {!!job.result.unreadable?.length && <p className="mt-2 text-xs text-(--iux-muted-foreground)">unreadable paths: <span translate="no">{job.result.unreadable.join(", ")}</span></p>}
     </>}
   </Section>;
 }

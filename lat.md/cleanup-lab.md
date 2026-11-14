@@ -180,16 +180,80 @@ actions only when the engine is ready. Public Pages has no engine, so the page
 explains local installation without polling, per
 [[lat.md/ux-readiness.md]].
 
+## Volumes
+
+CLN-28 adds a read-only volume inventory: [[cleanup-lab/engine/cleanup_lab/volumes.py]]
+answers `GET /api/cleanup/volumes` and `labctl cleanup volumes`.
+
+Every local volume is reported with its mount point, filesystem, capacity and
+kind (`root` / `internal` / `removable` / `unknown`), the volume holding the
+home folder is marked, and usage above 90% raises a pressure warning. Network
+and pseudo filesystems are filtered before any capacity call; Windows
+enumerates drives through kernel32, Linux reads `/proc/self/mountinfo`, and
+macOS parses the fixed `mount` probe plus an optional fixed `diskutil info
+-plist` probe. An unreadable volume carries an `error` instead of failing the
+probe. The `/cleanup/` volumes card is the dashboard layer's part.
+
+## Privileged actions
+
+CLN-20 adds typed privileged actions: [[cleanup-lab/engine/cleanup_lab/privilege.py]]
+previews and runs root-level maintenance through the desktop's own elevation.
+
+System maintenance — `apt-get clean`, a journald vacuum, `apt-get autoremove
+--purge`, the Spotlight index rebuild, DISM's component store cleanup — is
+never a plan → clean path item: an elevated `rm` would bypass the Trash rules,
+so the cleaning happens inside the tool itself, behind the CLN-08 pattern
+(fixed argv from a validated allowlist mirrored by
+[[cleanup-lab/catalog/actions/privileged.json]], a fingerprinted preview, a
+single-use preview id, a fresh candidate check and an audited run). The page
+sends an action id and a preview id, never a command string. `GET
+/api/cleanup/privileged`, `POST /api/cleanup/privileged/preview` and `POST
+/api/cleanup/privileged/run` follow the container contract; readiness gains an
+optional `privileged-actions` capability; `system.shared-font-caches` joins
+the catalog as a scanned, privilege-flagged Linux path.
+`privilege.disk_access()` ports the read-only macOS Full Disk Access probe
+with guidance and reports `applicable: False` elsewhere. The `/cleanup/`
+privileged card is the dashboard layer's part.
+
+## Relocation
+
+CLN-27 relocates a catalog entry to another volume behind a symlink:
+[[cleanup-lab/engine/cleanup_lab/relocation.py]] classifies seven link states
+and plans move, restore, relink and resume.
+
+The fixed order — copy → verify (file count + bytes) → rename the original
+aside → symlink → verify the link → remove the set-aside original — leaves
+either the original or a verified copy at every step. The page sends a catalog
+entry id and a destination volume from CLN-28's inventory (`GET
+/api/cleanup/relocation` lists both); the store is
+`<volume>/oslab-caches/<entry id>`, the pair passes `safety.validate_copy`, the
+owning application must not be running, and there is no elevated fallback. An
+interrupted move is flagged in the status and continued by a typed resume that
+re-verifies the store copy before touching the aside. `POST
+/api/cleanup/relocation/plan` and `POST /api/cleanup/relocation/run` follow the
+typed preview → single-use job pattern and are audited. The `/cleanup/`
+relocation card is the dashboard layer's part.
+
 ## Dashboard pages
 
 [[dashboard/src/views/cleanup/pages.tsx]] renders the compact default dashboard at
 `/cleanup/`: one read-only catalog scan, measured suggestions, plan review,
-confirmation, progress and a result summary.
+confirmation, progress and a result summary. Its confirmation opens the shared
+native dialog (focus containment, Escape/backdrop close, focus return) that
+lists ready items with sizes and skipped items with their reasons.
 
 The recommended preset uses default-selected, nonprivileged entries outside
 high/privacy/credentials risk. The extended preset adds other low/medium risk
 entries. Both use the same expiring Trash plan. Detailed catalog selection and
-delete mode remain at `/cleanup/scan/`.
+delete mode remain at `/cleanup/scan/`, where entries are selectable cards
+carrying only decision info — category icon, risk badge, measured size and a
+relative size bar — sorted largest-first once a scan exists or safest-first
+(default-selected, then low to high risk) otherwise. Hints, impacts, resolved
+paths, sources and the privilege requirement live in the hover/focus popover
+from [[dashboard/src/views/cleanup/info-popover.tsx]]; shared formatting and
+ordering live in [[dashboard/src/views/cleanup/format.ts]]. The scan page adds
+a "Measured space" summary with a stacked bar by risk class, and selection or
+mode changes invalidate the plan.
 
 The page renders
 category results at `/cleanup/results/`, skipped/failed and unreadable items at
@@ -209,7 +273,7 @@ the seven translated locales.
 `console/cleanup_api.py` answers `/api/cleanup/...`; the web console routes that prefix
 before the static dashboard fallthrough.
 
-`GET /api/cleanup/status` and `GET /api/cleanup/catalog` are read-only.
+`GET /api/cleanup/status`, `GET /api/cleanup/catalog` and `GET /api/cleanup/volumes` are read-only.
 `POST /api/cleanup/scan`, `POST /api/cleanup/plan` and `POST /api/cleanup/clean
 {planId}` start jobs whose requests carry catalog ids, an optional worker count or
 mode, and a plan id only. `GET /api/cleanup/jobs/<id>` returns progress and result;
@@ -223,8 +287,8 @@ verified runs from the private SQLite store. The store writes each completed
 clean result with path, bytes, mode and outcome, chaining records with
 HMAC-SHA256 and a random per-install key. `labctl cleanup history --verify`
 checks the full chain and exits 1 on tampering. History is durable across console
-restarts. Later tasks add ignore rules (CLN-17),
-volumes (CLN-28) and runtimes (CLN-29) here, each typed and validated again by the
+restarts. Later tasks add ignore rules (CLN-17) and
+runtimes (CLN-29) here, each typed and validated again by the
 engine.
 
 ## Safety
@@ -250,7 +314,8 @@ The engine tests run under `unittest` from the engine folder.
 
 `cd cleanup-lab/engine && python3 -m unittest discover -s tests -p 'test_*.py'`
 covers the probe, the catalog, the scan, plan → clean (guard, fingerprints,
-Trash by default, honest failures), the path rules and the CLI exit codes.
+Trash by default, honest failures), the path rules, the CLI exit codes, the
+volume inventory, the privileged actions and the relocation executor.
 Tests live in [[cleanup-lab/engine/tests]]; the console's typed job contract is
 covered by [[android-lab/lab/tests/test_cleanup_console.py]]. [[scripts/run-tests.sh]]
 runs the same suites next to the reference code tests, the Android suite, `bash -n`,

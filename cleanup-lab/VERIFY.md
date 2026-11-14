@@ -633,6 +633,163 @@ capabilities, candidate previews, risk, command, confirmed prune result and
 report-only VM inventory; the browser test covers the typed requests. Dashboard
 type, translation, build and browser checks pass with all seven catalogs updated.
 
+## CLN-28 — volumes overview and disk pressure
+
+Branch `feat/cln-28`. Scope: the engine volume inventory, `GET
+/api/cleanup/volumes`, `labctl cleanup volumes`, tests, docs. The `/cleanup/`
+volumes card is the dashboard layer's part (handoff in `STATUS.md`).
+## CLN-20 — privileged targets and disk-access check
+
+Branch `feat/cln-20`. Scope: the privileged-action engine module, the action
+catalog, the console endpoints, the readiness capability, the macOS Full Disk
+Access probe, tests and docs. The `/cleanup/` privileged card is the dashboard
+layer's part (handoff in `STATUS.md`).
+
+### Engine unit tests
+
+```console
+$ cd cleanup-lab/engine && python -m unittest discover -s tests -p 'test_*.py'
+Ran 178 tests in 1.120s
+FAILED (failures=49, errors=37, skipped=4)
+```
+
+Baseline discipline: this Windows host fails the same suite on a clean master
+worktree **before** any change, with the same counts — the suite carries
+platform-specific expectations (macOS path templates, POSIX-only fixtures) that
+do not hold on Windows:
+
+```console
+# clean origin/master worktree, before this branch's changes
+Ran 154 tests in 3.032s
+FAILED (failures=49, errors=37, skipped=4)
+```
+
+The failing test ids were captured on both runs (`unittest -v` lines starting
+with `FAIL:`/`ERROR:`) and compared: 86 ids before, 86 after, diff 0 — **no new
+failure**. The 24 new `test_volumes.py` tests (fake mount tables and fake
+disks only, per README rule 8) and the existing `test_cli.py` suite (10 tests)
+pass on this host.
+Ran 180 tests in 1.350s
+FAILED (failures=49, errors=37, skipped=4)
+```
+
+Same discipline as CLN-28: a clean `origin/master` worktree on this Windows
+host fails the same suite before any change (154 tests, failures=49,
+errors=37, skipped=4 — platform-specific expectations, pre-existing). The
+failing test ids were captured on both runs: **86 ids before, 86 after, diff 0
+— no new failure**. The 26 new `test_privilege.py` tests (fake runners, fake
+`which`, injected executors — no real sudo/pkexec/osascript/UAC, per rule 8)
+pass; the catalog inventory assertion was updated deliberately from 65 to 66
+entries for the new `system.shared-font-caches` path and the updated test
+passes.
+
+### Console contract
+
+```console
+$ python -m pytest android-lab/lab/tests/test_cleanup_console.py -q
+1 failed, 10 passed, 7 skipped in 0.89s
+```
+
+The failure (`test_container_prune_requires_single_use_preview_and_audits`) is
+pre-existing on this host at the baseline (the fake docker binary fixture is
+POSIX-shaped); the two new volumes tests pass.
+
+### CLI on this host (real, read-only run)
+
+```console
+$ python -c "import sys; sys.path.insert(0, 'cleanup-lab/engine'); from cleanup_lab import cli; print('exit', cli.main(['volumes']))"
+Cleanup Lab volumes · windows · 1 volume
+  [ok] C:\                          NTFS     root       86% used · home
+exit 0
+```
+1 failed, 10 passed, 7 skipped in 1.18s
+```
+
+The failure is the same single pre-existing Windows one recorded at the
+baseline (fake docker binary fixture); the two new privileged-endpoint tests
+pass.
+
+### Knowledge graph
+
+```console
+$ lat check
+All checks passed in 950ms
+All checks passed
+```
+
+### Not run
+
+* `./scripts/run-tests.sh` — this host has no usable bash (the `bash` on PATH is
+  the WSL launcher without distributions), so the repo runner cannot start here;
+  the targeted suites above are the same stages it would run for this change.
+* `npm run check` / `test:i18n` / `build` / `test:e2e` — no dashboard file
+  changed; the volumes card is the dashboard-layer handoff.
+* Live macOS and Linux collector runs — covered here by the injected
+  fake-table tests; on-host confirmation is pending.
+* `./scripts/run-tests.sh` — no usable bash on this host (WSL launcher without
+  distributions), as recorded for CLN-28; the targeted suites above are the
+  stages this change needs.
+* Live elevated runs of every action (`apt-get clean` on Linux, `mdutil -E /`
+  on macOS, DISM on Windows) — deliberately not executed from a test or agent;
+  execution is covered by the injected-executor tests, and the real elevation
+  prompts belong to the user, not to CI. The `GET /api/cleanup/privileged`
+  capabilities call is safe and returns this host's actions without running
+  any of them.
+* Dashboard checks — no dashboard file changed; the card is the handoff.
+
+## CLN-27 — relocate caches to another volume behind a symlink
+
+Branch `feat/cln-27`, stacked on `feat/cln-28` (destinations come from the
+CLN-28 volume inventory). Scope: the relocation engine module, the console
+endpoints, tests and docs. The `/cleanup/` relocation card is the dashboard
+layer's part (handoff in `STATUS.md`).
+
+### Engine unit tests
+
+```console
+$ cd cleanup-lab/engine && python -m unittest discover -s tests -p 'test_*.py'
+Ran 202 tests in 1.634s
+FAILED (failures=49, errors=37, skipped=11)
+```
+
+The 11 skips are the 4 pre-existing ones plus 7 honest symlinks skips: this
+Windows host cannot create symlinks without Developer Mode or a privilege
+(WinError 1314), so the executor tests that need a real link skip with that
+reason and pass on macOS/Linux hosts. The symlink-failure refusal itself is
+tested everywhere by simulating the error. Baseline discipline: a clean
+`origin/master` worktree on this host fails the same suite before any change
+(154 tests, failures=49, errors=37, skipped=4 — pre-existing,
+platform-specific). Failing test ids captured on both runs: **86 before, 86
+after, diff 0 — no new failure**. The 24 new `test_relocation.py` tests pass
+(including the fake-catalog integration through `build_plan`/`execute`).
+
+### Console contract
+
+```console
+$ python -m pytest android-lab/lab/tests/test_cleanup_console.py -q
+1 failed, 12 passed, 7 skipped in 0.98s
+```
+
+The failure is the same single pre-existing Windows one recorded at the
+baseline; the two new relocation-endpoint tests pass.
+
+### Knowledge graph
+
+```console
+$ lat check
+All checks passed
+```
+
+### Not run
+
+* `./scripts/run-tests.sh` — no usable bash on this host (WSL launcher without
+  distributions), as recorded for CLN-28/CLN-20.
+* Live relocation of a real cache — rule 8: the executor is covered by
+  generated-tree tests; a real move belongs to the user, on a host where
+  symlinks are available.
+* Dashboard checks — no dashboard file changed; the relocation card is the
+  handoff.
+
 ## CLN-04 … CLN-29
 
 Each task appends its own section when it lands.

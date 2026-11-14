@@ -107,9 +107,12 @@ GitHub release `app-v<version>` (whichever runs first creates it), each asset wi
 file. The release version must match `app/src-tauri/tauri.conf.json` and the tag must point at the
 published commit.
 
-- `app\scripts\release-win.ps1 [-Publish] [-NoSign]` (PowerShell on Windows) builds the NSIS setup `.exe` and the WiX `.msi`
-  as `os-lab_<v>_windows_x64-setup.exe` / `.msi`. Authenticode signing is optional: it is used when a certificate
+- `app\scripts\release-win.ps1 [-Publish] [-NoSign] [-SmokeInstall]` (PowerShell on Windows) builds the NSIS setup `.exe` and the WiX `.msi`
+  as `os-lab_<v>_windows_x64-setup.exe` / `.msi`. The setup program installs for the current user only
+  (`%LOCALAPPDATA%\os-lab`, no elevation); the MSI installs for all users (`Program Files`, administrator).
+  Authenticode signing is optional: it is used when a certificate
   thumbprint or `.pfx` is configured (`secrets/README.md`), otherwise the installers are unsigned and SmartScreen warns.
+  `-SmokeInstall` installs the setup `.exe` for the current user, launches it, uninstalls it and fails unless every step stayed per-user.
   `-Publish` uses `gh`, or the credential git already stores for pushes.
 - `app/scripts/release-deb.sh [--publish] [--install-deps] [--all-formats]` (Debian/Ubuntu) builds
   `os-lab_<v>_linux_<arch>.deb`, checks that it bundles the runtime and dashboard and contains no

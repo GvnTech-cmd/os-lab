@@ -1,1 +1,0 @@
-export{t as FirewallCompanyPage}from"./firewall-company-page.B5u253Po.js";

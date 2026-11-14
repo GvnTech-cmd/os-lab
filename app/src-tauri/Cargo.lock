@@ -2493,7 +2493,7 @@ dependencies = [
 
 [[package]]
 name = "os-lab-app"
-version = "0.3.3"
+version = "0.3.5"
 dependencies = [
  "serde",
  "serde_json",

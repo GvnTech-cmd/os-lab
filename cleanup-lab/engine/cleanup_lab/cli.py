@@ -1,8 +1,9 @@
-"""`labctl cleanup status|doctor|catalog|history [--json]`.
+"""`labctl cleanup status|doctor|catalog|history|volumes [--json]`.
 
-All three read: they print the readiness probe or the detector catalog and change
-nothing. The exit code follows the lab CLI contract — ``0`` when the engine is
-ready, ``1`` when it needs setup or the platform is unsupported, ``2`` for a usage
+All read: they print the readiness probe, the detector catalog, the audit
+history or the volume inventory and change nothing. The exit code follows the
+lab CLI contract — ``0`` when the engine is ready, ``1`` when it needs setup or
+the platform is unsupported (or a volumes probe failed), ``2`` for a usage
 error (argparse).
 """
 from __future__ import annotations
@@ -13,7 +14,7 @@ import sys
 
 from .catalog import CatalogError, report as catalog_report
 from .readiness import probe, repo_root
-from . import history
+from . import history, volumes
 
 USAGE_EXIT = 2
 
@@ -107,17 +108,47 @@ def _catalog_lines(report, stream):
     return lines
 
 
+def _volumes_lines(report, stream):
+    count = len(report["volumes"])
+    lines = [
+        "Cleanup Lab volumes · {0} · {1} {2}".format(
+            report["platform"], count, "volume" if count == 1 else "volumes"
+        )
+    ]
+    if report.get("error"):
+        lines.append("  {0}".format(_safe(report["error"])))
+    for volume in report["volumes"]:
+        usage = (
+            "{0:.0f}% used".format(volume["usage"] * 100)
+            if volume["usage"] is not None
+            else "usage unknown"
+        )
+        mark = "[ok]" if volume["pressure"] == "ok" else "[!!]"
+        suffix = " · home" if volume["isHome"] else ""
+        lines.append(
+            "  {0} {1:<28} {2:<8} {3:<10} {4}{5}".format(
+                mark, _safe(volume["mountPoint"]), _safe(volume["filesystem"] or "?"),
+                _safe(volume["kind"]), usage, suffix,
+            )
+        )
+        if volume["error"]:
+            lines.append("      {0}".format(_safe(volume["error"])))
+    lines.extend("  ! {0}".format(_safe(text)) for text in report["warnings"])
+    return lines
+
+
 def build_parser():
     parser = argparse.ArgumentParser(
         prog="labctl cleanup",
         description="Cleanup Lab: inspect readiness (read-only) and, from CLN-19, scan/plan/clean.",
     )
-    sub = parser.add_subparsers(dest="command", metavar="status|doctor|catalog|history")
+    sub = parser.add_subparsers(dest="command", metavar="status|doctor|catalog|history|volumes")
     for name, text in (
         ("status", "one-screen readiness summary"),
         ("doctor", "every check, path and hint"),
         ("catalog", "detector catalog for this computer, with resolved paths"),
         ("history", "recent cleanup runs from the private audit store"),
+        ("volumes", "local volumes, capacity and disk-pressure warnings"),
     ):
         command = sub.add_parser(name, help=text, description=text)
         command.add_argument("--json", action="store_true", help="print the probe as JSON")
@@ -135,7 +166,8 @@ def main(argv=None, stream=None):
         return USAGE_EXIT
     try:
         report = (catalog_report(repo_root()) if args.command == "catalog" else
-                  history.read(verify=args.verify) if args.command == "history" else probe())
+                  history.read(verify=args.verify) if args.command == "history" else
+                  volumes.inventory() if args.command == "volumes" else probe())
     except CatalogError as exc:
         sys.stderr.write("cleanup catalog: {0}\n".format(exc))
         return 1
@@ -159,8 +191,11 @@ def main(argv=None, stream=None):
                     entry["result"]["totals"]["items"],
                 ) for entry in value["entries"]
             ],
+            "volumes": _volumes_lines,
         }[args.command](report, stream)
         stream.write("\n".join(lines) + "\n")
+    if args.command == "volumes":
+        return 1 if report.get("error") else 0
     if args.command in ("catalog", "history"):
         return 0
     return 0 if report["state"] == "ready" else 1

@@ -515,3 +515,146 @@ def test_deep_sweep_request_uses_configured_root_ids(tmp_path, monkeypatch):
     wait_for(job, "done")
     assert job.result["items"][0]["id"] == "projects.node-modules"
     assert job.result["items"][0]["sizeBytes"] == 3
+
+
+def test_the_relocation_status_lists_entries_and_destinations():
+    api = cleanup_api.CleanupAPI(REPO_ROOT)
+    report = api.get("/api/cleanup/relocation", {})
+    assert isinstance(report["entries"], list)
+    for entry in report["entries"]:
+        assert {"entryId", "name", "path", "relocatable", "interrupted"} <= set(entry)
+    assert isinstance(report["destinations"], list)
+    assert report["destinations"], "a host with no usable volume is a bug"
+    for destination in report["destinations"]:
+        assert {"mountPoint", "freeBytes", "totalBytes", "kind"} <= set(destination)
+        assert destination["kind"] in ("root", "internal", "removable")
+
+
+def test_relocation_plan_and_run_are_typed_single_use_and_audited(tmp_path, monkeypatch):
+    import cleanup_lab.relocation as relocation_module
+
+    record = {
+        "action": "move", "entryId": "test.cache", "entryName": "Test cache",
+        "homePath": str(tmp_path / "home"), "storePath": str(tmp_path / "store"),
+        "destination": str(tmp_path), "files": 1, "sizeBytes": 10, "freeBytes": 1000,
+        "state": "local_only", "steps": [{"op": "copy", "src": "a", "dst": "b"}],
+        "fingerprint": {"files": 1, "bytes": 10},
+    }
+    monkeypatch.setattr(relocation_module, "build_plan", lambda *args, **kwargs: record)
+    monkeypatch.setattr(relocation_module, "execute", lambda *args, **kwargs: {
+        "entryId": "test.cache", "action": "move", "status": "completed",
+        "bytesRelocated": 10, "bytesRemoved": None, "cancelled": False,
+        "stepsDone": 1, "stepsTotal": 1,
+        "homePath": record["homePath"], "storePath": record["storePath"],
+    })
+    api = cleanup_api.CleanupAPI(REPO_ROOT)
+    for body in ({"action": "nope", "entryId": "test.cache", "destination": "x"},
+                 {"action": "move"},
+                 {"entryId": "test.cache", "destination": "x"},
+                 {"action": "move", "entryId": "", "destination": "x"}):
+        with pytest.raises(cleanup_api.CleanupError) as raised:
+            api.post("/api/cleanup/relocation/plan", body)
+        assert raised.value.status == 400
+
+    plan = api.post("/api/cleanup/relocation/plan",
+                    {"action": "move", "entryId": "test.cache", "destination": str(tmp_path)})
+    wait_for(plan, "done")
+    assert plan.result["previewId"]
+    assert plan.result["steps"] == record["steps"]
+    assert plan.error is None
+
+    run = api.post("/api/cleanup/relocation/run", {"previewId": plan.result["previewId"]})
+    wait_for(run, "done")
+    assert run.kind == "relocation-run"
+    assert run.result["status"] == "completed"
+    assert run.error is None
+
+    with pytest.raises(cleanup_api.CleanupError) as raised:
+        api.post("/api/cleanup/relocation/run", {"previewId": plan.result["previewId"]})
+    assert raised.value.status == 409
+
+
+def test_the_volumes_endpoint_reports_this_computers_volumes():
+    api = cleanup_api.CleanupAPI(REPO_ROOT)
+    report = api.get("/api/cleanup/volumes", {})
+    assert report["platform"] == paths_module.platform_id()
+    assert report["threshold"] == pytest.approx(0.9)
+    assert isinstance(report["volumes"], list)
+    assert report["volumes"], "a host with no local volume is a bug"
+    for volume in report["volumes"]:
+        assert set(volume) >= {
+            "mountPoint", "name", "device", "filesystem", "kind",
+            "totalBytes", "freeBytes", "usedBytes", "usage", "isHome", "pressure", "error",
+        }
+        assert volume["kind"] in ("root", "internal", "removable", "unknown")
+        assert volume["pressure"] in ("ok", "warning")
+    if report["homeVolume"] is not None:
+        assert any(volume["isHome"] for volume in report["volumes"])
+
+
+def test_the_volumes_endpoint_takes_no_query_parameters():
+    api = cleanup_api.CleanupAPI(REPO_ROOT)
+    with pytest.raises(cleanup_api.CleanupError) as caught:
+        api.get("/api/cleanup/volumes", {"x": "1"})
+    assert caught.value.status == 400
+def test_the_privileged_capabilities_report_actions_and_disk_access():
+    import cleanup_lab.privilege as privilege_module
+
+    api = cleanup_api.CleanupAPI(REPO_ROOT)
+    report = api.get("/api/cleanup/privileged", {})
+    assert report["platform"] == paths_module.platform_id()
+    assert isinstance(report["diskAccess"], dict)
+    if not report["applicable"]:
+        assert report["actions"] == []
+        return
+    assert report["elevation"] in ("pkexec", "sudo", "osascript", "uac")
+    for action in report["actions"]:
+        assert action["id"].startswith("privileged.")
+        assert action["risk"] in ("low", "medium", "high")
+        assert isinstance(action["runArgv"], list)
+    if report["platform"] != "macos":
+        assert report["diskAccess"]["applicable"] is False
+
+
+def test_privileged_preview_and_run_are_typed_single_use_and_audited(tmp_path, monkeypatch):
+    import cleanup_lab.privilege as privilege_module
+
+    plan = privilege_module.PrivilegedPreview(
+        platform="linux", action_id="privileged.linux.apt-cache", risk="low",
+        preview_argv=None, run_argv=("apt-get", "clean"), elevation="pkexec",
+        elevation_argv=("pkexec", "--disable-internal-agent", "apt-get", "clean"),
+        digest="d" * 64, count=7, total_bytes=1234, created_at=time.time(),
+    )
+    material = {"count": 7, "totalBytes": 1234, "notes": [], "missing": False}
+    monkeypatch.setattr(privilege_module, "preview", lambda *args, **kwargs: (plan, material))
+    monkeypatch.setattr(privilege_module, "execute", lambda *args, **kwargs: {
+        "actionId": plan.action_id, "platform": "linux", "status": "completed",
+        "candidateCount": 7,
+        "command": ["pkexec", "--disable-internal-agent", "apt-get", "clean"],
+        "elevation": "pkexec", "output": "ok", "bytesRemoved": None,
+    })
+    api = cleanup_api.CleanupAPI(REPO_ROOT)
+    for body in ({"nope": 1}, {"actionId": ""}, {"actionId": 3}):
+        with pytest.raises(cleanup_api.CleanupError) as raised:
+            api.post("/api/cleanup/privileged/preview", body)
+        assert raised.value.status == 400
+    with pytest.raises(cleanup_api.CleanupError) as raised:
+        api.post("/api/cleanup/privileged/run", {"previewId": "nope"})
+    assert raised.value.status == 404
+
+    preview = api.post("/api/cleanup/privileged/preview", {"actionId": "privileged.linux.apt-cache"})
+    assert preview["previewId"]
+    assert preview["candidateCount"] == 7
+    assert preview["totalBytes"] == 1234
+    assert preview["command"] == ["pkexec", "--disable-internal-agent", "apt-get", "clean"]
+
+    job = api.post("/api/cleanup/privileged/run", {"previewId": preview["previewId"]})
+    wait_for(job, "done")
+    assert job.kind == "privileged-run"
+    assert job.result["status"] == "completed"
+    assert job.error is None
+    assert job.finishedAt is not None
+
+    with pytest.raises(cleanup_api.CleanupError) as raised:
+        api.post("/api/cleanup/privileged/run", {"previewId": preview["previewId"]})
+    assert raised.value.status == 409

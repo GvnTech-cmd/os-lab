@@ -48,15 +48,15 @@ the finding and the decision are in the session log.
 | CLN-17 | pending | — | — | — | — | none |
 | CLN-18 | pending | — | — | — | — | none |
 | CLN-19 | pending | — | — | — | — | none |
-| CLN-20 | pending | — | — | — | — | none |
+| CLN-20 | merged | [#171](https://github.com/keyvanarasteh/os-lab/pull/171) | ee7a45a3 | `/cleanup/` privileged card (dashboard layer) | action model, not elevated path deletion (see handoff) | none |
 | CLN-21 | pending | — | — | — | — | none |
 | CLN-22 | merged | [#137](https://github.com/keyvanarasteh/os-lab/pull/137) | a3133e76 | — | done ahead of order by Claude Code at the maintainer's request; engine and dashboard untouched | none |
 | CLN-23 | pending | — | — | Disk Explorer page | console side only | none |
 | CLN-24 | merged | [#148](https://github.com/keyvanarasteh/os-lab/pull/148) | 547f0a92 | — | catalog signatures behind CLN-07 sweep | none |
 | CLN-25 | merged | [#146](https://github.com/keyvanarasteh/os-lab/pull/146) | e5dfac27 | source label wired into cleanup results | engine and dashboard payloads ready | none |
 | CLN-26 | pending | — | — | — | — | none |
-| CLN-27 | pending | — | — | — | — | none |
-| CLN-28 | pending | — | — | `/cleanup/` volumes card | console side only | none |
+| CLN-27 | in review (this PR) | [#172](https://github.com/keyvanarasteh/os-lab/pull/172) | — | `/cleanup/` relocation card (dashboard layer) | stacked on CLN-28 (uses its volume inventory) | none |
+| CLN-28 | merged | [#170](https://github.com/keyvanarasteh/os-lab/pull/170) | c10d5ad9 | `/cleanup/` volumes card (dashboard layer) | console + engine landed per the layer split | none |
 | CLN-29 | pending | — | — | — | — | none |
 
 No CLN task has a student reservation or open student PR: `grep -rl CLN-
@@ -483,6 +483,170 @@ Actions: exactly one, Re-check (re-fetch). No scan/clean button until CLN-03/13.
 Dynamic strings from the API (`label`, `detail`, `hint`, `reasons`) are English
 server-side, like every other lab label; they are not translated client-side.
 
+## Dashboard handoff — CLN-28
+
+### Console endpoint (live on this branch)
+
+`GET /api/cleanup/volumes` — no query parameters (an unknown one is `400`); no
+POST, no job: the probe is synchronous and read-only.
+
+```json
+{
+  "platform": "windows",
+  "checkedAt": 0,
+  "threshold": 0.9,
+  "homeVolume": "C:\\\\",
+  "error": null,
+  "volumes": [
+    {
+      "mountPoint": "C:\\\\", "name": "Windows", "device": "C:", "filesystem": "NTFS",
+      "kind": "root", "totalBytes": 0, "freeBytes": 0, "usedBytes": 0,
+      "usage": 0.93, "isHome": true, "pressure": "warning", "error": null
+    }
+  ],
+  "warnings": ["Volume C:\\\\ is 93% full (7.8 GB free)."]
+}
+```
+
+`kind` is `root` / `internal` / `removable` / `unknown`; `pressure` is `ok` or
+`warning` (usage strictly above `threshold`). A volume that could not be
+measured carries a non-null `error`, `null` byte fields and `usage` — show the
+error, never zero-filled numbers. `homeVolume` is `null` when no mount point
+contains the home folder. Byte totals are `shutil.disk_usage` values; never sum
+them into a claim of reclaimable space — they are capacity, not cleanup results.
+
+### What the card does (the `/cleanup/` volumes card is this handoff)
+
+| State | What the page shows |
+|---|---|
+| ready | one row per volume: mount point, kind, filesystem, used/total and a bar; the home volume marked; the `warnings` list under it |
+| unreadable volume | the row stays visible with its `error` text and no numbers — never hidden, never zero-filled |
+| probe failed (top-level `error`) | that error text alone; no invented rows |
+| public Pages | no engine call: the page explains local installation |
+
+Visible strings (English; these are the i18n keys):
+`Volumes` · `Local volumes and disk pressure. Read-only; nothing is scanned or removed.` ·
+`Home` · `Root volume` · `Internal` · `Removable` · `Unknown` · `{percent}% used` ·
+`Usage unknown` · `Could not measure this volume`. Dynamic strings (`mountPoint`,
+`name`, `filesystem`, `error`, `warnings[]`) come from the engine in English,
+like every other lab payload; they are not translated client-side.
+## Dashboard handoff — CLN-20
+
+### Console endpoints (live on this branch)
+
+`GET /api/cleanup/privileged` — no query parameters (an unknown one is `400`):
+
+```json
+{
+  "platform": "linux",
+  "applicable": true,
+  "elevation": "pkexec",
+  "actions": [
+    {"id": "privileged.linux.apt-cache", "name": "APT package cache", "risk": "low",
+     "impact": "…", "previewMode": "files", "previewArgv": null,
+     "runArgv": ["apt-get", "clean"]}
+  ],
+  "diskAccess": {"applicable": false, "granted": null, "paths": [],
+                  "guidance": "", "reason": "Full Disk Access is a macOS privacy setting."}
+}
+```
+
+`elevation` is `pkexec` / `sudo` / `osascript` / `uac`, or `null` when the
+desktop offers none — hide the actions then. `POST
+/api/cleanup/privileged/preview` carries only `{"actionId": "privileged.linux.apt-cache"}`
+(unknown keys are `400`, an unknown action is `400`) and answers the preview id,
+the candidate material (`count`, `totalBytes` for files; `output` for tool text;
+`candidates` for package lists), the elevated command and `expiresAt`. `POST
+/api/cleanup/privileged/run` carries only `{"previewId": …}` — `404` unknown,
+`409` used, `410` expired — and starts job kind `privileged-run`; the result is
+appended to the signed audit history with `bytesRemoved: null` (the tool does
+not report trustworthy bytes — never invent them).
+
+`diskAccess` is macOS-only: `granted` is `true` / `false` / `null` (unknown),
+with `paths[]` evidence and, on `false`, the `guidance` sentence.
+
+### What the page does with it
+
+| State | What the page shows |
+|---|---|
+| no engine section | when `applicable` is `false` or `elevation` is `null`, the card is hidden (readiness hides it too) |
+| idle | one row per action: name, risk, impact, preview source; **Preview** |
+| previewed | the elevated command, the candidate material, `expiresAt`; **Run** behind an explicit confirm dialog that names the action and says the tool deletes directly (no Trash, no undo) |
+| running | job progress; **Cancel** refuses only the poll, the elevated process itself is not cancelled |
+| done | the tool's `output` (or the UAC sentence), and the history note |
+| failed | the error next to the action |
+| public Pages | no engine calls: the page explains local installation |
+
+Never expose a free-form command or path field. A macOS disk-access card shows
+`granted` with the probe paths; on other platforms it is hidden.
+
+### Visible strings (English; these are the i18n keys)
+
+`Privileged maintenance` · `System maintenance that needs administrator rights, shown before anything runs.` ·
+`Preview` · `Run` · `Elevated command` · `Candidates` · `This action removes data directly; it does not use the Trash and cannot be undone.` ·
+`Waiting for the elevation prompt…` · `The elevation prompt was refused.` ·
+`Full Disk Access` · `Granted` · `Not granted` · `Unknown` · `Open System Settings` ·
+`The Cleanup Lab runs in the local app.` Dynamic strings (`name`, `impact`,
+`output`, `error`, `guidance`) come from the engine in English, like every
+other lab payload.
+
+## Dashboard handoff — CLN-27
+
+### Console endpoints (live on this branch; stacked on CLN-28)
+
+`GET /api/cleanup/relocation` — no query parameters (an unknown one is `400`):
+
+```json
+{
+  "platform": "windows",
+  "entries": [
+    {"entryId": "developers.gradle", "name": "Gradle caches", "path": "C:\\Users\\me\\.gradle",
+     "relocatable": true, "interrupted": false}
+  ],
+  "destinations": [
+    {"mountPoint": "D:\\", "freeBytes": 0, "totalBytes": 0, "kind": "internal"}
+  ]
+}
+```
+
+`POST /api/cleanup/relocation/plan` — body `{"action": "move" | "restore" |
+"relink" | "resume", "entryId": …, "destination": <mountPoint>}`; anything else
+is `400`. The answer is a `relocation-plan` job whose result carries the
+`previewId`, the seven-state `state`, `homePath`/`storePath`, `sizeBytes`,
+`freeBytes` and the ordered typed `steps`. `POST /api/cleanup/relocation/run`
+carries only `{"previewId": …}` — `404` unknown, `409` used, `410` expired —
+and starts job kind `relocation-run` with per-step progress
+(`{step, stepsDone, stepsTotal}`); the result is appended to the signed audit
+history with `bytesRemoved: null` and `bytesRelocated` for a completed move.
+A cancelled run reports `cancelled: true` and the remaining step names; the
+state is resumable through `action: "resume"`.
+
+### What the card does
+
+| State | What the page shows |
+|---|---|
+| idle | one row per relocatable entry: name, path, state, interrupted flag; the destination volumes beside it |
+| planned | the ordered steps, sizes and free space; **Run** behind an explicit confirm dialog naming the entry, destination and the fact that the original folder becomes a symlink |
+| running | `{step, stepsDone, stepsTotal}`; **Cancel** stops between steps and reports what remains |
+| done | “Relocated”, the store path and the symlink note; Restore and Relink become available |
+| failed | the reason next to the row; the original or a verified copy is still in place — say so, never suggest deleting by hand |
+| conflict | `state: "conflict"` blocks plans and must tell the user both copies exist — the user decides, no action is offered |
+| public Pages | no engine calls: the page explains local installation |
+
+Never expose a free-form path field: the entry comes from the catalog list, the
+destination from the volume list.
+
+### Visible strings (English; these are the i18n keys)
+
+`Relocate caches` · `Move a cache to another volume and link it back into place.` ·
+`Move` · `Restore` · `Relink` · `Resume interrupted move` · `Destination` ·
+`State: local folder` · `State: linked` · `State: broken link` · `State: conflict` ·
+`This replaces the folder with a link to the copy on the destination volume.` ·
+`A previous move was interrupted; resume it before starting a new one.` ·
+`Cancelled — the original or a verified copy is still in place.` ·
+`The Cleanup Lab runs in the local app.` Dynamic strings (`name`, `path`,
+`steps`, errors) come from the engine in English.
+
 ## Session log
 
 **2026-11-13 — CLN-01.** Read `AGENTS.md`, `CONTRIBUTING.md` §2b,
@@ -581,3 +745,48 @@ was 7 passed / 1 failed / 1 skipped: the android stage shows the same six
 pre-existing ids as `master` (158 passed), and the dashboard stage skipped because
 this worktree has no `node_modules`. Dashboard typecheck/build/e2e were not run —
 no dashboard file changed.
+
+**2026-11-13 — CLN-28.** Volumes overview and disk pressure. Added
+`cleanup_lab/volumes.py` (kernel32 drive enumeration on Windows,
+`/proc/self/mountinfo` on Linux, the fixed `mount` probe plus an optional fixed
+`diskutil info -plist` probe on macOS; network and pseudo filesystems filtered
+before any capacity query; the home volume marked by longest prefix; pressure
+warnings above 90% usage), `GET /api/cleanup/volumes`, `labctl cleanup volumes`
+and 24 engine tests over fake mount tables (rule 8: no real volume touched).
+The `/cleanup/` volumes card is the dashboard layer's part; the handoff is
+above. Baseline note, recorded honestly in VERIFY.md: the engine suite has
+pre-existing platform-specific failures on this Windows host (49 failures + 37
+errors on a clean master checkout); the failing test set is identical after
+this change, and the console contract suite keeps its single pre-existing
+Windows failure.
+
+**2026-11-13 — CLN-20.** Privileged targets and the disk-access check. Added
+`cleanup_lab/privilege.py` (typed actions for apt cache, journald vacuum,
+apt autoremove, Spotlight rebuild and DISM component store cleanup; elevation
+through pkexec/sudo/osascript/UAC with no stored password; fingerprinted
+single-use previews; the read-only macOS Full Disk Access probe),
+`cleanup-lab/catalog/actions/privileged.json` mirrored by the engine allowlist,
+`GET /api/cleanup/privileged` + preview/run endpoints, an optional
+`privileged-actions` readiness capability and 26 engine tests with fake
+runners (rule 8). Design decision, recorded deliberately: privileged
+maintenance is the CLN-08 action pattern, not an elevated path deletion — an
+elevated `rm` would bypass rule 3's Trash guarantee. The catalog inventory
+assertion (`test_catalog.py`) was updated from 65 to 66 entries for the new
+`system.shared-font-caches` Linux path. The `/cleanup/` privileged card is the
+dashboard layer's part; the handoff is above. Windows host baseline failures
+are unchanged (86 identical ids; see VERIFY.md).
+
+**2026-11-13 — CLN-27.** Cache relocation behind a symlink. Ported
+`cleanup_ref/relocation.py` into `cleanup_lab/relocation.py` (the seven link
+states, the copy → verify → rename aside → symlink → verify → remove order,
+`plan_move`/`plan_restore`/`plan_relink`) and added `plan_resume` for the
+interrupted states plus the typed step executor with progress and cancel.
+Destinations come from CLN-28's volume inventory (this branch is stacked on
+`feat/cln-28`); stores are `<volume>/oslab-caches/<entry id>`; the pair passes
+`safety.validate_copy` and the CLN-12 running-app lock applies. The console
+exposes `GET /api/cleanup/relocation`, a `relocation-plan` job and a single-use
+audited `relocation-run` job; the preview store gained a label so container and
+relocation refusals are distinguishable. 24 engine tests on generated trees
+(rule 8); the symlink-needing ones skip honestly on Windows hosts without
+Developer Mode, and the symlink-failure refusal itself is tested everywhere.
+Windows host baseline failures are unchanged (86 identical ids; see VERIFY.md).

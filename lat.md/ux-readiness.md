@@ -17,13 +17,19 @@ The Jobs page reports cancellation failure beside the selected job and keeps its
 
 ## Detail and endpoint status
 
-[[dashboard/src/views/lab-page.tsx]] keeps dependencies and actions visible while endpoints and configuration live in a collapsed Advanced settings panel. [[dashboard/src/views/android/pages.tsx]] keeps its secondary emulator endpoint list compact.
+[[dashboard/src/views/lab-page.tsx]] keeps the Dependencies card visible while
+anything is missing and hides it once every tracked requirement is found, so
+actions take the whole row. Endpoints and configuration stay in a collapsed
+Advanced settings panel.
+
+[[dashboard/src/views/android/pages.tsx]] keeps its secondary emulator endpoint
+list compact.
 
 An address from configuration describes where a service would answer; it does not establish that the service is running.
 
 [[dashboard/src/components/ui.tsx#CopyButton]], the Contribute task list, and public-home setup commands report clipboard success only after the write resolves; failures offer manual selection. Public-home release lookup leaves the checking state on failure and points to the release page.
 
-[[dashboard/src/views/contribute-modal.tsx]] and [[dashboard/src/views/gap-modal.tsx]] use native modal dialogs for focus containment and Escape handling. [[dashboard/src/views/health-page.tsx#PlatformTabs]] and [[dashboard/src/views/firewall-company-page.tsx]] connect selected tabs to panels and support arrow keys. Shared `.iux-btn` controls and marked exceptions gain larger targets on coarse pointers.
+[[dashboard/src/views/contribute-modal.tsx]] and [[dashboard/src/views/gap-modal.tsx]] use native modal dialogs for focus containment and Escape handling. The Cleanup Lab confirmation dialog in [[dashboard/src/views/cleanup/pages.tsx]] follows the same recipe, and the cleanup cards keep decisions (name, risk, size, selection) on the card while hints, impacts, paths, sources and privilege notes live in the hover/focus popover from [[dashboard/src/views/cleanup/info-popover.tsx]]. [[dashboard/src/views/health-page.tsx#PlatformTabs]] and [[dashboard/src/views/firewall-company-page.tsx]] connect selected tabs to panels and support arrow keys. Shared `.iux-btn` controls and marked exceptions gain larger targets on coarse pointers.
 
 ## Public and local navigation
 

@@ -103,6 +103,22 @@ def _trash_usable(platform, trash):
     return is_writable_dir(trash)
 
 
+def _privileged_capability(platform, env):
+    """Whether this desktop's own elevation mechanism is present (CLN-20)."""
+    if platform == "windows":
+        return _capability(
+            "privileged-actions", "Privileged actions", True,
+            "Runs through the UAC prompt",
+        )
+    names = ("pkexec", "sudo") if platform == "linux" else ("osascript",)
+    name, where = _first_on_path(env, names)
+    return _capability(
+        "privileged-actions", "Privileged actions", bool(name),
+        "{0} at {1}".format(name, where) if name
+        else "No {0} on PATH".format(" or ".join(names)),
+    )
+
+
 def _tool_capabilities(platform, env):
     items = []
     for id_, label, names in CHECKED_TOOLS:
@@ -124,6 +140,7 @@ def _tool_capabilities(platform, env):
             "{0} at {1}".format(name, where) if name else "No simulator tool on PATH",
         )
     )
+    items.append(_privileged_capability(platform, env))
     return items
 
 

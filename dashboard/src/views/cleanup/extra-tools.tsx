@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { Empty, Section, Status } from "../../components/ui";
+import { Badge, CopyButton, Empty, Section, Status } from "../../components/ui";
 import { api, type CleanupAuxJob, type CleanupContainerCapabilities, type CleanupContainerPreview, type CleanupContainerResult, type CleanupVMInventory } from "../../lib/api";
+import { bytes, containerActionLabel, riskLabel, riskTone } from "./format";
 
 const errorText = (error: unknown) => error instanceof Error ? error.message : String(error);
-const bytes = (value: number) => value < 1024 ? `${value} B` : `${(value / 1024 ** 2).toFixed(1)} MiB`;
 
 export function CleanupExtraTools({ now }: { now: number }) {
   const [capabilities, setCapabilities] = useState<CleanupContainerCapabilities | null>(null);
@@ -79,15 +79,24 @@ export function CleanupExtraTools({ now }: { now: number }) {
       {capabilities && !capabilities.available && <p>{capabilities.reason}</p>}
       {capabilities?.available && <>
         <p>Container engine: <code translate="no">{capabilities.engine}</code></p>
-        <div className="flex flex-wrap gap-2">{capabilities.actions.map((action) =>
-          <button key={action.id} type="button" className="iux-btn" disabled={containerBusy}
-            onClick={() => void loadPreview(action.id)}>Preview <span translate="no">{action.id}</span></button>)}</div>
+        <div className="mt-2 flex flex-wrap gap-2">{capabilities.actions.map((action) =>
+          <button key={action.id} type="button" className="iux-btn" disabled={containerBusy} title={action.id}
+            onClick={() => void loadPreview(action.id)}>
+            <span className="text-(--iux-muted-foreground)">Preview</span> {containerActionLabel(action.id)}
+          </button>)}</div>
       </>}
-      {preview && <div className="mt-3 border-t border-(--iux-border) pt-3">
-        <p><strong translate="no">{preview.actionId}</strong> · Risk: {preview.risk} · Candidates: {preview.candidateCount}</p>
-        <p>Command: <code translate="no">{preview.command.join(" ")}</code></p>
-        <details><summary>Candidates</summary><pre className="max-h-48 overflow-auto text-xs" translate="no">{JSON.stringify(preview.candidates, null, 2)}</pre></details>
-        {preview.expiresAt <= now ? <p>Preview expired. Preview again.</p> :
+      {preview && <div className="mt-3 border-t border-(--iux-border) pt-3 text-sm">
+        <div className="flex flex-wrap items-center gap-2">
+          <strong>{containerActionLabel(preview.actionId)}</strong>
+          <Badge tone={riskTone(preview.risk)}>{riskLabel(preview.risk)}</Badge>
+          <span className="tabular-nums text-(--iux-muted-foreground)">{preview.candidateCount} <span>candidates</span></span>
+          <span className="ms-auto"><CopyButton text={preview.command.join(" ")} label="Copy command" /></span>
+        </div>
+        <p className="mt-1 text-xs"><span className="font-medium text-(--iux-muted-foreground)">Command</span> <code translate="no">{preview.command.join(" ")}</code></p>
+        <details className="mt-2"><summary className="cursor-pointer text-xs text-(--iux-muted-foreground)">Candidates</summary>
+          <pre className="iux-scroll mt-1 max-h-48 overflow-auto rounded-md border border-(--iux-border) p-2 text-xs" translate="no">{JSON.stringify(preview.candidates, null, 2)}</pre>
+        </details>
+        {preview.expiresAt <= now ? <p className="mt-2">Preview expired. Preview again.</p> :
           <button type="button" className="iux-btn mt-2" data-variant="primary" disabled={containerBusy || preview.candidateCount === 0}
             onClick={() => void prune()}>Confirm prune</button>}
         {preview.candidateCount === 0 && <p>No candidates to prune.</p>}
@@ -105,7 +114,14 @@ export function CleanupExtraTools({ now }: { now: number }) {
       {vmJob?.result && <>
         {vmJob.result.cancelled && <p>Scan cancelled. Results are partial.</p>}
         {vmJob.result.items.length === 0 ? <Empty>No virtual machines found.</Empty> : vmJob.result.items.map((item) =>
-          <div key={item.path} className="border-b border-(--iux-border) py-2 text-sm"><strong>{item.name}</strong> · {bytes(item.sizeBytes)} · Report only<p className="break-all" translate="no">{item.path}</p></div>)}
+          <div key={item.path} className="border-b border-(--iux-border) py-2 text-sm">
+            <div className="flex items-center gap-2">
+              <span className="min-w-0 flex-1 truncate font-medium">{item.name}</span>
+              <Badge>Report only</Badge>
+              <span dir="ltr" className="tabular-nums">{bytes(item.sizeBytes)}</span>
+            </div>
+            <p className="break-all text-xs text-(--iux-muted-foreground)" translate="no">{item.path}</p>
+          </div>)}
         {vmJob.result.unavailable.map((item, index) => <p key={`${item.id}-${index}`} className="text-sm"><span translate="no">{item.root || item.id}</span>: {item.reason}</p>)}
       </>}
     </Section>

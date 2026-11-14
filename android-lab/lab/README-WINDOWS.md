@@ -47,6 +47,7 @@ cd lab
 | Command | Arguments | Description |
 |---|---|---|
 | `preflight` | — | Validates system environment, non-admin status, and prerequisites |
+| `win-preflight` | `[-Json]` | **Virtualization readiness (PENT-23)**: VT-x/AMD-V, Hyper-V/VBS, VirtualBox, WSL2, Podman, execution policy, RAM, disk; every finding has a fix marked admin / no-admin and the usable lab model is recommended |
 | `setup` | — | Initializes `.venv`, installs dependencies, and downloads portable tools |
 | `vbox-create` | `[-VmName <name>] [-Memory <mb>] [-Cpus <n>] [-Iso <path>]` | Provisions VirtualBox VM with SATA storage, dynamic VDI, nested VT-x, and NAT forwardings |
 | `vbox-download-iso` | `[-Distro <alpine\|ubuntu>]` | Downloads minimal Linux ISO (Alpine: ~219MB, Ubuntu: ~2.1GB) & mounts to VM DVD drive |
@@ -126,6 +127,35 @@ If you prefer interactive installation with a graphical window:
 
 ---
 
+## 🩺 Virtualization Readiness (`win-preflight`, PENT-23)
+
+`.\lab.ps1 win-preflight` (or `python scripts\win_preflight.py`) is a read-only, no-admin
+check that tells you which lab model this PC can run and what to fix. Nothing is changed on the host.
+
+| Check | What it reads (no elevation) | Typical finding → fix |
+|---|---|---|
+| `vtx` | `Win32_Processor` + `Win32_ComputerSystem.HypervisorPresent` | VT-x off in BIOS → enable in firmware (**admin/IT**); meanwhile Model 1 |
+| `virtualbox` | `VBoxManage --version` | Hyper-V active → VirtualBox runs in slow NEM mode without nested VT-x → prefer Podman/WSL2 |
+| `wsl` | `wsl -l -v` | WSL missing → `wsl --install` (**admin/IT**); WSL1 only → `wsl --set-version <distro> 2` |
+| `podman` | `podman machine list` | no machine → `podman machine init`; stopped → `podman machine start` |
+| `execution_policy` | `Get-ExecutionPolicy -List` (Process scope ignored), `lab.ps1:Zone.Identifier` | Restricted → `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` (no admin); enforced by Group Policy → ask IT; downloaded (Mark-of-the-Web) → `Unblock-File .\lab.ps1` |
+| `ram`, `disk`, `vm_disk`, `python` | CIM, free space on the lab drive and (if different) the profile drive that holds VMs / WSL images, interpreter | below 8 GB / 20 GB / Python 3.11 |
+
+When Hyper-V (or WSL2/VBS) is running, Windows reports `VMMonitorModeExtensions` and SLAT as
+`False` (verified on Windows 11 build 26300); the check reads `HypervisorPresent` first so this is
+not mistaken for a CPU without VT-x.
+
+Use `-Json` for a machine-readable report. To share or replay a host state, save it with
+`python scripts\win_preflight.py --save-facts facts.json` and evaluate it anywhere with
+`--facts facts.json`; the test suite replays the known failure scenarios in
+`tests/fixtures/win_preflight/` this way. Exit code is 1 if any check fails (`--strict`: warnings too).
+
+Each remediation step is labelled `[admin]` only when that step needs elevation or IT. A probe that
+times out or errors is reported as such (model state `unknown`) instead of being read as "not set up",
+and a model is only recommended when the RAM, disk, architecture and Python floors it needs all hold.
+
+---
+
 ## 🦭 Podman Setup Guide (Windows Non-Admin)
 
 When using Podman on Windows without admin:
@@ -144,6 +174,7 @@ When using Podman on Windows without admin:
 ## 📊 Verification Checklist
 
 - [x] Pre-flight checks pass without elevation (`.\lab.ps1 preflight`)
+- [x] Virtualization readiness reported without elevation (`.\lab.ps1 win-preflight`)
 - [x] Python virtual environment successfully initialized (`.venv`)
 - [x] Frida and mitmproxy available in user space
 - [x] Manifest & attack surface analysis executes offline (`scripts/static_analyzer.py`)

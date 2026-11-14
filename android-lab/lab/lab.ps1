@@ -20,7 +20,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("help", "preflight", "setup", "vbox-create", "vbox-download-iso", "vbox-start", "vbox-autoinstall", "vbox-deploy-android", "vbox-stop", "vbox-status", "podman-status", "mobsf-status", "mobsf-start", "mobsf-scan", "wf1", "wf2", "hook", "report", "clean", "monitor", "telemetry", "dump-sandbox", "scan-secrets", "trace-crypto", "parse-flows", "analyze-app", "generate-report", "fuzz-ipc", "patch-apk", "agentic-plan", "ui")]
+    [ValidateSet("help", "preflight", "win-preflight", "setup", "vbox-create", "vbox-download-iso", "vbox-start", "vbox-autoinstall", "vbox-deploy-android", "vbox-stop", "vbox-status", "podman-status", "mobsf-status", "mobsf-start", "mobsf-scan", "wf1", "wf2", "hook", "report", "clean", "monitor", "telemetry", "dump-sandbox", "scan-secrets", "trace-crypto", "parse-flows", "analyze-app", "generate-report", "fuzz-ipc", "patch-apk", "agentic-plan", "ui")]
     [string]$Command = "help",
 
     [Parameter()]
@@ -60,7 +60,10 @@ param(
     [switch]$Gui,
 
     [Parameter()]
-    [string]$Distro = "alpine"
+    [string]$Distro = "alpine",
+
+    [Parameter()]
+    [switch]$Json
 )
 
 $ErrorActionPreference = "Continue"
@@ -146,6 +149,7 @@ function Show-Help {
     Write-Host "Usage: .\lab.ps1 <command> [options]`n"
     Write-Host "Environment & Virtualization:"
     Write-Host "  preflight              Run environment, non-admin, VBox, ports, and tools checks"
+    Write-Host "  win-preflight [-Json]  VT-x/Hyper-V/WSL/Podman/VirtualBox readiness with no-admin fixes (PENT-23)"
     Write-Host "  setup                  Bootstrap user-space Python .venv, Frida, mitmproxy, and tools"
     Write-Host "  vbox-create [-VmName]  Create userland VirtualBox VM with NAT port forwardings & storage"
     Write-Host "  vbox-download-iso      Automatically download & mount Linux ISO (default: alpine, or -Distro ubuntu)"
@@ -283,6 +287,23 @@ function Invoke-Preflight {
 
     Write-Host "`nPre-flight summary: $(if ($failCount -eq 0) { 'PASS (Ready for Lab)' } else { 'FAIL' })" -ForegroundColor $(if ($failCount -eq 0) { 'Green' } else { 'Red' })
     return ($failCount -eq 0)
+}
+
+# ---------------------------------------------------------------------------
+# COMMAND: WIN-PREFLIGHT (PENT-23)
+# ---------------------------------------------------------------------------
+function Invoke-WinPreflight {
+    $py = if (Test-Path $VenvPython) { $VenvPython } else { (Get-Command python -ErrorAction SilentlyContinue).Source }
+    if (-not $py) {
+        Write-Bad "Python not found. Install Python 3.11+ (Install for me only), then re-run."
+        $global:LASTEXITCODE = 2
+        return
+    }
+    $pfArgs = @((Join-Path $ScriptDir "scripts\win_preflight.py"))
+    if ($Json) { $pfArgs += "--json" }
+    # Output goes to the pipeline so "-Json | ConvertFrom-Json" works; the exit code
+    # (1 = a check failed) is left in $LASTEXITCODE for the dispatcher.
+    & $py @pfArgs
 }
 
 # ---------------------------------------------------------------------------
@@ -1034,6 +1055,7 @@ function Invoke-Clean {
 switch ($Command) {
     "help"                { Show-Help }
     "preflight"           { Invoke-Preflight }
+    "win-preflight"       { Invoke-WinPreflight; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } }
     "setup"               { Invoke-Setup }
     "vbox-create"         { Invoke-VBoxCreate }
     "vbox-download-iso"   { Invoke-VBoxDownloadIso }

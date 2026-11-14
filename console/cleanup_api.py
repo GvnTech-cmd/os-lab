@@ -3,7 +3,9 @@
 The console accepts typed, validated calls only: never a command string and never
 a free-form path list from the page (``cleanup-lab/README.md``). Ready:
 readiness (CLN-01), the detector catalog (CLN-02), the scan job (CLN-03) and the
-plan → clean flow (CLN-13) and audit history (CLN-15); the remaining endpoints add
+plan → clean flow (CLN-13), audit history (CLN-15), the volume inventory
+(CLN-28), the typed privileged actions (CLN-20) and the cache-relocation plans
+(CLN-27); the remaining endpoints add
 their own actions here, each validated again by the engine's safety guard.
 
 The engine is imported from ``cleanup-lab/engine`` (``cleanup_lab``), which is a
@@ -52,6 +54,8 @@ PLAN_STATUS = {
 BODY_KEYS = {"scan": SCAN_KEYS, "deep-scan": DEEP_KEYS, "plan": PLAN_KEYS, "clean": CLEAN_KEYS,
              "macos-leftovers": (), "packages": (), "vm-scan": (),
               "container-preview": CONTAINER_PREVIEW_KEYS, "container-prune": CONTAINER_PRUNE_KEYS,
+              "privileged-preview": CONTAINER_PREVIEW_KEYS, "privileged-run": CONTAINER_PRUNE_KEYS,
+              "relocation-plan": ("action", "entryId", "destination"), "relocation-run": ("previewId",),
               "leftovers": ()}
 
 
@@ -315,6 +319,98 @@ class CleanupJobStore:
         finally:
             job.finishedAt = time.time()
 
+    def start_privileged_run(self, root, preview_id):
+        """Claim a single-use privileged preview and run its audited job."""
+        try:
+            _module(root, "history").prepare()
+        except Exception as exc:
+            raise CleanupError(500, "Audit history is unavailable: {0}".format(exc)) from exc
+        plan = PRIVILEGED_PREVIEWS.claim(preview_id)
+        job = CleanupJob("privileged-run", {"previewId": preview_id, "actionId": plan.action_id})
+        self._register(job)
+        return self._spawn(job, self._run_privileged, (root, job, plan))
+
+    def _run_privileged(self, root, job, plan):
+        try:
+            result = _module(root, "privilege").execute(root, plan)
+        except Exception as exc:
+            result = {"actionId": plan.action_id, "platform": plan.platform, "status": "failed",
+                      "error": "{0}: {1}".format(type(exc).__name__, exc), "bytesRemoved": None}
+        job.result = result
+        try:
+            _module(root, "history").append(result)
+            job.state = "done" if result["status"] == "completed" else "failed"
+            if job.state == "failed":
+                job.error = result.get("error")
+        except Exception as exc:
+            job.state = "failed"
+            job.error = "Audit history could not record the result: {0}".format(exc)
+        finally:
+            job.finishedAt = time.time()
+
+    def start_relocation_plan(self, root, request):
+        """Validate the typed relocation request, then build its plan on a worker."""
+        action = request.get("action")
+        entry_id = request.get("entryId")
+        destination = request.get("destination")
+        if action not in ("move", "restore", "relink", "resume"):
+            raise CleanupError(400, "action must be move, restore, relink or resume")
+        if not isinstance(entry_id, str) or not entry_id:
+            raise CleanupError(400, "entryId must name a catalog entry")
+        if not isinstance(destination, str) or not destination:
+            raise CleanupError(400, "destination must be a volume mount point from GET /api/cleanup/relocation")
+        job = CleanupJob("relocation-plan", {"action": action, "entryId": entry_id, "destination": destination})
+        self._register(job)
+        return self._spawn(job, self._run_relocation_plan, (root, job, action, entry_id, destination))
+
+    def _run_relocation_plan(self, root, job, action, entry_id, destination):
+        try:
+            record = _module(root, "relocation").build_plan(root, entry_id, destination, action)
+        except Exception as exc:
+            job.state = "failed"
+            job.error = "{0}: {1}".format(type(exc).__name__, exc)
+            job.finishedAt = time.time()
+            return
+        preview_id = RELOCATION_PREVIEWS.register(RelocationPreview(record))
+        job.result = dict(record, previewId=preview_id)
+        job.state = "done"
+        job.finishedAt = time.time()
+
+    def start_relocation_run(self, root, preview_id):
+        """Claim a single-use relocation preview and run its audited job."""
+        try:
+            _module(root, "history").prepare()
+        except Exception as exc:
+            raise CleanupError(500, "Audit history is unavailable: {0}".format(exc)) from exc
+        record = RELOCATION_PREVIEWS.claim(preview_id).record
+        job = CleanupJob("relocation-run", {"previewId": preview_id, "entryId": record.get("entryId"),
+                                            "action": record.get("action")})
+        self._register(job)
+        return self._spawn(job, self._run_relocation_run, (root, job, record))
+
+    def _run_relocation_run(self, root, job, record):
+        def update(payload):
+            job.progress = dict(payload)
+
+        try:
+            result = _module(root, "relocation").execute(record, cancel=job.cancel,
+                                                          progress_callback=update)
+            job.result = result
+            _module(root, "history").append(result)
+            job.state = "cancelled" if result["cancelled"] else "done"
+        except Exception as exc:
+            job.state = "failed"
+            job.error = "{0}: {1}".format(type(exc).__name__, exc)
+            try:
+                _module(root, "history").append({
+                    "entryId": record.get("entryId"), "action": record.get("action"),
+                    "status": "failed", "error": str(exc), "bytesRemoved": None,
+                })
+            except Exception:
+                pass
+        finally:
+            job.finishedAt = time.time()
+
     def start_deep_scan(self, root, request):
         deep = _module(root, "deep")
         root_ids = request.get("rootIds")
@@ -519,10 +615,11 @@ class PlanStore:
             self.plans.pop(old.id, None)
 
 
-class ContainerPreviewStore:
+class PreviewStore:
     """Single-use, short-lived preview records, kept in this console process."""
 
-    def __init__(self):
+    def __init__(self, label="Container preview"):
+        self.label = label
         self.records = {}
         self.lock = threading.Lock()
 
@@ -539,11 +636,11 @@ class ContainerPreviewStore:
         with self.lock:
             record = self.records.get(preview_id)
             if record is None:
-                raise CleanupError(404, "Container preview not found")
+                raise CleanupError(404, "{0} not found".format(self.label))
             if record["used"]:
-                raise CleanupError(409, "Container preview was already used")
+                raise CleanupError(409, "{0} was already used".format(self.label))
             if time.time() - record["plan"].created_at > 600:
-                raise CleanupError(410, "Container preview expired")
+                raise CleanupError(410, "{0} expired".format(self.label))
             record["used"] = True
             return record["plan"]
 
@@ -551,7 +648,17 @@ class ContainerPreviewStore:
 #: One store per console process; the handler instances are per-request.
 JOBS = CleanupJobStore()
 PLANS = PlanStore()
-CONTAINER_PREVIEWS = ContainerPreviewStore()
+CONTAINER_PREVIEWS = PreviewStore()
+PRIVILEGED_PREVIEWS = PreviewStore("Privileged preview")
+RELOCATION_PREVIEWS = PreviewStore("Relocation preview")
+
+
+class RelocationPreview:
+    """A relocation record wrapped for the preview store's expiry contract."""
+
+    def __init__(self, record):
+        self.record = record
+        self.created_at = time.time()
 
 
 class CleanupAPI:
@@ -576,6 +683,15 @@ class CleanupAPI:
         if path == "/api/cleanup/deep-roots":
             _query(query)
             return {"roots": _module(self.root, "deep").roots(self.root)}
+        if path == "/api/cleanup/volumes":
+            _query(query)
+            return _module(self.root, "volumes").inventory()
+        if path == "/api/cleanup/relocation":
+            _query(query)
+            return _module(self.root, "relocation").status(self.root)
+        if path == "/api/cleanup/privileged":
+            _query(query)
+            return _module(self.root, "privilege").capabilities(self.root)
         if path == "/api/cleanup/simulators":
             _query(query)
             return _module(self.root, "deep").simulators(self.root)
@@ -626,6 +742,35 @@ class CleanupAPI:
             if not isinstance(preview_id, str) or not preview_id:
                 raise CleanupError(400, "previewId must name a confirmed preview")
             return JOBS.start_container_prune(self.root, preview_id)
+        if path == "/api/cleanup/privileged/preview":
+            _object_body(body, "privileged-preview")
+            action_id = body.get("actionId")
+            if not isinstance(action_id, str) or not action_id:
+                raise CleanupError(400, "actionId must name an available privileged action")
+            try:
+                plan, candidates = _module(self.root, "privilege").preview(self.root, action_id)
+            except Exception as exc:
+                raise CleanupError(400, str(exc)) from exc
+            preview_id = PRIVILEGED_PREVIEWS.register(plan)
+            return {"previewId": preview_id, "actionId": plan.action_id, "elevation": plan.elevation,
+                    "risk": plan.risk, "candidateCount": plan.count, "candidates": candidates,
+                    "totalBytes": plan.total_bytes, "command": list(plan.elevation_argv),
+                    "expiresAt": plan.created_at + 600}
+        if path == "/api/cleanup/privileged/run":
+            _object_body(body, "privileged-run")
+            preview_id = body.get("previewId")
+            if not isinstance(preview_id, str) or not preview_id:
+                raise CleanupError(400, "previewId must name a confirmed privileged preview")
+            return JOBS.start_privileged_run(self.root, preview_id)
+        if path == "/api/cleanup/relocation/plan":
+            _object_body(body, "relocation-plan")
+            return JOBS.start_relocation_plan(self.root, body)
+        if path == "/api/cleanup/relocation/run":
+            _object_body(body, "relocation-run")
+            preview_id = body.get("previewId")
+            if not isinstance(preview_id, str) or not preview_id:
+                raise CleanupError(400, "previewId must name a confirmed relocation preview")
+            return JOBS.start_relocation_run(self.root, preview_id)
         if path == "/api/cleanup/packages/scan":
             _object_body(body, "packages")
             return JOBS.start_packages(self.root)

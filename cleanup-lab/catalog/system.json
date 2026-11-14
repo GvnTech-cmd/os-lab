@@ -128,6 +128,20 @@
       }
     },
     {
+      "id": "system.shared-font-caches",
+      "name": "Shared font caches",
+      "category": "system",
+      "risk": "medium",
+      "hint": "System-wide generated font indexes, shared by every account on this machine.",
+      "impact": "Fonts may load more slowly while the system caches are rebuilt.",
+      "defaultSelected": false,
+      "needsPrivilege": true,
+      "detector": "paths",
+      "paths": {
+        "linux": ["/var/cache/fontconfig"]
+      }
+    },
+    {
       "id": "system.spotlight-index",
       "name": "Spotlight indexes",
       "category": "system",
