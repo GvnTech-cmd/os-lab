@@ -132,6 +132,39 @@ a symlink needs Developer Mode or a privilege and fails with a reason. An
 interrupted move leaves `<home>.oslab-moving` behind: a new move refuses to
 start, and a typed resume continues it after re-verifying the store copy.
 
+## Cleaner Pro (CLNP)
+
+PR #214 adds five layers on top of the roadmap; the plan and its honest
+deviations live in [`PLAN-cleaner-pro.md`](PLAN-cleaner-pro.md), the evidence
+in [`VERIFY.md`](VERIFY.md).
+
+* **Permissions** — a read-only permission surface (`cleanup_lab.permissions`):
+  the macOS Full Disk Access probe plus reactive classification of
+  scan-time permission errors into the grant that unlocks them (Desktop /
+  Documents / Downloads are never probed proactively — that would raise the
+  macOS consent dialog). Surfaced through readiness, `labctl cleanup doctor`,
+  `GET /api/cleanup/permissions` and a dashboard card whose deep link is a
+  plain client-side anchor.
+* **Background monitor** — an opt-in console daemon thread over a typed
+  trigger registry (`cleanup_lab.monitor`). First trigger: disk free-space
+  warnings per volume with re-arm hysteresis and a cooldown; config and
+  bounded events persist in the private state folder; a corrupt store
+  disables and reports. Dashboard card + warning banner; `labctl cleanup
+  monitor`. The runner never cleans by itself.
+* **Bookmarks** — prioritized catalog-entry bookmarks (`cleanup_lab.bookmarks`)
+  with a quick-clean flag, a Trash-only auto-clean hook on the free-space
+  trigger and a size-alert trigger. Quick clean still confirms; the hook
+  guards on engine-ready and no-overlap, refuses high/credentials/privacy,
+  audits every automated run and announces it.
+* **Custom entries** — user folders join as `custom.<slug>` catalog entries
+  (`cleanup_lab.custom_catalog`), validated once at creation against the same
+  rules the plan enforces, then addressed by id only.
+* **Overview + Space Explorer** — the overview dashboard (storage hero with
+  honest purgeable reporting, capability card grids) and a new `space` tab: a
+  read-only parent-summed size tree over registered roots (deep-roots ids and
+  custom entries) with dua-style bars, drill-down and breadcrumbs. The
+  explorer never deletes.
+
 ## Safety guard
 
 `cleanup_lab/safety.py` guards every filesystem deletion and move. It

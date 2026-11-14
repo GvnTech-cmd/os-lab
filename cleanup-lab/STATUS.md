@@ -58,6 +58,12 @@ the finding and the decision are in the session log.
 | CLN-27 | in review (this PR) | [#172](https://github.com/keyvanarasteh/os-lab/pull/172) | — | `/cleanup/` relocation card (dashboard layer) | stacked on CLN-28 (uses its volume inventory) | none |
 | CLN-28 | merged | [#170](https://github.com/keyvanarasteh/os-lab/pull/170) | c10d5ad9 | `/cleanup/` volumes card (dashboard layer) | console + engine landed per the layer split | none |
 | CLN-29 | pending | — | — | — | — | none |
+| CLNP-01…05 | in review | [#214](https://github.com/keyvanarasteh/os-lab/pull/214) | — | OS notification plumbing (desktop app) | engine + dashboard landed together | none |
+| CLNP-06…08 | in review | [#214](https://github.com/keyvanarasteh/os-lab/pull/214) | — | — | island router instead of Astro ClientRouter (localized catch-all shares ~40 page kinds) | none |
+| CLNP-09…13 | in review | [#214](https://github.com/keyvanarasteh/os-lab/pull/214) | — | OS notifications; labctl activation | monitor runs while the console runs, documented honestly | none |
+| CLNP-14…19 | in review | [#214](https://github.com/keyvanarasteh/os-lab/pull/214) | — | trusted quick clean (unconfirmed) | hook is Trash-only by design | none |
+| CLNP-20 | in review | [#214](https://github.com/keyvanarasteh/os-lab/pull/214) | — | — | risk restricted to low | none |
+| CLNP-21…23 | in review | [#214](https://github.com/keyvanarasteh/os-lab/pull/214) | — | treemap view; explorer on-disk sizes | bar-list first; purgeable only where the probe proves it | none |
 
 No CLN task has a student reservation or open student PR: `grep -rl CLN-
 reservations/` matches only `README.md` and `_schema.json`, and no open PR title or

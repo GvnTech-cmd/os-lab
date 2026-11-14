@@ -70,56 +70,56 @@ an optional capability, like `privileged-actions`.
 ### Sub-tasks
 
 #### CLNP-01 — Engine: typed `permissions` module
-- [ ] New `cleanup-lab/engine/cleanup_lab/permissions.py` owning the
+- [x] New `cleanup-lab/engine/cleanup_lab/permissions.py` owning the
       permission model: one typed record per permission —
       `{id, name, applicable, granted (true/false/null), probePaths[],
       results[{path, readable, reason}], guidance, grantUrl|null}`.
-- [ ] Move the CLN-20 FDA probe here; keep `privilege.disk_access()`
+- [x] Move the CLN-20 FDA probe here; keep `privilege.disk_access()`
       delegating to it so the `GET /api/cleanup/privileged` payload shape
       stays byte-compatible for existing consumers.
-- [ ] Reactive classification helper: given a scan's `unreadable` entries,
+- [x] Reactive classification helper: given a scan's `unreadable` entries,
       map each to a permission id + guidance (FDA / Files-and-Folders /
       hidden-roots), leaving unmatched entries unclassified — no guessing.
-- [ ] OneDrive/WindowsApps reparse + ACL classification is report-only and
+- [x] OneDrive/WindowsApps reparse + ACL classification is report-only and
       never blocks a scan.
 
 #### CLNP-02 — Readiness and doctor
-- [ ] `readiness.py` gains the optional `permissions` capability (present
+- [x] `readiness.py` gains the optional `permissions` capability (present
       whenever the engine can answer the permission payload) — missing it
       never blocks `ready`.
-- [ ] `labctl cleanup doctor` prints each permission: applicable / granted /
+- [x] `labctl cleanup doctor` prints each permission: applicable / granted /
       probe results / guidance, and the deep-link hint text on macOS; exit
       codes unchanged (optional capability).
 
 #### CLNP-03 — Console API
-- [ ] `GET /api/cleanup/permissions` — typed, read-only; merges proactive
+- [x] `GET /api/cleanup/permissions` — typed, read-only; merges proactive
       probe results with the latest scan's reactive classification when one
       exists in the console process. Unknown query parameters → `400`;
       missing engine → `501`.
-- [ ] Scan job payloads keep `unreadable` as-is; the *classification* joins
+- [x] Scan job payloads keep `unreadable` as-is; the *classification* joins
       through the permissions endpoint, not by widening the scan schema.
 
 #### CLNP-04 — Dashboard
-- [ ] `/cleanup/` gains a permissions card (readiness-probe section): state
+- [x] `/cleanup/` gains a permissions card (readiness-probe section): state
       chip per permission (granted / denied / unknown / not applicable),
       probe paths with per-path reasons, guidance text, and — on macOS — a
       plain link to `x-apple.systempreferences:…` (client-side only, no
       engine call, no polling).
-- [ ] Scan page: unreadable items show "which grant would unlock this" via
+- [x] Scan page: unreadable items show "which grant would unlock this" via
       the classified permission id.
-- [ ] Seven-locale translations; Public Pages renders the card as
+- [x] Seven-locale translations; Public Pages renders the card as
       documentation only, no engine calls, per `lat.md/ux-readiness.md`.
 
 #### CLNP-05 — Tests, docs, knowledge graph
-- [ ] `unittest` with fake probers: `PermissionError` / `FileNotFoundError` /
+- [x] `unittest` with fake probers: `PermissionError` / `FileNotFoundError` /
       other `OSError` / not-applicable / partial results; delegation keeps
       the CLN-20 payload shape stable.
-- [ ] Console contract cases in `android-lab/lab/tests/test_cleanup_console.py`
+- [x] Console contract cases in `android-lab/lab/tests/test_cleanup_console.py`
       (400/501/typed payload).
-- [ ] Update `cleanup-lab/README.md`, `cleanup-lab/STATUS.md`,
+- [x] Update `cleanup-lab/README.md`, `cleanup-lab/STATUS.md`,
       `cleanup-lab/VERIFY.md`, `lat.md/cleanup-lab.md`; add `CLNP-01…05` to
       the Contribute → Roadmap page with translations; `lat check` passes.
-- [ ] `scripts/run-tests.sh` suite green.
+- [x] `scripts/run-tests.sh` suite green.
 
 ### Open questions (decide at implementation start)
 - Should `macos-full-disk-access` gain more probe paths (e.g.
@@ -200,42 +200,42 @@ cross-page in-place navigation (cleanup → other labs) is wanted.
 ### Sub-tasks
 
 #### CLNP-06 — Island client router in `pages.tsx`
-- [ ] Active page becomes internal state derived from
+- [x] Active page becomes internal state derived from
       `localeFromPath(window.location.pathname)` + the `/cleanup/…` suffix,
       not the (per-route) `page` prop; the prop stays as the initial value
       and the SSR/Public fallback.
-- [ ] Tab anchors and in-page cleanup anchors ("View results", "Choose
+- [x] Tab anchors and in-page cleanup anchors ("View results", "Choose
       individual items", "View leftovers", "History", "Full scan report")
       are intercepted: `preventDefault` + `pushState` + state update +
       scroll-to-top; `popstate` re-derives the page. Links to other labs or
       locales are never intercepted.
-- [ ] `aria-current="page"` follows the live page; AppShell `activeId`
+- [x] `aria-current="page"` follows the live page; AppShell `activeId`
       mapping (`cleanup-${page || "scan"}`) is preserved for the live page;
       the confirm dialog closes on page change.
-- [ ] Public Pages (`PUBLIC_SITE_MODE`): same in-place tab swap, zero engine
+- [x] Public Pages (`PUBLIC_SITE_MODE`): same in-place tab swap, zero engine
       calls (the "Local app required" section swaps in place).
 
 #### CLNP-07 — Live fetch semantics
-- [ ] Split the `[page]` effects: core fetch (status + catalog + jobs) once
+- [x] Split the `[page]` effects: core fetch (status + catalog + jobs) once
       per session with a session ref; per-tab live fetches keyed on the
       internal page (jobs refetch on Dashboard/Results/Leftovers entry;
       `api.cleanupHistory()` on History entry, keeping the existing
       once-per-entry behaviour).
-- [ ] No reset of selection/preset/mode/order on tab change; first-load
+- [x] No reset of selection/preset/mode/order on tab change; first-load
       skeleton (`loading` + `role="status"`) only for the initial session
       fetch; per-tab fetches degrade to stale content + error status.
-- [ ] Keep the job poller tied to a running job only; no new intervals.
+- [x] Keep the job poller tied to a running job only; no new intervals.
 
 #### CLNP-08 — Verification and docs
-- [ ] Playwright e2e (`dashboard/tests`, `npm run test:e2e`): tab click does
+- [x] Playwright e2e (`dashboard/tests`, `npm run test:e2e`): tab click does
       not reload (a `window` marker set before the click survives), URL
       updates, `aria-current` moves, browser back/forward re-derives the
       page, direct deep link still loads the right tab, running job keeps
       polling across a tab change.
-- [ ] `npm run check`, `npm run test:i18n`, `npm run build`; regenerate
+- [x] `npm run check`, `npm run test:i18n`, `npm run build`; regenerate
       `dashboard/dist` (committed); verify the local console routes and the
       Public Pages routes per `docs/UX_READINESS.md`.
-- [ ] Docs: `lat.md/cleanup-lab.md` (Dashboard pages section), the
+- [x] Docs: `lat.md/cleanup-lab.md` (Dashboard pages section), the
       cleanup-lab README page list, and `cleanup-lab/STATUS.md`.
 
 ### Open questions (decide at implementation start)
@@ -329,46 +329,46 @@ task. Honest limitation: no monitoring while the console is closed.
 ### Sub-tasks
 
 #### CLNP-09 — Engine: `monitor.py` trigger registry + disk-free-space trigger
-- [ ] Typed trigger registry (id, name, applicable, config schema, pure
+- [x] Typed trigger registry (id, name, applicable, config schema, pure
       `evaluate`), first trigger `disk-free-space` with per-volume
       absolute/percent thresholds, re-arm margin, cooldown.
-- [ ] Monitor config + event store in the private state folder (atomic
+- [x] Monitor config + event store in the private state folder (atomic
       JSON, bounded event list); engine-side schema validation on load;
       corrupt config → disabled + reported.
-- [ ] `unittest` with injected usage fn + clock: crossing, re-arm,
+- [x] `unittest` with injected usage fn + clock: crossing, re-arm,
       cooldown, flapping, unreadable volume, disabled/applicable-false
       triggers, config validation.
 
 #### CLNP-10 — Console runner + API
-- [ ] Daemon runner thread in the console process: starts on boot when
+- [x] Daemon runner thread in the console process: starts on boot when
       enabled; `GET /api/cleanup/monitor` (enabled/running, interval, per
       -trigger config, last evaluation, active warnings, recent events);
       typed config endpoint to enable/disable, set interval and edit
       trigger configs (400/501 contract; volume ids checked against the
       live inventory); on-demand "evaluate now" action.
-- [ ] Thread skips ticks while an evaluation runs; errors recorded, never
+- [x] Thread skips ticks while an evaluation runs; errors recorded, never
       crash the runner; console contract tests in
       `android-lab/lab/tests/test_cleanup_console.py`.
 
 #### CLNP-11 — Dashboard monitor card + warning banner
-- [ ] `/cleanup/` gains a "Background monitor" card: activation toggle,
+- [x] `/cleanup/` gains a "Background monitor" card: activation toggle,
       interval, per-volume threshold editor (volume picker from CLN-28
       inventory, absolute/percent inputs), recent events list; a warning
       banner above the page content when a trigger is active, with a deep
       link to the relevant cleanup tab.
-- [ ] Poll cadence: only while the runner is enabled (light, e.g. 15 s on
+- [x] Poll cadence: only while the runner is enabled (light, e.g. 15 s on
       the monitor card) — no polling when disabled or on Public Pages;
       seven-locale translations; Public Pages renders the card as
       documentation only.
 
 #### CLNP-12 — labctl
-- [ ] `labctl cleanup monitor [--json]` — engine-backed read-only status
+- [x] `labctl cleanup monitor [--json]` — engine-backed read-only status
       (enabled, running per config, last evaluation, active warnings),
       following the `labctl.md` exit-code contract (`0` ready, `1` check
       failed, `2` usage error).
 
 #### CLNP-13 — Tests, docs, knowledge graph
-- [ ] `scripts/run-tests.sh` green; console contract cases added;
+- [x] `scripts/run-tests.sh` green; console contract cases added;
       `cleanup-lab/README.md`, `STATUS.md`, `VERIFY.md` and
       `lat.md/cleanup-lab.md` updated; `CLNP-09…13` joined to the
       Contribute → Roadmap page with seven-locale translations;
@@ -466,50 +466,50 @@ adds it to the hook set.
 ### Sub-tasks
 
 #### CLNP-14 — Engine: bookmarks store (`bookmarks.py`)
-- [ ] Typed bookmark records with priority, `quickClean` flag,
+- [x] Typed bookmark records with priority, `quickClean` flag,
       `autoCleanHook` and `sizeAlert` config; catalog validation on read
       and write; atomic JSON store in the state folder; bounded ordering
       helpers (move up/down, dedupe).
-- [ ] Plan-builder helper: bookmarks → ordered `entryIds` filtered by flag
+- [x] Plan-builder helper: bookmarks → ordered `entryIds` filtered by flag
       (quick-clean or hook), refusing refused-risk classes with reasons.
-- [ ] `unittest` with temp state folder and fake catalog: validation,
+- [x] `unittest` with temp state folder and fake catalog: validation,
       ordering, flag filtering, corrupt-store recovery.
 
 #### CLNP-15 — Quick clean from bookmarks (console + dashboard)
-- [ ] Console: `POST /api/cleanup/bookmarks/quick-clean` starts the normal
+- [x] Console: `POST /api/cleanup/bookmarks/quick-clean` starts the normal
       plan → confirm → run flow over `quickClean` bookmarks in priority
       order (typed job, existing 400/409/410 contract).
-- [ ] Dashboard: "Quick clean" action with a review dialog listing the
+- [x] Dashboard: "Quick clean" action with a review dialog listing the
       bookmark order, sizes and skipped reasons.
 
 #### CLNP-16 — Auto-clean hook on the free-space trigger
-- [ ] Monitor extension: on `disk-free-space` crossing, evaluate hooked
+- [x] Monitor extension: on `disk-free-space` crossing, evaluate hooked
       bookmarks (priority order) → build plan → run Trash-only → record
       `automated: true` audit entry → emit monitor event; cooldown,
       engine-ready and no-overlapping-job guards; failure recorded, never
       silently retried.
-- [ ] Dashboard: hook toggle per bookmark with the Trash-only/risk-class
+- [x] Dashboard: hook toggle per bookmark with the Trash-only/risk-class
       guardrail text inline; post-run banner naming what was cleaned.
 
 #### CLNP-17 — `bookmark-size` trigger (registry)
-- [ ] New registry trigger measuring hooked bookmarked entries on a
+- [x] New registry trigger measuring hooked bookmarked entries on a
       per-trigger cadence (read-only, entry-scoped scan); threshold config
       per bookmark; events with size evidence (measured bytes, threshold,
       path resolution source); re-arm hysteresis shared with Task 3.
-- [ ] Console events surface through `GET /api/cleanup/monitor` (no new
+- [x] Console events surface through `GET /api/cleanup/monitor` (no new
       endpoint); dashboard alert card offers the cleanup actions.
 
 #### CLNP-18 — Dashboard bookmarks UI
-- [ ] Bookmark affordances on scan cards, results rows and history items
+- [x] Bookmark affordances on scan cards, results rows and history items
       (via `entryId`); a Bookmarks section on `/cleanup/` (or its own tab —
       decide at implementation) with priority up/down, quick-clean
       checkmark, hook and size-alert configuration, resolved paths and
       last-run/last-alert info.
-- [ ] Seven-locale translations; Public Pages renders the section as
+- [x] Seven-locale translations; Public Pages renders the section as
       documentation only.
 
 #### CLNP-19 — labctl, tests, docs
-- [ ] `labctl cleanup bookmarks [--json]` (read-only list with resolved
+- [x] `labctl cleanup bookmarks [--json]` (read-only list with resolved
       paths and flags); engine unittests, console contract cases,
       `scripts/run-tests.sh`; README/STATUS/VERIFY + `lat.md/cleanup-lab.md`
       updates; roadmap entries with translations; `lat check`.
@@ -543,24 +543,24 @@ entries** in a per-install catalog overlay, so every existing safeguard
 (roots containment, protected-root refusal, owning-app check, fingerprinted
 plans) applies unchanged.
 
-- [ ] **Overlay catalog** in the private state folder, validated against the
+- [x] **Overlay catalog** in the private state folder, validated against the
       shipped `schema.json`: family prefix `custom`, one entry per user
       path (display name, per-OS path templates expanded like shipped
       entries), risk restricted to `low`/`medium`, `defaultSelected: false`,
       `needsPrivilege: false`, merged after the shipped catalog by the
       CLN-02 loader (shipped ids win on collision; overlay corruption →
       overlay ignored + reported, never guessed).
-- [ ] Typed console endpoints to add / update / remove custom entries — the
+- [x] Typed console endpoints to add / update / remove custom entries — the
       raw path appears exactly once, as a validated field of the create
       request (absolute, `lstat`-resolvable, refused when it classifies as
       a protected or system root via the existing read-only guard
       classification); after that, only entry ids travel through the API.
-- [ ] Bookmarks (CLNP-14) accept custom entry ids like any other; the
+- [x] Bookmarks (CLNP-14) accept custom entry ids like any other; the
       bookmarks UI gains "Add custom path" (name + path + optional size
       alert / hook config in one dialog); scan and advanced-scan lists
       include custom entries with a "custom" source marker; removing a
       custom entry clears its bookmark, hook and alert records.
-- [ ] Tests: overlay load/merge/corruption, path validation refusals,
+- [x] Tests: overlay load/merge/corruption, path validation refusals,
       scan/plan behaviour over custom entries, bookmark lifecycle.
 
 ### Part B — Overview-style dashboard (CLNP-21, CLNP-22)
@@ -573,7 +573,7 @@ and chevron). The lab's own design tokens stay (brand orange, iux
 variables, dark/light) — behaviour is ported, code, styling and known bugs
 are not (`lat.md/cleanup-lab.md`).
 
-- [ ] **CLNP-21 — Overview page**: page head with readiness chip
+- [x] **CLNP-21 — Overview page**: page head with readiness chip
       (`Ready` / setup needed) and last-scan note ("No scan run yet" /
       latest scan time + measured total); storage hero card (home volume
       by default, volume picker when CLN-28 finds several, refresh action)
@@ -588,18 +588,18 @@ are not (`lat.md/cleanup-lab.md`).
       *System & maintenance*: Background monitor, Permissions (CLNP-01),
       Privileged actions, Containers & VMs, Packages review, Projects deep
       scan, Simulators, Volumes, Relocation.
-- [ ] Existing dashboard sections (quick cleanup, suggested cleanup, latest
+- [x] Existing dashboard sections (quick cleanup, suggested cleanup, latest
       clean report) fold into the overview: the CTA card + results chips
       replace them, the confirm dialog and plan state keep working
       unchanged (preserve working UX; Task 2's in-place routing gains
       `space` in its tab list).
-- [ ] **CLNP-22 — Overview data**: storage card reads the CLN-28 volumes
+- [x] **CLNP-22 — Overview data**: storage card reads the CLN-28 volumes
       inventory (typed, cached per session like other core fetches);
       optional `volumes.py` extension probing macOS purgeable space through
       the existing fixed `diskutil info -plist` probe and reporting it only
       when present (`null` + omitted legend elsewhere, Windows/Linux);
       scan-status summary from the jobs list.
-- [ ] Seven-locale translations; Public Pages renders the overview as
+- [x] Seven-locale translations; Public Pages renders the overview as
       static documentation (no engine calls); responsive: single column on
       narrow viewports; e2e for the overview render + card navigation.
 
@@ -609,7 +609,7 @@ A new tab visualizing disk usage like the `dua` tool: sorted size bars per
 folder, drill-down navigation, breadcrumbs. Read-only — the explorer never
 deletes; it links cleaning to the existing plan / bookmark flows.
 
-- [ ] **Engine size-tree walker** (new `explorer.py`, semantics ported from
+- [x] **Engine size-tree walker** (new `explorer.py`, semantics ported from
       the CLN-21/23 `qrust-scan` reference): read-only `lstat` walk with
       parent-summed apparent sizes, symlinks never followed, hard links
       counted once per `(device, inode)`, one filesystem, progress +
@@ -618,17 +618,17 @@ deletes; it links cleaning to the existing plan / bookmark flows.
       `home-code`, `home-documents`, `home-desktop`) plus custom overlay
       entries — the console never accepts a free-form path (same rule as
       deep-scan).
-- [ ] Console: `POST /api/cleanup/explorer/scan {rootId}` as a typed job
+- [x] Console: `POST /api/cleanup/explorer/scan {rootId}` as a typed job
       (progress, cancel), subtree re-walk on drill-down with budgets;
       results carry per-node size, file/folder counts and newest-age.
-- [ ] Dashboard tab: dua-style view — folder rows with proportional size
+- [x] Dashboard tab: dua-style view — folder rows with proportional size
       bars sorted largest-first (sort modes: size / items / name), click to
       descend, breadcrumb + up navigation, collapsed subtrees with
       "measure" affordance, report-only rows with a "how to clean" hint
       linking to the plan flow or bookmarking for catalog-owned paths.
       Optional treemap mode built in-house (squarified layout component,
       no new dependencies). In-place tab navigation via Task 2.
-- [ ] Seven-locale translations; Public Pages documentation-only; e2e:
+- [x] Seven-locale translations; Public Pages documentation-only; e2e:
       scan a fixture tree, descend, breadcrumb, no-reload behaviour.
 
 ### Rules
@@ -657,3 +657,22 @@ with them, `lat check` + `scripts/run-tests.sh` at the end.
   the same data once the walker is proven).
 - Whether the Bookmarks open question (section vs tab) resolves to a tab
   now that the overview grids exist (default stays: section).
+
+---
+
+## Implementation status (2026-11-14)
+
+All twenty-three sub-tasks shipped in PR #214 (`feat/cleaner-pro`, eleven
+feature commits + e2e/i18n/roadmap/docs commits). Honest deviations from
+this plan:
+
+* **CLNP-05/13/19** — the docs-and-roadmap work rolled into the workstream
+  commit series rather than three separate commits; the content is all here.
+* **Explorer v1** — size-sorted bar list only; the treemap and on-disk sizes
+  stayed open questions and are not built. No volume picker beyond the root
+  registry (`deep-roots.json` + custom entries).
+* **OS notifications** — deferred, as recorded: warnings surface on the
+  dashboard only, while the console runs.
+* **Hook timing** — crossing-only, per the recorded default.
+* The maintainer also implemented Task 2 from a second machine; its e2e
+  wiring commit (2ec8a00a) was pulled and validated on the Mac.

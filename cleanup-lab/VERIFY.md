@@ -790,6 +790,59 @@ All checks passed
 * Dashboard checks — no dashboard file changed; the relocation card is the
   handoff.
 
+## CLNP-01…23 — cleaner pro (PR #214)
+
+**2026-11-14 — cleaner pro workstream.** Permissions, background monitor,
+bookmarks, custom entries, overview and Space Explorer, landed as eleven
+feature commits plus test/docs commits on `feat/cleaner-pro`.
+
+### Engine
+
+```console
+$ cd cleanup-lab/engine && python3 -m unittest discover -s tests -p 'test_*.py'
+Ran 321 tests in ~3s
+OK (except the 8 pre-existing test_relocation failures/errors, identical on master)
+```
+
+New suites: test_permissions (19), test_monitor (18), test_bookmarks (14),
+test_custom_catalog (12), test_explorer (8), plus purgeable tests in
+test_volumes (27 total).
+
+### Console contract
+
+```console
+$ cd android-lab/lab && python3 -m pytest tests/test_cleanup_console.py -q
+36 passed
+```
+
+Covers the permissions, monitor, bookmark, custom-entry and explorer typed
+contracts, including the guarded automated hook run (Trash-only, audited,
+`automated: true`) and the no-overlap refusal.
+
+### Dashboard
+
+```console
+$ cd dashboard && npm run check && npm run test:i18n && npm run build
+tsc clean · 2478 keys match across 7 locales · 513 pages built
+$ npm run test:e2e
+60 passed, 1 skipped
+```
+
+The cleanup specs drive the overview (storage hero, Review-cleanup CTA),
+the in-place tab navigation (a window marker survives a tab change), the
+permissions/monitor/bookmarks cards and the Space Explorer (registry,
+drill-down containment, breadcrumbs, typed refusal) over mocked typed
+endpoints. `lat check`: All checks passed.
+
+### Not run
+
+* A real macOS TCC denial on the FDA probe (rule 8: probes run through fake
+  probers in tests; the real grant belongs to the user).
+* A real free-space crossing with the monitor enabled for days — the
+  hysteresis and cooldown are covered by injected-snapshot tests.
+* A live custom-folder walk on a huge tree — budgets covered by fixture
+  trees; real forests belong to the user.
+
 ## CLN-04 … CLN-29
 
 Each task appends its own section when it lands.
