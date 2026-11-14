@@ -84,6 +84,14 @@ def _doctor_lines(report, stream):
         "unavailable": "This operating system is not supported by Cleanup Lab.",
     }[report["state"]]
     lines.append("  {0}".format(readiness))
+    try:
+        from .permissions import report as permissions_report
+
+        lines.append("")
+        lines.extend(_permissions_lines(permissions_report(), stream))
+    except Exception as exc:  # the permission surface is optional; doctor still answers
+        lines.append("")
+        lines.append("Permissions: unavailable ({0})".format(exc))
     return lines
 
 
@@ -105,6 +113,36 @@ def _catalog_lines(report, stream):
                 lines.append("      {0}".format(path["path"]))
             else:
                 lines.append("      {0}  ({1})".format(path["template"], path["reason"]))
+    return lines
+
+
+def _permissions_lines(payload, stream):
+    """CLNP-02: the doctor's permission lines (read-only probes, hints, deep link)."""
+    lines = ["Permissions:"]
+    for record in payload["permissions"]:
+        if not record["applicable"]:
+            continue
+        if record["granted"] is True:
+            mark = _mark(True, stream)
+        elif record["granted"] is False:
+            mark = _mark(False, stream)
+        else:
+            mark = "[??]"
+        lines.append("  {0} {1:<32} {2}".format(
+            mark, record["name"],
+            "granted" if record["granted"] is True
+            else "not granted" if record["granted"] is False
+            else "unknown (no evidence yet)",
+        ))
+        for result in record["results"]:
+            state = "readable" if result["readable"] else result["reason"] or "unreadable"
+            lines.append("      {0}  ({1})".format(result["path"], state))
+        if record["guidance"]:
+            lines.append("      hint: {0}".format(record["guidance"]))
+        if record["grantUrl"]:
+            lines.append("      open: {0}".format(record["grantUrl"]))
+    for item in payload.get("classification", {}).get("classified", []):
+        lines.append("  ! {0}: needs {1}".format(item["path"], item["permissionId"]))
     return lines
 
 

@@ -658,3 +658,60 @@ def test_privileged_preview_and_run_are_typed_single_use_and_audited(tmp_path, m
     with pytest.raises(cleanup_api.CleanupError) as raised:
         api.post("/api/cleanup/privileged/run", {"previewId": preview["previewId"]})
     assert raised.value.status == 409
+
+
+def test_the_permissions_endpoint_reports_typed_records():
+    import cleanup_lab.permissions as permissions_module
+
+    api = cleanup_api.CleanupAPI(REPO_ROOT)
+    report = api.get("/api/cleanup/permissions", {})
+    assert report["platform"] == paths_module.platform_id()
+    ids = [record["id"] for record in report["permissions"]]
+    assert ids == [
+        "macos-full-disk-access", "macos-desktop-folder", "macos-documents-folder",
+        "macos-downloads-folder", "hidden-roots",
+    ]
+    for record in report["permissions"]:
+        assert set(record) >= {
+            "id", "name", "applicable", "granted", "probePaths", "results", "guidance", "grantUrl",
+        }
+        assert record["granted"] in (True, False, None)
+    macos = report["platform"] == "macos"
+    if macos:
+        # the two FDA probes ran against the real (read-only) folders
+        fda = report["permissions"][0]
+        assert len(fda["probePaths"]) == 2
+    else:
+        assert all(not record["applicable"] for record in report["permissions"][:-1])
+
+
+def test_the_permissions_endpoint_takes_no_query_parameters():
+    api = cleanup_api.CleanupAPI(REPO_ROOT)
+    with pytest.raises(cleanup_api.CleanupError) as caught:
+        api.get("/api/cleanup/permissions", {"x": "1"})
+    assert caught.value.status == 400
+
+
+def test_the_permissions_endpoint_classifies_the_latest_scan_unreadable(tmp_path, monkeypatch):
+    import cleanup_lab.permissions as permissions_module
+
+    unreadable = str(tmp_path / ".config" / "locked-app")
+    os.makedirs(unreadable, exist_ok=True)
+    monkeypatch.setattr(
+        permissions_module, "_listdir_check",
+        lambda path, prober: (False, "Permission denied") if path == unreadable else (True, ""),
+    )
+    api = cleanup_api.CleanupAPI(REPO_ROOT)
+    job = cleanup_api.CleanupJob("scan", {"entryIds": ["system.user-caches"]})
+    job.state = "done"
+    job.result = {"entries": [{"id": "system.user-caches", "unreadable": [unreadable, unreadable]}],
+                  "totals": {}, "progress": {}, "cancelled": False}
+    cleanup_api.JOBS._register(job)
+    report = api.get("/api/cleanup/permissions", {})
+    hidden = next(record for record in report["permissions"] if record["id"] == "hidden-roots")
+    assert hidden["granted"] is False
+    assert hidden["results"][0]["path"] == unreadable
+    assert report["classification"]["classified"] == [
+        {"path": unreadable, "permissionId": "hidden-roots", "state": "permission-denied",
+         "reason": "Permission denied"},
+    ]

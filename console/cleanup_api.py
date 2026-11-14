@@ -686,6 +686,20 @@ class CleanupAPI:
         if path == "/api/cleanup/volumes":
             _query(query)
             return _module(self.root, "volumes").inventory()
+        if path == "/api/cleanup/permissions":
+            # CLNP-03: read-only probes plus the reactive classification of the
+            # latest scan's unreadable paths (deduplicated), when one exists.
+            _query(query)
+            permissions = _module(self.root, "permissions")
+            unreadable = []
+            for job in JOBS.list():
+                result = job.get("result")
+                if job["kind"] == "scan" and isinstance(result, dict):
+                    for entry in result.get("entries", []):
+                        for item in entry.get("unreadable", []):
+                            if item not in unreadable:
+                                unreadable.append(item)
+            return permissions.report(unreadable)
         if path == "/api/cleanup/relocation":
             _query(query)
             return _module(self.root, "relocation").status(self.root)
