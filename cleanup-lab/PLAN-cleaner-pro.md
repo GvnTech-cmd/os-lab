@@ -524,3 +524,136 @@ adds it to the hook set.
   Task 3 deferral (desktop app plumbing).
 - Confirm dialog for quick clean stays mandatory (default); a "trusted
   quick clean" without confirmation would need its own explicit ask.
+
+---
+
+## Task 5 — Custom paths, overview-style dashboard, Space Explorer (CLNP-20 … CLNP-23)
+
+Three connected pieces: let the user bookmark **custom paths** (safely), redesign the
+Cleanup Lab dashboard into an **overview page** in the maintainer's reference
+style (screenshot 2026-11-14: storage hero card, review CTA, grouped card
+grids) covering every ability the lab has, and add a **Space Explorer** tab
+that visualizes disk usage like the `dua` tool.
+
+### Part A — Custom-path bookmarks (CLNP-20)
+
+Task 4's rule was "bookmarks are catalog-entry references, never raw paths".
+Custom paths join the same system by becoming **user-defined catalog
+entries** in a per-install catalog overlay, so every existing safeguard
+(roots containment, protected-root refusal, owning-app check, fingerprinted
+plans) applies unchanged.
+
+- [ ] **Overlay catalog** in the private state folder, validated against the
+      shipped `schema.json`: family prefix `custom`, one entry per user
+      path (display name, per-OS path templates expanded like shipped
+      entries), risk restricted to `low`/`medium`, `defaultSelected: false`,
+      `needsPrivilege: false`, merged after the shipped catalog by the
+      CLN-02 loader (shipped ids win on collision; overlay corruption →
+      overlay ignored + reported, never guessed).
+- [ ] Typed console endpoints to add / update / remove custom entries — the
+      raw path appears exactly once, as a validated field of the create
+      request (absolute, `lstat`-resolvable, refused when it classifies as
+      a protected or system root via the existing read-only guard
+      classification); after that, only entry ids travel through the API.
+- [ ] Bookmarks (CLNP-14) accept custom entry ids like any other; the
+      bookmarks UI gains "Add custom path" (name + path + optional size
+      alert / hook config in one dialog); scan and advanced-scan lists
+      include custom entries with a "custom" source marker; removing a
+      custom entry clears its bookmark, hook and alert records.
+- [ ] Tests: overlay load/merge/corruption, path validation refusals,
+      scan/plan behaviour over custom entries, bookmark lifecycle.
+
+### Part B — Overview-style dashboard (CLNP-21, CLNP-22)
+
+Redesign the `/cleanup/` Dashboard tab into an overview page following the
+reference screenshot's **layout** (Overview header + status chip; storage
+hero card with segmented used/available bar and legend; "Review cleanup"
+CTA card; two-column grids of icon cards with title, one-line description
+and chevron). The lab's own design tokens stay (brand orange, iux
+variables, dark/light) — behaviour is ported, code, styling and known bugs
+are not (`lat.md/cleanup-lab.md`).
+
+- [ ] **CLNP-21 — Overview page**: page head with readiness chip
+      (`Ready` / setup needed) and last-scan note ("No scan run yet" /
+      latest scan time + measured total); storage hero card (home volume
+      by default, volume picker when CLN-28 finds several, refresh action)
+      with Used / Purgeable / Available segmented bar — purgeable legend
+      only where a fixed probe proves it, omitted elsewhere; "Review
+      cleanup" CTA card opening the existing scan flow; grouped card grids
+      covering every ability, each card a link with icon + one-line
+      description, **dimmed or hidden with a reason when its capability is
+      not live on this host** per `lat.md/ux-readiness.md`:
+      *Storage & cleanup*: Quick cleanup, Advanced scan, Results, Leftovers,
+      History, Bookmarks, Space Explorer;
+      *System & maintenance*: Background monitor, Permissions (CLNP-01),
+      Privileged actions, Containers & VMs, Packages review, Projects deep
+      scan, Simulators, Volumes, Relocation.
+- [ ] Existing dashboard sections (quick cleanup, suggested cleanup, latest
+      clean report) fold into the overview: the CTA card + results chips
+      replace them, the confirm dialog and plan state keep working
+      unchanged (preserve working UX; Task 2's in-place routing gains
+      `space` in its tab list).
+- [ ] **CLNP-22 — Overview data**: storage card reads the CLN-28 volumes
+      inventory (typed, cached per session like other core fetches);
+      optional `volumes.py` extension probing macOS purgeable space through
+      the existing fixed `diskutil info -plist` probe and reporting it only
+      when present (`null` + omitted legend elsewhere, Windows/Linux);
+      scan-status summary from the jobs list.
+- [ ] Seven-locale translations; Public Pages renders the overview as
+      static documentation (no engine calls); responsive: single column on
+      narrow viewports; e2e for the overview render + card navigation.
+
+### Part C — Space Explorer, the dua-like tab (CLNP-23)
+
+A new tab visualizing disk usage like the `dua` tool: sorted size bars per
+folder, drill-down navigation, breadcrumbs. Read-only — the explorer never
+deletes; it links cleaning to the existing plan / bookmark flows.
+
+- [ ] **Engine size-tree walker** (new `explorer.py`, semantics ported from
+      the CLN-21/23 `qrust-scan` reference): read-only `lstat` walk with
+      parent-summed apparent sizes, symlinks never followed, hard links
+      counted once per `(device, inode)`, one filesystem, progress +
+      cancel, depth/node budgets so a huge tree stays responsive; works
+      over the **root-id registry** — `deep-roots.json` ids (`home-projects`,
+      `home-code`, `home-documents`, `home-desktop`) plus custom overlay
+      entries — the console never accepts a free-form path (same rule as
+      deep-scan).
+- [ ] Console: `POST /api/cleanup/explorer/scan {rootId}` as a typed job
+      (progress, cancel), subtree re-walk on drill-down with budgets;
+      results carry per-node size, file/folder counts and newest-age.
+- [ ] Dashboard tab: dua-style view — folder rows with proportional size
+      bars sorted largest-first (sort modes: size / items / name), click to
+      descend, breadcrumb + up navigation, collapsed subtrees with
+      "measure" affordance, report-only rows with a "how to clean" hint
+      linking to the plan flow or bookmarking for catalog-owned paths.
+      Optional treemap mode built in-house (squarified layout component,
+      no new dependencies). In-place tab navigation via Task 2.
+- [ ] Seven-locale translations; Public Pages documentation-only; e2e:
+      scan a fixture tree, descend, breadcrumb, no-reload behaviour.
+
+### Rules
+1. **No free-form paths anywhere in the API** — explorer roots and custom
+   entries both resolve through typed registries; the raw path exists only
+   inside the create-custom-entry request.
+2. **Read-only first** — the explorer measures; deletion always happens
+   through plan → confirm → run, and automated hooks stay Trash-only
+   (Task 4).
+3. **Honest numbers** — apparent sizes from `lstat`, on-disk size where the
+   platform proves it (`null` otherwise); purgeable shown only when
+   probed; every capability card reflects live readiness.
+4. **Own tokens** — the overview layout is ported, Qleaner's colours,
+   code and known bugs are not.
+
+### Sub-task order
+`CLNP-20 → CLNP-22 → CLNP-21 → CLNP-23` (overlay + data first, redesign
+consumes them, explorer last). Verification and docs fold into each part;
+`lat.md/cleanup-lab.md`, README/STATUS/VERIFY and roadmap entries update
+with them, `lat check` + `scripts/run-tests.sh` at the end.
+
+### Open questions (decide at implementation start)
+- Explorer budget defaults (max nodes/depth per walk) and whether on-disk
+  size is worth a second stat pass (default: apparent size only, v1).
+- Treemap in v1 or bar-list first (default: bar-list first, treemap behind
+  the same data once the walker is proven).
+- Whether the Bookmarks open question (section vs tab) resolves to a tab
+  now that the overview grids exist (default stays: section).
