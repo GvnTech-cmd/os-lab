@@ -127,3 +127,120 @@ an optional capability, like `privileged-actions`.
   proves unreadable under FDA.
 - Roadmap ids `CLNP-…` vs continuing `CLN-30…` on the Contribute page —
   default `CLNP-…` for workstream separation (WINMIR precedent).
+
+---
+
+## Task 2 — In-place tabs: no reload on tab change (CLNP-06 … CLNP-08)
+
+Make the five Cleanup Lab tabs (Dashboard / Advanced scan / Results /
+Leftovers / History, screenshot 2026-11-14) load **in place**: tab change
+updates the URL and swaps content client-side with live data fetches — the
+feel of a static Astro app — while the scan session, selection and running
+jobs stay alive across tab switches.
+
+### Current state (grounded in the code)
+
+- Five static routes: `dashboard/src/pages/cleanup/[...page].astro` (English)
+  and the localized catch-all `dashboard/src/pages/[locale]/[...rest].astro`
+  (which also serves source, jobs, labs, android, legal pages). Each renders
+  `<CleanupPage page={page} client:only="react" />` from
+  `dashboard/src/views/cleanup/pages.tsx`.
+- Tabs are plain `<a href>` anchors (`pages.tsx:266`); every tab change is a
+  full HTML navigation, the island unmounts and remounts, and all React state
+  is lost (selection, preset, mode, sort order, confirm dialog, in-flight job
+  polling). Scan results only survive because the island refetches the
+  console's recent jobs on mount.
+- All five pages already render from **one** component and one fetch layer —
+  the only thing page-scoped is the `page` prop and the two `useEffect`s
+  keyed on it (core fetch on `[page]`, history fetch on `[page]`).
+- The codebase already anticipates client-side navigation:
+  `dashboard/src/shell/theme.ts:105` listens for `astro:after-swap` /
+  `astro:page-load`, and `dashboard/src/i18n/client.ts` re-translates swapped
+  DOM through a `MutationObserver` — so in-place re-renders are translated
+  and themed without extra work.
+- All cleanup tabs share the same document title ("Cleanup Lab · os-lab");
+  links are built with `localePath` (`dashboard/src/i18n/paths.ts`), keeping
+  locale prefixes and the Public Pages base path.
+
+### Design decision
+
+**Primary: island-internal client router** — `CleanupPage` owns navigation:
+intercept tab and in-page cleanup links, `history.pushState` the same
+`localePath` URL, render the new page from internal state, re-derive on
+`popstate`. No layout or route changes; every locale and Public Pages get it
+for free; deep links still land on the static routes.
+
+Deferred alternative (recorded, not planned): Astro `ClientRouter` +
+`transition:persist` on the cleanup-serving templates. Rejected for now
+because the localized catch-all `[...rest].astro` shares its template with
+~40 unrelated page kinds, and a persisted island freezes its props (the
+location-derived page state would still be required). Revisit only if
+cross-page in-place navigation (cleanup → other labs) is wanted.
+
+### Rules
+
+1. **URLs stay real** — every tab keeps its static route and trailing-slash
+   URL shape via `localePath`; `pushState` pushes exactly what the anchor's
+   `href` was. Deep links, refresh, and Public Pages URLs unchanged.
+2. **Progressive enhancement** — anchors keep real `href`s; interception is
+   an enhancement. With JavaScript disabled, navigation falls back to the
+   existing full-page loads.
+3. **Session state survives tab changes** — selection, preset, mode, sort
+   order, plan review and the running-job poller persist; the confirm dialog
+   closes on tab change (a plan review is re-opened from the page that owns
+   it).
+4. **Live fetch per tab, never idle polling** — core data (status, catalog,
+   jobs) is fetched once per island session; entering a tab live-fetches what
+   it shows: jobs on Dashboard/Results/Leftovers, audit history on History.
+   The running-job poller keeps its 650 ms cadence only while a job runs,
+   per `lat.md/ux-readiness.md`.
+5. **Errors stay per-surface** — a failed tab fetch renders that tab's error
+   status without discarding the session state.
+
+### Sub-tasks
+
+#### CLNP-06 — Island client router in `pages.tsx`
+- [ ] Active page becomes internal state derived from
+      `localeFromPath(window.location.pathname)` + the `/cleanup/…` suffix,
+      not the (per-route) `page` prop; the prop stays as the initial value
+      and the SSR/Public fallback.
+- [ ] Tab anchors and in-page cleanup anchors ("View results", "Choose
+      individual items", "View leftovers", "History", "Full scan report")
+      are intercepted: `preventDefault` + `pushState` + state update +
+      scroll-to-top; `popstate` re-derives the page. Links to other labs or
+      locales are never intercepted.
+- [ ] `aria-current="page"` follows the live page; AppShell `activeId`
+      mapping (`cleanup-${page || "scan"}`) is preserved for the live page;
+      the confirm dialog closes on page change.
+- [ ] Public Pages (`PUBLIC_SITE_MODE`): same in-place tab swap, zero engine
+      calls (the "Local app required" section swaps in place).
+
+#### CLNP-07 — Live fetch semantics
+- [ ] Split the `[page]` effects: core fetch (status + catalog + jobs) once
+      per session with a session ref; per-tab live fetches keyed on the
+      internal page (jobs refetch on Dashboard/Results/Leftovers entry;
+      `api.cleanupHistory()` on History entry, keeping the existing
+      once-per-entry behaviour).
+- [ ] No reset of selection/preset/mode/order on tab change; first-load
+      skeleton (`loading` + `role="status"`) only for the initial session
+      fetch; per-tab fetches degrade to stale content + error status.
+- [ ] Keep the job poller tied to a running job only; no new intervals.
+
+#### CLNP-08 — Verification and docs
+- [ ] Playwright e2e (`dashboard/tests`, `npm run test:e2e`): tab click does
+      not reload (a `window` marker set before the click survives), URL
+      updates, `aria-current` moves, browser back/forward re-derives the
+      page, direct deep link still loads the right tab, running job keeps
+      polling across a tab change.
+- [ ] `npm run check`, `npm run test:i18n`, `npm run build`; regenerate
+      `dashboard/dist` (committed); verify the local console routes and the
+      Public Pages routes per `docs/UX_READINESS.md`.
+- [ ] Docs: `lat.md/cleanup-lab.md` (Dashboard pages section), the
+      cleanup-lab README page list, and `cleanup-lab/STATUS.md`.
+
+### Open questions (decide at implementation start)
+- Prefetch on tab hover/focus (Astro `prefetch` needs ClientRouter; with the
+  island router, an idle-time `fetch` of the next tab's data is possible but
+  adds code — default: skip, tab data is already local except History).
+- Should the Advanced scan ↔ Dashboard presets stay in sync when navigating
+  in place (they already share one island, so yes — no action).
