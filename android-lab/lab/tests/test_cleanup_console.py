@@ -715,3 +715,71 @@ def test_the_permissions_endpoint_classifies_the_latest_scan_unreadable(tmp_path
         {"path": unreadable, "permissionId": "hidden-roots", "state": "permission-denied",
          "reason": "Permission denied"},
     ]
+
+
+def test_the_monitor_endpoint_reports_disabled_state_without_probing(monkeypatch):
+    import cleanup_lab.monitor as monitor_module
+
+    calls = []
+    monkeypatch.setattr(monitor_module, "_inventory", lambda: calls.append(1) or {"volumes": []})
+    api = cleanup_api.CleanupAPI(REPO_ROOT)
+    report = api.get("/api/cleanup/monitor", {})
+    assert report["enabled"] is False
+    assert report["running"] is False
+    assert report["configError"] is None
+    assert report["volumes"][0]["mountPoint"] == ""
+    assert calls == []
+
+
+def test_monitor_config_is_typed_and_persists(monkeypatch, tmp_path):
+    import cleanup_lab.monitor as monitor_module
+
+    monkeypatch.setattr(monitor_module, "_inventory", lambda: {"volumes": []})
+    api = cleanup_api.CleanupAPI(REPO_ROOT)
+    with pytest.raises(cleanup_api.CleanupError) as caught:
+        api.post("/api/cleanup/monitor/config", {"enabled": True, "nope": 1})
+    assert caught.value.status == 400
+    with pytest.raises(cleanup_api.CleanupError) as caught:
+        api.post("/api/cleanup/monitor/config", {"enabled": True, "intervalSeconds": 5, "volumes": [{"mountPoint": ""}]})
+    assert caught.value.status == 400
+    report = api.post("/api/cleanup/monitor/config", {
+        "enabled": True, "intervalSeconds": 120, "cooldownSeconds": 600,
+        "volumes": [{"mountPoint": "", "minFreeBytes": 1000, "minFreePercent": 5.0, "enabled": True}],
+    })
+    assert report["enabled"] is True
+    assert report["intervalSeconds"] == 120
+    assert report["volumes"][0]["minFreeBytes"] == 1000
+    # The saved config survives a fresh load from the private store.
+    loaded = monitor_module.load()
+    assert loaded["config"]["enabled"] is True
+
+
+def test_monitor_evaluate_runs_one_evaluation(monkeypatch):
+    import cleanup_lab.monitor as monitor_module
+
+    api = cleanup_api.CleanupAPI(REPO_ROOT)
+    api.post("/api/cleanup/monitor/config", {
+        "enabled": True, "intervalSeconds": 120, "cooldownSeconds": 600,
+        "volumes": [{"mountPoint": "/Volumes/Fake", "minFreeBytes": 1000, "minFreePercent": 50.0, "enabled": True}],
+    })
+    snapshot = {"volumes": [{"mountPoint": "/Volumes/Fake", "name": "Fake", "device": "disk1",
+                             "filesystem": "apfs", "kind": "internal", "totalBytes": 1000,
+                             "freeBytes": 100, "usedBytes": 900, "usage": 0.9,
+                             "isHome": False, "pressure": "warning", "error": None}]}
+    monkeypatch.setattr(monitor_module, "_inventory", lambda: snapshot)
+    report = api.post("/api/cleanup/monitor/evaluate", {})
+    assert report["enabled"] is True
+    assert len(report["state"]["events"]) == 1
+    assert report["state"]["events"][0]["kind"] == "warning"
+    assert report["state"]["events"][0]["volume"] == "/Volumes/Fake"
+    assert report["activeWarnings"] == [{"volume": "/Volumes/Fake", "lastWarningAt": report["state"]["events"][0]["at"]}]
+
+
+def test_the_monitor_endpoints_take_no_query_parameters():
+    api = cleanup_api.CleanupAPI(REPO_ROOT)
+    with pytest.raises(cleanup_api.CleanupError) as caught:
+        api.get("/api/cleanup/monitor", {"x": "1"})
+    assert caught.value.status == 400
+    with pytest.raises(cleanup_api.CleanupError) as caught:
+        api.post("/api/cleanup/monitor/evaluate", {"extra": 1})
+    assert caught.value.status == 400

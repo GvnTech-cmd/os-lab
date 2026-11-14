@@ -14,7 +14,7 @@ import sys
 
 from .catalog import CatalogError, report as catalog_report
 from .readiness import probe, repo_root
-from . import history, volumes
+from . import history, monitor, volumes
 
 USAGE_EXIT = 2
 
@@ -175,18 +175,57 @@ def _volumes_lines(report, stream):
     return lines
 
 
+def _monitor_lines(report, stream):
+    """CLNP-12: the labctl monitor status (read-only, engine-backed)."""
+    lines = [
+        "Cleanup Lab monitor · {0}".format("enabled" if report["enabled"] else "disabled"),
+        "  runner      {0}".format("active" if report.get("running") else "not running in this process"),
+        "  interval    every {0} s".format(report["intervalSeconds"]),
+    ]
+    if report["configError"]:
+        lines.append("  config      {0}".format(_safe(report["configError"])))
+    for entry in report["volumes"]:
+        live = entry.get("volume")
+        usage = (
+            "{0} free".format(_safe("{0:.1f} GiB".format(live["freeBytes"] / 2**30)))
+            if live and live.get("freeBytes") is not None
+            else "no measurement yet"
+        )
+        state = report["state"]["volumes"].get("volumes:{0}".format(entry["mountPoint"])) or {}
+        mark = "[!!]" if state.get("state") == "warning" else "[ok]" if state.get("state") == "ok" else "[--]"
+        lines.append("  {0} {1:<28} {2:<10} warn < {3} GiB or {4:g}%".format(
+            mark, _safe(entry["mountPoint"] or "home volume"), usage,
+            entry["minFreeBytes"] / 2**30, entry["minFreePercent"],
+        ))
+    warnings = report["activeWarnings"]
+    if warnings:
+        lines.append("")
+        lines.extend("  ! below threshold: {0}".format(_safe(item["volume"])) for item in warnings)
+    events = report["state"]["events"]
+    if events:
+        lines.append("")
+        lines.append("Recent events:")
+        for event in events[-5:]:
+            lines.append("  {0} {1} {2} {3}".format(
+                time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(event["at"])),
+                event["kind"], _safe(event["volume"] or "-"), _safe(event["message"]),
+            ))
+    return lines
+
+
 def build_parser():
     parser = argparse.ArgumentParser(
         prog="labctl cleanup",
         description="Cleanup Lab: inspect readiness (read-only) and, from CLN-19, scan/plan/clean.",
     )
-    sub = parser.add_subparsers(dest="command", metavar="status|doctor|catalog|history|volumes")
+    sub = parser.add_subparsers(dest="command", metavar="status|doctor|catalog|history|volumes|monitor")
     for name, text in (
         ("status", "one-screen readiness summary"),
         ("doctor", "every check, path and hint"),
         ("catalog", "detector catalog for this computer, with resolved paths"),
         ("history", "recent cleanup runs from the private audit store"),
         ("volumes", "local volumes, capacity and disk-pressure warnings"),
+        ("monitor", "the optional background monitor's state and events"),
     ):
         command = sub.add_parser(name, help=text, description=text)
         command.add_argument("--json", action="store_true", help="print the probe as JSON")
@@ -205,7 +244,8 @@ def main(argv=None, stream=None):
     try:
         report = (catalog_report(repo_root()) if args.command == "catalog" else
                   history.read(verify=args.verify) if args.command == "history" else
-                  volumes.inventory() if args.command == "volumes" else probe())
+                  volumes.inventory() if args.command == "volumes" else
+                  monitor.status() if args.command == "monitor" else probe())
     except CatalogError as exc:
         sys.stderr.write("cleanup catalog: {0}\n".format(exc))
         return 1
@@ -230,10 +270,13 @@ def main(argv=None, stream=None):
                 ) for entry in value["entries"]
             ],
             "volumes": _volumes_lines,
+            "monitor": _monitor_lines,
         }[args.command](report, stream)
         stream.write("\n".join(lines) + "\n")
     if args.command == "volumes":
         return 1 if report.get("error") else 0
+    if args.command == "monitor":
+        return 1 if report.get("configError") else 0
     if args.command in ("catalog", "history"):
         return 0
     return 0 if report["state"] == "ready" else 1

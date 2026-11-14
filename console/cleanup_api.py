@@ -56,6 +56,8 @@ BODY_KEYS = {"scan": SCAN_KEYS, "deep-scan": DEEP_KEYS, "plan": PLAN_KEYS, "clea
               "container-preview": CONTAINER_PREVIEW_KEYS, "container-prune": CONTAINER_PRUNE_KEYS,
               "privileged-preview": CONTAINER_PREVIEW_KEYS, "privileged-run": CONTAINER_PRUNE_KEYS,
               "relocation-plan": ("action", "entryId", "destination"), "relocation-run": ("previewId",),
+              "monitor-config": ("enabled", "intervalSeconds", "cooldownSeconds", "volumes"),
+              "monitor-evaluate": (),
               "leftovers": ()}
 
 
@@ -661,10 +663,71 @@ class RelocationPreview:
         self.created_at = time.time()
 
 
+class MonitorRunner:
+    """CLNP-10: the console's optional background monitor thread.
+
+    One daemon thread for the whole process, started with the first cleanup
+    API access. While the config is disabled it sleeps quietly and probes
+    nothing; while enabled it evaluates on the configured interval and
+    persists the state through the engine (CLNP-09). Reconfiguration needs no
+    restart: every tick re-reads the store, so a saved config applies on the
+    next wake-up. A single thread also means one evaluation at a time by
+    construction — a slow tick delays the next one instead of overlapping.
+    """
+
+    IDLE_WAIT = 30.0
+
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.thread = None
+        self.root = None
+        self.stop = threading.Event()
+
+    def ensure_started(self, root):
+        with self.lock:
+            self.root = root
+            if self.thread is not None and self.thread.is_alive():
+                return
+            self.stop = threading.Event()
+            try:
+                self.thread = threading.Thread(target=self._loop, name="cleanup-monitor", daemon=True)
+            except RuntimeError:
+                self.thread = None
+                return
+            self.thread.start()
+
+    def alive(self):
+        with self.lock:
+            return self.thread is not None and self.thread.is_alive()
+
+    def _loop(self):
+        while not self.stop.is_set():
+            try:
+                monitor = _module(self.root, "monitor")
+                config = monitor.load()["config"]
+                if config["enabled"]:
+                    monitor.run_evaluation()
+                    self.stop.wait(config["intervalSeconds"])
+                else:
+                    self.stop.wait(self.IDLE_WAIT)
+            except Exception:
+                self.stop.wait(self.IDLE_WAIT)  # a tick may fail; the runner must not die
+
+    def shutdown(self):
+        self.stop.set()
+
+
+#: One runner per console process.
+MONITOR = MonitorRunner()
+
+
 class CleanupAPI:
     # @lat: [[cleanup-lab#Console API]]
     def __init__(self, root):
         self.root = os.path.realpath(root)
+        # CLNP-10: the monitor thread starts with the first API access and
+        # stays quiet (no probes) while its config is disabled.
+        MONITOR.ensure_started(self.root)
 
     def get(self, path, query):
         if path == "/api/cleanup/status":
@@ -686,6 +749,11 @@ class CleanupAPI:
         if path == "/api/cleanup/volumes":
             _query(query)
             return _module(self.root, "volumes").inventory()
+        if path == "/api/cleanup/monitor":
+            _query(query)
+            payload = _module(self.root, "monitor").status()
+            payload["running"] = bool(payload["enabled"] and MONITOR.alive())
+            return payload
         if path == "/api/cleanup/permissions":
             # CLNP-03: read-only probes plus the reactive classification of the
             # latest scan's unreadable paths (deduplicated), when one exists.
@@ -794,6 +862,23 @@ class CleanupAPI:
         if path == "/api/cleanup/leftovers/scan":
             _object_body(body, "leftovers")
             return JOBS.start_leftovers(self.root)
+        if path == "/api/cleanup/monitor/config":
+            _object_body(body, "monitor-config")
+            monitor = _module(self.root, "monitor")
+            try:
+                monitor.save_config(body)
+            except monitor.MonitorConfigError as exc:
+                raise CleanupError(400, str(exc)) from exc
+            payload = monitor.status()
+            payload["running"] = bool(payload["enabled"] and MONITOR.alive())
+            return payload
+        if path == "/api/cleanup/monitor/evaluate":
+            _object_body(body, "monitor-evaluate")
+            monitor = _module(self.root, "monitor")
+            monitor.run_evaluation()
+            payload = monitor.status()
+            payload["running"] = bool(payload["enabled"] and MONITOR.alive())
+            return payload
         if path == "/api/cleanup/deep-scan":
             _object_body(body, "deep-scan")
             return JOBS.start_deep_scan(self.root, body)
