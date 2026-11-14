@@ -6,6 +6,8 @@
   app\scripts\release-win.ps1             build + verify, upload nothing
   app\scripts\release-win.ps1 -Publish    ...and add them to the GitHub release app-v<version>
   app\scripts\release-win.ps1 -NoSign     skip Authenticode even if a certificate is configured
+  app\scripts\release-win.ps1 -SmokeInstall  install the setup .exe for the current user, launch it
+                                          and uninstall it; fail unless every step is per-user
 
   Authenticode signing is optional. Tauri updater signing is required for builds. A Windows
   Authenticode certificate is used when one is found, in this order:
@@ -23,7 +25,8 @@
 [CmdletBinding()]
 param(
   [switch]$Publish,
-  [switch]$NoSign
+  [switch]$NoSign,
+  [switch]$SmokeInstall
 )
 $ErrorActionPreference = 'Stop'
 
@@ -35,6 +38,58 @@ function Say($m) { Write-Host "==> $m" }
 function Die($m) { Write-Error "error: $m"; exit 1 }
 function Need($cmd) { if (-not (Get-Command $cmd -ErrorAction SilentlyContinue)) { Die "$cmd not found" } }
 function Run($exe, [string[]]$a) { & $exe @a; if ($LASTEXITCODE -ne 0) { Die "$exe $($a -join ' ') failed ($LASTEXITCODE)" } }
+
+# The setup .exe is built for the current user only (installMode "currentUser" in tauri.conf.json),
+# so it must install under %LOCALAPPDATA% and HKCU without elevation, and remove both on uninstall.
+# Refuses to run when an install already exists, so an existing copy is never touched.
+function Test-CurrentUserInstall($Setup) {
+  # Ask Windows for the folder instead of reading %LOCALAPPDATA%, which is missing in some shells.
+  $localAppData = [Environment]::GetFolderPath('LocalApplicationData')
+  if (-not $localAppData) { Die 'could not resolve the per-user local app data folder' }
+  $installDir = Join-Path $localAppData 'os-lab'
+  $exe = Join-Path $installDir 'os-lab-app.exe'
+  $userKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\os-lab'
+  $machineKey = 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\os-lab'
+  # Tauri's MSI reads this value to reuse a previous NSIS install directory (see installer-hooks.nsh).
+  $reuseKey = 'HKCU:\Software\Keyvan Arasteh\os-lab'
+  foreach ($present in @($installDir, $userKey)) {
+    if (Test-Path $present) { Die "a per-user os-lab install already exists ($present); remove it before -SmokeInstall" }
+  }
+  Say "installing for the current user only: $Setup"
+  # /NS skips the Start menu and desktop shortcuts, so the check leaves the profile as it found it.
+  $install = Start-Process $Setup -ArgumentList '/S', '/NS' -Wait -PassThru
+  if ($install.ExitCode -ne 0) { Die "per-user install failed ($($install.ExitCode))" }
+  $problem = $null
+  try {
+    if (-not (Test-Path $exe)) { throw "the installer did not create $exe" }
+    if (-not (Test-Path $userKey)) { throw 'no HKCU uninstall entry: the install is not recorded for the current user' }
+    if (Test-Path $machineKey) { throw 'an HKLM uninstall entry appeared: the install is not per-user' }
+    Say "installed per-user: $exe (HKCU entry, no HKLM entry)"
+    $app = Start-Process $exe -PassThru
+    Start-Sleep -Seconds 10
+    if ($app.HasExited) { throw "the installed app exited early ($($app.ExitCode))" }
+    Stop-Process -Id $app.Id -Force
+    Say 'the installed app launched and stayed up'
+  } catch { $problem = $_.Exception.Message } finally {
+    $uninstaller = Join-Path $installDir 'uninstall.exe'
+    if (Test-Path $uninstaller) {
+      $null = Start-Process $uninstaller -ArgumentList '/S' -Wait -PassThru
+      for ($i = 0; $i -lt 30 -and (Test-Path $installDir); $i++) { Start-Sleep -Milliseconds 500 }
+      if (Test-Path $installDir) {
+        if (-not $problem) { $problem = "the uninstaller left $installDir behind" }
+      }
+      if (Test-Path $userKey) {
+        if (-not $problem) { $problem = 'the uninstaller left the HKCU uninstall entry behind' }
+      }
+      $reuse = (Get-ItemProperty $reuseKey -Name '(default)' -ErrorAction SilentlyContinue).'(default)'
+      if ($reuse) {
+        if (-not $problem) { $problem = "the uninstaller left its install path in $reuseKey" }
+      }
+      if (-not $problem) { Say 'uninstalled cleanly' }
+    }
+  }
+  if ($problem) { Die "per-user install check failed: $problem" }
+}
 
 if (-not $IsWindows -and $PSVersionTable.PSEdition -eq 'Core') { Die 'Windows only (WiX builds the .msi on Windows)' }
 foreach ($c in 'node', 'npm', 'cargo', 'git', 'tar') { Need $c }
@@ -143,6 +198,10 @@ foreach ($a in $assets) {
   Copy-Item -Force "$($a.Src).sig" "$dest.sig"
   $files += "$dest.sig"
 }
+
+# 5. Per-user install check (opt-in) ------------------------------------------------------------
+# Runs before publishing so a broken or per-machine setup .exe cannot reach a release.
+if ($SmokeInstall) { Test-CurrentUserInstall (Join-Path $Out "os-lab_${Version}_windows_x64-setup.exe") }
 
 # 6. Publish ------------------------------------------------------------------------------------
 if (-not $Publish) { Say 'dry run: nothing uploaded (use -Publish)'; exit 0 }

@@ -55,3 +55,20 @@ jobs:
             git --no-pager diff -- dashboard/src/firewall/companies.generated.ts | head -60
             exit 1
           fi
+
+      - name: Rendered rule sets parse (nft -c, bash -n) for every branch
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq nftables >/dev/null
+          out="$(mktemp -d)"; bad=0
+          for manifest in firewall-lab/companies/*/company.json; do
+            slug="$(basename "$(dirname "$manifest")")"
+            dups="$(python3 -c 'import json,sys,collections;c=collections.Counter(b["id"] for b in json.load(open(sys.argv[1]))["branches"]);print(" ".join(k for k,v in c.items() if v>1))' "$manifest")"
+            if [ -n "$dups" ]; then echo "::error::$slug has duplicate branch ids ($dups); each branch must be rendered and checked"; bad=1; fi
+            for branch in $(python3 -c 'import json,sys;print(" ".join(b["id"] for b in json.load(open(sys.argv[1]))["branches"]))' "$manifest"); do
+              python3 firewall-lab/vm/scripts/render-rules.py "$slug" --branch "$branch" --target nft -o "$out/$slug.$branch.nft" >/dev/null
+              python3 firewall-lab/vm/scripts/render-rules.py "$slug" --branch "$branch" --target ufw -o "$out/$slug.$branch.sh" >/dev/null
+              sudo nft -c -f "$out/$slug.$branch.nft" || { echo "::error::nft rejects $slug/$branch"; bad=1; }
+              bash -n "$out/$slug.$branch.sh" || { echo "::error::ufw script for $slug/$branch has a shell syntax error"; bad=1; }
+            done
+          done
+          exit $bad

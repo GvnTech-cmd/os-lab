@@ -22,6 +22,8 @@ import {
 import { AppShell } from "../shell/app-shell";
 import { TopBar } from "../shell/top-bar";
 import { REPO_BLOB } from "../lib/legal";
+import { SOURCE_BONUS_TASKS } from "./source-bonus-tasks";
+import { CLEANUP_LAB_TASKS } from "./cleanup-lab-tasks";
 
 export type TaskCategory = "all" | "pentest" | "os" | "firewall";
 export type TaskPriority = "all" | "high" | "medium";
@@ -43,6 +45,8 @@ export interface TodoTask {
 }
 
 export const CURATED_TASKS: TodoTask[] = [
+  ...SOURCE_BONUS_TASKS,
+  ...CLEANUP_LAB_TASKS,
   // --- 1. Penetration Testing (Pentesting) ---
   {
     id: "PENT-01",
@@ -2080,6 +2084,9 @@ export default function ContributePage({ html }: { html: string }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<"all" | "available" | "reserved" | "done">("all");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copyError, setCopyError] = useState(false);
+  const [copyFallbackText, setCopyFallbackText] = useState("");
+  const [copyPendingId, setCopyPendingId] = useState<string | null>(null);
 
   // Sync hash on initial mount and when hash changes
   useEffect(() => {
@@ -2155,12 +2162,21 @@ export default function ContributePage({ html }: { html: string }) {
     return { reserved, done, available: CURATED_TASKS.length - values.length };
   }, []);
 
-  const copyToClipboard = (text: string, id: string) => {
-    void navigator.clipboard?.writeText(text).catch(() => {});
-    setCopiedId(id);
-    setTimeout(() => {
-      setCopiedId((curr) => (curr === id ? null : curr));
-    }, 2000);
+  const copyToClipboard = async (text: string, id: string) => {
+    if (copyPendingId) return;
+    setCopiedId(null);
+    setCopyError(false);
+    setCopyPendingId(id);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId((curr) => (curr === id ? null : curr)), 2000);
+    } catch {
+      setCopyFallbackText(text);
+      setCopyError(true);
+    } finally {
+      setCopyPendingId(null);
+    }
   };
 
   return (
@@ -2509,8 +2525,9 @@ export default function ContributePage({ html }: { html: string }) {
                             )}
                             <button
                               type="button"
+                              disabled={copyPendingId !== null}
                               onClick={() => copyToClipboard(`${task.id}: ${task.title}`, task.id)}
-                              className="flex items-center gap-1 rounded border border-(--iux-border) px-2 py-1 text-[11px] text-(--iux-muted-foreground) transition-colors hover:bg-(--iux-muted) hover:text-(--iux-foreground)"
+                              className="iux-touch-target flex items-center gap-1 rounded border border-(--iux-border) px-2 py-1 text-[11px] text-(--iux-muted-foreground) transition-colors hover:bg-(--iux-muted) hover:text-(--iux-foreground)"
                               title="Copy task reference"
                             >
                               {isCopied ? (
@@ -2568,8 +2585,9 @@ export default function ContributePage({ html }: { html: string }) {
                             <span className="text-[10px] text-(--iux-muted-foreground)">Branch:</span>
                             <button
                               type="button"
+                              disabled={copyPendingId !== null}
                               onClick={() => copyToClipboard(`git checkout -b ${task.suggestedBranch}`, `b-${task.id}`)}
-                              className="font-mono text-[10px] text-[#f36c21] hover:underline"
+                              className="iux-touch-target font-mono text-[10px] text-[#f36c21] hover:underline"
                               title="Copy git checkout branch command"
                             >
                               {copiedId === `b-${task.id}` ? "Copied command!" : `git checkout -b ${task.suggestedBranch}`}
@@ -2583,6 +2601,7 @@ export default function ContributePage({ html }: { html: string }) {
               )}
             </div>
           )}
+          {copyError ? <div role="alert" className="fixed bottom-4 left-4 right-4 z-50 rounded-lg border border-(--iux-danger) bg-(--iux-card) p-3 text-sm shadow-lg sm:left-auto sm:max-w-md"><p>Clipboard unavailable. Select the text manually.</p><code data-no-translate className="mt-2 block select-text break-all text-xs">{copyFallbackText}</code></div> : null}
         </main>
       </div>
     </AppShell>

@@ -19,10 +19,21 @@ const repo = resolve(here, "..", "..");
 const out = resolve(here, "..", "src-tauri", "resources", "os-lab");
 
 // Tracked top-level paths the console and the labs need at run time.
-export const INCLUDE = ["labctl", "console", "android-lab", "linux-lab", "win-lab", "ios-lab", "firewall-lab", "docs/legal", "LICENSE"];
+export const INCLUDE = ["labctl", "console", "source-lab", "cleanup-lab", "android-lab", "linux-lab", "win-lab", "ios-lab", "firewall-lab", "docs/legal", "LICENSE"];
 
 // These are the entry points used by the installed console and every supported lab path.
 export const REQUIRED = [
+  "cleanup-lab/engine/cleanup_lab/__init__.py",
+  "cleanup-lab/engine/cleanup_lab/cli.py",
+  "cleanup-lab/catalog/schema.json",
+  "cleanup-lab/catalog/system.json",
+  "source-lab/engine/source_lab/import_legacy.py",
+  "source-lab/acceptance.py",
+  "source-lab/run.py", "source-lab/list_inputs.py", "source-lab/contracts/schema.json",
+  "source-lab/engine/source_lab/cli/run_detection.py", "source-lab/engine/source_lab/paths.py",
+  "source-lab/engine/source_lab/collectors/browser/canary.js", "console/source_api.py",
+  "console/source_control.py", "console/source_jobs.py", "console/source_worker.py",
+  "console/source_artifacts.py", "console/source_overview.py", "console/source_manifest_specs.json", "console/source_pipeline.json",
   "labctl", "console/oslab.py", "console/content.py", "console/capabilities.json", "android-lab/lab/web_ui.py",
   "android-lab/lab/scripts/setup-ubuntu.sh", "android-lab/lab/docker-compose.yml",
   "android-lab/lab/scripts/preflight.sh", "android-lab/lab/scripts/install-service.sh",
@@ -43,6 +54,8 @@ export const REQUIRED = [
 
 // Even tracked, these never ship: credentials, private notes, VM guest data.
 const NEVER = [
+  /^source-lab\/(?:resources|legacy|imports)\//,
+  /^source-lab\/.*\.(?:zip|apk|ipa|exe|dll|dmg|db|sqlite|xlsx)$/i,
   /(^|\/)\.env$/,
   /(^|\/)config\.env$/,
   /\.local\.md$/,

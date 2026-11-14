@@ -1,0 +1,687 @@
+{
+  "repository": "https://github.com/keyvanarasteh/iQ-SourceContol",
+  "commit": "51ce20b6210ab5a98a2dd2653b230bdf2282f93c",
+  "upstream_repository": "https://github.com/keyvanarasteh/zed-extension-hunter",
+  "upstream_commit": "ae371e3ece19a3705933a62cd2312e5a47c92c93",
+  "files": [
+    {
+      "source": "engine/analyzers/__init__.py",
+      "destination": "source-lab/engine/source_lab/analyzers/__init__.py",
+      "source_sha256": "2a75a411d4bedd081562116f1c77ea9ef4b74f4db02244215ac51e2def75f976",
+      "local_sha256": "2a75a411d4bedd081562116f1c77ea9ef4b74f4db02244215ac51e2def75f976"
+    },
+    {
+      "source": "engine/analyzers/_common.py",
+      "destination": "source-lab/engine/source_lab/analyzers/_common.py",
+      "source_sha256": "23261f2a20fdd29bde1317e08ed77376e2afa7cb087c962ccdab18c7e7735a6e",
+      "local_sha256": "f1dff60583e443d818c61d9c060d88a78a7b913adb2849bf7e50122abecbced3"
+    },
+    {
+      "source": "engine/analyzers/android.py",
+      "destination": "source-lab/engine/source_lab/analyzers/android.py",
+      "source_sha256": "94865bfad93085d3173d719237f5b04adceebba4e675c0ebec228e0e84608022",
+      "local_sha256": "0d9c55eeb92f59f4368f3d00b4dfa088bfdc365e0c0ee2a36b2df557956e84aa"
+    },
+    {
+      "source": "engine/analyzers/android_rules.py",
+      "destination": "source-lab/engine/source_lab/analyzers/android_rules.py",
+      "source_sha256": "b4e257b0c57db9eac068f683e75385b6987807879bd01317e8b0423bc65965ee",
+      "local_sha256": "5e1967914274cc2928a15d37a997702f7b757e3eb5a70a8700b89594223b3704"
+    },
+    {
+      "source": "engine/analyzers/binfmt/__init__.py",
+      "destination": "source-lab/engine/source_lab/analyzers/binfmt/__init__.py",
+      "source_sha256": "ae630ef1313153ea8e91472091b9fb7a397e8f7c9f48ee33d656266739fcd60b",
+      "local_sha256": "ae630ef1313153ea8e91472091b9fb7a397e8f7c9f48ee33d656266739fcd60b"
+    },
+    {
+      "source": "engine/analyzers/binfmt/apk.py",
+      "destination": "source-lab/engine/source_lab/analyzers/binfmt/apk.py",
+      "source_sha256": "7ba9eccdbfd92ded5fb204a2f27f13bf8fc6c263c7b9efd0c7cc9d81eef0bdb4",
+      "local_sha256": "7ba9eccdbfd92ded5fb204a2f27f13bf8fc6c263c7b9efd0c7cc9d81eef0bdb4"
+    },
+    {
+      "source": "engine/analyzers/binfmt/asar.py",
+      "destination": "source-lab/engine/source_lab/analyzers/binfmt/asar.py",
+      "source_sha256": "3b4073e9c35cc3ce7fd9066d1298295d6e1fba88989b8a5bd42bdbcb67827acb",
+      "local_sha256": "3b4073e9c35cc3ce7fd9066d1298295d6e1fba88989b8a5bd42bdbcb67827acb"
+    },
+    {
+      "source": "engine/analyzers/binfmt/macho.py",
+      "destination": "source-lab/engine/source_lab/analyzers/binfmt/macho.py",
+      "source_sha256": "d6ddb8cffc4e762f80af003b4c31e3bf98522b5bba3e987d89d119ead746f115",
+      "local_sha256": "d6ddb8cffc4e762f80af003b4c31e3bf98522b5bba3e987d89d119ead746f115"
+    },
+    {
+      "source": "engine/analyzers/binfmt/pe.py",
+      "destination": "source-lab/engine/source_lab/analyzers/binfmt/pe.py",
+      "source_sha256": "dbc1b8b924685b7f34fe8aea5ba6b318783924af20fdc5984abbb62075f1fb26",
+      "local_sha256": "dbc1b8b924685b7f34fe8aea5ba6b318783924af20fdc5984abbb62075f1fb26"
+    },
+    {
+      "source": "engine/analyzers/browser.py",
+      "destination": "source-lab/engine/source_lab/analyzers/browser.py",
+      "source_sha256": "a069dce03374da865e49cf7734811741e3fa08097ba5ae91c1fac51ee6bcc034",
+      "local_sha256": "60811e6ba65f41540b24d03e65a4d0777b14c500a29c1a462ba918e7ca2f44e7"
+    },
+    {
+      "source": "engine/analyzers/browser_rules.py",
+      "destination": "source-lab/engine/source_lab/analyzers/browser_rules.py",
+      "source_sha256": "b9be15b55d706f759ab1126094d3220555619f5335b16ded7e8061a5a3f262db",
+      "local_sha256": "83b1f6d230c785dc021a3c668950716931ea46d7d205d4d66636141c96dad4f2"
+    },
+    {
+      "source": "engine/analyzers/inapp.py",
+      "destination": "source-lab/engine/source_lab/analyzers/inapp.py",
+      "source_sha256": "41b813fb882ec316a9ece37da0c709545e8aa049c23590505842db17ec10c3c4",
+      "local_sha256": "e18e3145d499d83c9ea683061f73fa003913d2b160a99c636662a8a878499bf5"
+    },
+    {
+      "source": "engine/analyzers/ios.py",
+      "destination": "source-lab/engine/source_lab/analyzers/ios.py",
+      "source_sha256": "20e47674b5f8ecf4ad05517b6b5ae73646180a8d0a230a159c637ddbe3a29bdc",
+      "local_sha256": "f88e5febb663b02be2dc5a0926c8411de73244293d61e96d16e7fa4e661b945a"
+    },
+    {
+      "source": "engine/analyzers/ios_rules.py",
+      "destination": "source-lab/engine/source_lab/analyzers/ios_rules.py",
+      "source_sha256": "b28f2a15f69020ebc86711a88b0ddcd3030028002368d65acec5eb83fee31933",
+      "local_sha256": "4df6a2260852cedd48eabfc69f5de076cb6164fa0d45ca38ba45c60e201df794"
+    },
+    {
+      "source": "engine/analyzers/macos.py",
+      "destination": "source-lab/engine/source_lab/analyzers/macos.py",
+      "source_sha256": "b5eebbaf86f175576c10de4aaf1f23b61f1db736f15095ee96ffb351514db21b",
+      "local_sha256": "93964008aa07213197b8a9df05fae04cac532d3f10656fc60b00600a5eab0e75"
+    },
+    {
+      "source": "engine/analyzers/macos_rules.py",
+      "destination": "source-lab/engine/source_lab/analyzers/macos_rules.py",
+      "source_sha256": "d00c5e82959d2b6f1158b324f242a03a55962a4ef10419d6d7f45b2250cfcd92",
+      "local_sha256": "511f53090b3099cd52190ef0b1687bf858ba982090b21aeb64fafd945f3e7ea4"
+    },
+    {
+      "source": "engine/analyzers/windows.py",
+      "destination": "source-lab/engine/source_lab/analyzers/windows.py",
+      "source_sha256": "e9cb6888654634ec4767ae638895d3cd953fe31e2de602b3b766f102e6f493f3",
+      "local_sha256": "d22309305eefae316ed18b62654651d8627231fdd853050d5d2bb099770397eb"
+    },
+    {
+      "source": "engine/analyzers/windows_rules.py",
+      "destination": "source-lab/engine/source_lab/analyzers/windows_rules.py",
+      "source_sha256": "8a95fe98b51ae63aed8f691f4fad1a3ea8bc329d722fce1ec05de70b7f4dea7a",
+      "local_sha256": "e46ee82bd87d52f938bbe67cbd8267e0b7bdaf5ed2971f41dce6974982c6927f"
+    },
+    {
+      "source": "engine/cli/__init__.py",
+      "destination": "source-lab/engine/source_lab/cli/__init__.py",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "local_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "engine/cli/run_detection.py",
+      "destination": "source-lab/engine/source_lab/cli/run_detection.py",
+      "source_sha256": "2cd796e0d865409de6efd90396b2b1f5062b466d7c3f1de1888bd7d271ad8e18",
+      "local_sha256": "eaa50a51d865b968e6d95b800677069daf555866503054adac225f015d4abe59"
+    },
+    {
+      "source": "engine/collectors/__init__.py",
+      "destination": "source-lab/engine/source_lab/collectors/__init__.py",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "local_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "engine/collectors/android/__init__.py",
+      "destination": "source-lab/engine/source_lab/collectors/android/__init__.py",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "local_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "engine/collectors/android/importer.py",
+      "destination": "source-lab/engine/source_lab/collectors/android/importer.py",
+      "source_sha256": "ea3ea54445578f6e2d7483ad74a6782f67b68c025b6ede59442c5ec11f6cb9b6",
+      "local_sha256": "4db972050fb9e2c45d04af6e2dfbd392087f52bef73ff257a0fa31dfa4590c46"
+    },
+    {
+      "source": "engine/collectors/browser/canary.js",
+      "destination": "source-lab/engine/source_lab/collectors/browser/canary.js",
+      "source_sha256": "db92757f35c12e58e71b2ec84c577f9fe52f4aa28e7bfb413f2a3fd9c7527035",
+      "local_sha256": "eec33357efb3934547002e0b003807fc8d84970f2e77f6fe1127dacf27b22ac0"
+    },
+    {
+      "source": "engine/collectors/browser/runner.py",
+      "destination": "source-lab/engine/source_lab/collectors/browser/runner.py",
+      "source_sha256": "eab7bc6158749a396c3358134f14c6ec91ec1c42e9a393f1caf35bca32c8efb6",
+      "local_sha256": "f1c63db193ec6dbb8c51927c33fae35cc44e4073f2e007366ddf43050806abde"
+    },
+    {
+      "source": "engine/collectors/ios/__init__.py",
+      "destination": "source-lab/engine/source_lab/collectors/ios/__init__.py",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "local_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "engine/collectors/ios/importer.py",
+      "destination": "source-lab/engine/source_lab/collectors/ios/importer.py",
+      "source_sha256": "d588fc3cd5f513e2be471f9d67ad0dc64ae9135950cda1f10289693dd04aaf00",
+      "local_sha256": "97df8e5a2d46d16ebb7f131857739eb7fb8e531953b83d960847b2af507d1d07"
+    },
+    {
+      "source": "engine/collectors/macos/__init__.py",
+      "destination": "source-lab/engine/source_lab/collectors/macos/__init__.py",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "local_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "engine/collectors/macos/importer.py",
+      "destination": "source-lab/engine/source_lab/collectors/macos/importer.py",
+      "source_sha256": "f553d5b9c53478d493d4040406a71d0f765ea86acadd5ea19bcd0cbd06393ad0",
+      "local_sha256": "927797c5c52fb52b5e80d72753792ba090adec8744b1c5147d4ed27e9bba2c2a"
+    },
+    {
+      "source": "engine/collectors/windows/__init__.py",
+      "destination": "source-lab/engine/source_lab/collectors/windows/__init__.py",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "local_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "engine/collectors/windows/importer.py",
+      "destination": "source-lab/engine/source_lab/collectors/windows/importer.py",
+      "source_sha256": "c342739bb0905322ab5f0f190895dbd9eeb37908ff6a7d43e886e4144aa9084c",
+      "local_sha256": "90c178dde1b501c84d9c5e9099f307dd0f8d5fb837d5166ee89e123ddc2803cb"
+    },
+    {
+      "source": "engine/evidence/__init__.py",
+      "destination": "source-lab/engine/source_lab/evidence/__init__.py",
+      "source_sha256": "d8aadebe3016a43b16d2383e42106f043de2e2347842bc6428fe73095431db65",
+      "local_sha256": "d8aadebe3016a43b16d2383e42106f043de2e2347842bc6428fe73095431db65"
+    },
+    {
+      "source": "engine/evidence/correlate.py",
+      "destination": "source-lab/engine/source_lab/evidence/correlate.py",
+      "source_sha256": "1f5adaf045dac83aa747a906c73be2a5af15e37ded1ee190436a8bc3349d0519",
+      "local_sha256": "ca7661c734ca878bffc9f48cfa263cef0c960fcd915b1aa858facc5e6b9e208f"
+    },
+    {
+      "source": "engine/evidence/heuristics.py",
+      "destination": "source-lab/engine/source_lab/evidence/heuristics.py",
+      "source_sha256": "54888c4739bc7cd50b1a346e030c9fd9b9680b76d8383ec1b1ca59ee9586f510",
+      "local_sha256": "54888c4739bc7cd50b1a346e030c9fd9b9680b76d8383ec1b1ca59ee9586f510"
+    },
+    {
+      "source": "engine/evidence/report.py",
+      "destination": "source-lab/engine/source_lab/evidence/report.py",
+      "source_sha256": "56673b3a0537511d70fa215d045c63412f2cc1eb9ea54e51b8ffbf926176c656",
+      "local_sha256": "56673b3a0537511d70fa215d045c63412f2cc1eb9ea54e51b8ffbf926176c656"
+    },
+    {
+      "source": "engine/evidence/schema.py",
+      "destination": "source-lab/engine/source_lab/evidence/schema.py",
+      "source_sha256": "42db7a27ddf59328a9a1c53f35250f88e4a52f4d4c1524bcf5ca6ba0f4ec9b2d",
+      "local_sha256": "e2f9149f5c8fdcb400a04e8def870c28c453d9c7b2f5202f00f11ee9018e158e"
+    },
+    {
+      "source": "engine/evidence/session.py",
+      "destination": "source-lab/engine/source_lab/evidence/session.py",
+      "source_sha256": "efd7e1dc36b6722e28f2481497f4066632464daee4399120f94babc74d2ce132",
+      "local_sha256": "8b125f27c1954d844aaddcbf83afbeea7dce9f25449d36343b33f037c8d9405d"
+    },
+    {
+      "source": "engine/pipeline/__init__.py",
+      "destination": "source-lab/engine/source_lab/pipeline/__init__.py",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "local_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "engine/pipeline/ext_merger.py",
+      "destination": "source-lab/engine/source_lab/pipeline/ext_merger.py",
+      "source_sha256": "bbf930e52ec154cb26e0cb4f9f2b55b942c06387c8523852fd50349ce77faaec",
+      "local_sha256": "7f162ad5c591e8e3178a67f9bf01173b76d71516bca547a98780bb7e9fd4bae7"
+    },
+    {
+      "source": "engine/pipeline/ext_repo_analyzer.py",
+      "destination": "source-lab/engine/source_lab/pipeline/ext_repo_analyzer.py",
+      "source_sha256": "5beaa71dcd8faee3f6caf37a7e8368800226147e5e9ba3ed9e6f22a7ecbf6856",
+      "local_sha256": "1e703fd8a312a7ede6770683d53dcd8a24c0ffb1a464a30c139f47b375633624"
+    },
+    {
+      "source": "engine/pipeline/merge_csvs.py",
+      "destination": "source-lab/engine/source_lab/pipeline/merge_csvs.py",
+      "source_sha256": "65285a5a9193a33c8c35ef1b0674bfbbeccfc11b4000097140d58de44a3417c2",
+      "local_sha256": "5cc6fd6aff7c2f54e6471b8e34feb747f7702c77bb328ab8990531273f86d1b3"
+    },
+    {
+      "source": "engine/sourcemap/__init__.py",
+      "destination": "source-lab/engine/source_lab/sourcemap/__init__.py",
+      "source_sha256": "88e9d0f51f4a6ce74a4089a9f338a470e13c310df9f8755e6eff9d79efaf0414",
+      "local_sha256": "88e9d0f51f4a6ce74a4089a9f338a470e13c310df9f8755e6eff9d79efaf0414"
+    },
+    {
+      "source": "engine/sourcemap/__main__.py",
+      "destination": "source-lab/engine/source_lab/sourcemap/__main__.py",
+      "source_sha256": "42ce4ea4cd929b11a8c20a5e91e172ba5be3dc6181b6e316b09bd9b0d542fcb9",
+      "local_sha256": "ae9068fb1d456d2473ffaeb831f3abf181c99b2715854f8469a25bfd58925d84"
+    },
+    {
+      "source": "engine/sourcemap/archives/__init__.py",
+      "destination": "source-lab/engine/source_lab/sourcemap/archives/__init__.py",
+      "source_sha256": "0a32c3357b62509933414009fde9eec14e5f387a02c41c42ee6ed6a80f0dcd92",
+      "local_sha256": "0a32c3357b62509933414009fde9eec14e5f387a02c41c42ee6ed6a80f0dcd92"
+    },
+    {
+      "source": "engine/sourcemap/archives/asar.py",
+      "destination": "source-lab/engine/source_lab/sourcemap/archives/asar.py",
+      "source_sha256": "fba836e6aa63e9f09efd7c024442a761d0c5ff0645015252143a562fcbd8d6a0",
+      "local_sha256": "fba836e6aa63e9f09efd7c024442a761d0c5ff0645015252143a562fcbd8d6a0"
+    },
+    {
+      "source": "engine/sourcemap/engine.py",
+      "destination": "source-lab/engine/source_lab/sourcemap/engine.py",
+      "source_sha256": "3965039c2ba005ab64432f2a0bbc5eeba9f1e551e734386c9649f3d32c0bccd0",
+      "local_sha256": "3965039c2ba005ab64432f2a0bbc5eeba9f1e551e734386c9649f3d32c0bccd0"
+    },
+    {
+      "source": "engine/sourcemap/extract/__init__.py",
+      "destination": "source-lab/engine/source_lab/sourcemap/extract/__init__.py",
+      "source_sha256": "870bb9c25d1c6043cc6f97c3b9a659cf2f8ee24bbcc74fe7d464e8c8890d00f0",
+      "local_sha256": "870bb9c25d1c6043cc6f97c3b9a659cf2f8ee24bbcc74fe7d464e8c8890d00f0"
+    },
+    {
+      "source": "engine/sourcemap/extract/android_xml.py",
+      "destination": "source-lab/engine/source_lab/sourcemap/extract/android_xml.py",
+      "source_sha256": "b609a18f15960d53c5b27661d44cafcaeb9cf79542eaef97d239049dbfedf49b",
+      "local_sha256": "b609a18f15960d53c5b27661d44cafcaeb9cf79542eaef97d239049dbfedf49b"
+    },
+    {
+      "source": "engine/sourcemap/extract/common.py",
+      "destination": "source-lab/engine/source_lab/sourcemap/extract/common.py",
+      "source_sha256": "42e36217afb6a14f760ad9299af87713e638527643d02fabace52de60a6e2c36",
+      "local_sha256": "42e36217afb6a14f760ad9299af87713e638527643d02fabace52de60a6e2c36"
+    },
+    {
+      "source": "engine/sourcemap/extract/java.py",
+      "destination": "source-lab/engine/source_lab/sourcemap/extract/java.py",
+      "source_sha256": "e3edfcb5b3251778f943839eb42164991c85d417f352353c5a59207b906eb542",
+      "local_sha256": "e3edfcb5b3251778f943839eb42164991c85d417f352353c5a59207b906eb542"
+    },
+    {
+      "source": "engine/sourcemap/extract/kotlin.py",
+      "destination": "source-lab/engine/source_lab/sourcemap/extract/kotlin.py",
+      "source_sha256": "21b7adf2b7093571845471f4875e6a5829aaa868b5075666f983a9c2f255baca",
+      "local_sha256": "21b7adf2b7093571845471f4875e6a5829aaa868b5075666f983a9c2f255baca"
+    },
+    {
+      "source": "engine/sourcemap/extract/markup.py",
+      "destination": "source-lab/engine/source_lab/sourcemap/extract/markup.py",
+      "source_sha256": "8fa1c4df58f5d5e7aefbac90f1b662fe648844d5b2caa9da3225028b7f6ff8e2",
+      "local_sha256": "8fa1c4df58f5d5e7aefbac90f1b662fe648844d5b2caa9da3225028b7f6ff8e2"
+    },
+    {
+      "source": "engine/sourcemap/extract/objc.py",
+      "destination": "source-lab/engine/source_lab/sourcemap/extract/objc.py",
+      "source_sha256": "51e0182cbae8e012273cc9689dc15a2a242d482dcf2b1474b3c9d5a018e6c84e",
+      "local_sha256": "51e0182cbae8e012273cc9689dc15a2a242d482dcf2b1474b3c9d5a018e6c84e"
+    },
+    {
+      "source": "engine/sourcemap/extract/php.py",
+      "destination": "source-lab/engine/source_lab/sourcemap/extract/php.py",
+      "source_sha256": "bd5c3920e0173e053b4304ef30ea9262495432c79255e37f8f736cfec28a6d93",
+      "local_sha256": "bd5c3920e0173e053b4304ef30ea9262495432c79255e37f8f736cfec28a6d93"
+    },
+    {
+      "source": "engine/sourcemap/extract/plist.py",
+      "destination": "source-lab/engine/source_lab/sourcemap/extract/plist.py",
+      "source_sha256": "bcd394886b99f3240d228bfb99151d8f6549bafb20532823342c1120eab46cb6",
+      "local_sha256": "bcd394886b99f3240d228bfb99151d8f6549bafb20532823342c1120eab46cb6"
+    },
+    {
+      "source": "engine/sourcemap/extract/python_ast.py",
+      "destination": "source-lab/engine/source_lab/sourcemap/extract/python_ast.py",
+      "source_sha256": "cc0ea052f735cf416214df496b96c47f21ea45df3dec33e4511d6f88cfc1637c",
+      "local_sha256": "cc0ea052f735cf416214df496b96c47f21ea45df3dec33e4511d6f88cfc1637c"
+    },
+    {
+      "source": "engine/sourcemap/extract/rust.py",
+      "destination": "source-lab/engine/source_lab/sourcemap/extract/rust.py",
+      "source_sha256": "049ba9a2ea43c1efa3becfc373399e9cafe05ccab434d826e288dd4f5c236231",
+      "local_sha256": "049ba9a2ea43c1efa3becfc373399e9cafe05ccab434d826e288dd4f5c236231"
+    },
+    {
+      "source": "engine/sourcemap/extract/swift.py",
+      "destination": "source-lab/engine/source_lab/sourcemap/extract/swift.py",
+      "source_sha256": "811c7fcd0547bbd6c89f38cc75d1ae6c71ba576bf0487c75aa4ba48f8c758ca8",
+      "local_sha256": "811c7fcd0547bbd6c89f38cc75d1ae6c71ba576bf0487c75aa4ba48f8c758ca8"
+    },
+    {
+      "source": "engine/sourcemap/extract/treesitter.py",
+      "destination": "source-lab/engine/source_lab/sourcemap/extract/treesitter.py",
+      "source_sha256": "582fe62c5ea0f5c962b91961f0646182cb67cfe54970cf5f40b6e36af4800fe8",
+      "local_sha256": "582fe62c5ea0f5c962b91961f0646182cb67cfe54970cf5f40b6e36af4800fe8"
+    },
+    {
+      "source": "engine/sourcemap/extract/ts.py",
+      "destination": "source-lab/engine/source_lab/sourcemap/extract/ts.py",
+      "source_sha256": "724fe6eca92bc315425ee000b4d7f0e443d8e16f48931effe9c2ecc21c62c1aa",
+      "local_sha256": "724fe6eca92bc315425ee000b4d7f0e443d8e16f48931effe9c2ecc21c62c1aa"
+    },
+    {
+      "source": "engine/sourcemap/filter.py",
+      "destination": "source-lab/engine/source_lab/sourcemap/filter.py",
+      "source_sha256": "b2c410969c4090c2be397a93ecf72ae7fdcf79264b9b71111a77e2f751aac42c",
+      "local_sha256": "b2c410969c4090c2be397a93ecf72ae7fdcf79264b9b71111a77e2f751aac42c"
+    },
+    {
+      "source": "engine/sourcemap/headers.py",
+      "destination": "source-lab/engine/source_lab/sourcemap/headers.py",
+      "source_sha256": "b9637e58f6e572921faf3952c06d9fb03097efc50eb4f72d365ec33309cd923f",
+      "local_sha256": "b9637e58f6e572921faf3952c06d9fb03097efc50eb4f72d365ec33309cd923f"
+    },
+    {
+      "source": "engine/sourcemap/model.py",
+      "destination": "source-lab/engine/source_lab/sourcemap/model.py",
+      "source_sha256": "cd8b77ed49c108e9bf3edbbc4e4fe4ec1f1a03b50c64fb5355e93caad6d5d00f",
+      "local_sha256": "cd8b77ed49c108e9bf3edbbc4e4fe4ec1f1a03b50c64fb5355e93caad6d5d00f"
+    },
+    {
+      "source": "engine/sourcemap/rank.py",
+      "destination": "source-lab/engine/source_lab/sourcemap/rank.py",
+      "source_sha256": "5d71c5fd01ebc0d6c765edf0d55036707e30d68d023904b2b26889aff6db03d4",
+      "local_sha256": "5d71c5fd01ebc0d6c765edf0d55036707e30d68d023904b2b26889aff6db03d4"
+    },
+    {
+      "source": "engine/sourcemap/registry.py",
+      "destination": "source-lab/engine/source_lab/sourcemap/registry.py",
+      "source_sha256": "4900fb38d1e815feef0d3f5723e1998391b31bcb1b967bbf427fe157d1ff8efe",
+      "local_sha256": "4900fb38d1e815feef0d3f5723e1998391b31bcb1b967bbf427fe157d1ff8efe"
+    },
+    {
+      "source": "engine/sourcemap/report.py",
+      "destination": "source-lab/engine/source_lab/sourcemap/report.py",
+      "source_sha256": "6a0a56fbd6af9b2bcac0df11ce10abc43f1987fa4449e3326adfaa00edbc7ccf",
+      "local_sha256": "6a0a56fbd6af9b2bcac0df11ce10abc43f1987fa4449e3326adfaa00edbc7ccf"
+    },
+    {
+      "source": "engine/sourcemap/resolve.py",
+      "destination": "source-lab/engine/source_lab/sourcemap/resolve.py",
+      "source_sha256": "fd9c614c1883a99b45f739d02deaaaf03dcba9fea75760fa1dc25813f6a4e73b",
+      "local_sha256": "fd9c614c1883a99b45f739d02deaaaf03dcba9fea75760fa1dc25813f6a4e73b"
+    },
+    {
+      "source": "engine/sourcemap/roles.py",
+      "destination": "source-lab/engine/source_lab/sourcemap/roles.py",
+      "source_sha256": "796540f2e983df0605e8a886dd975b7a09b86265249ce84a7103c3df342be95e",
+      "local_sha256": "796540f2e983df0605e8a886dd975b7a09b86265249ce84a7103c3df342be95e"
+    },
+    {
+      "source": "engine/sourcemap/targets.py",
+      "destination": "source-lab/engine/source_lab/sourcemap/targets.py",
+      "source_sha256": "89949521f1b18a71687b5bc44931fea7e39a528b6b5b1736b11a84ef94d1a222",
+      "local_sha256": "89949521f1b18a71687b5bc44931fea7e39a528b6b5b1736b11a84ef94d1a222"
+    },
+    {
+      "source": "engine/sourcemap/types.py",
+      "destination": "source-lab/engine/source_lab/sourcemap/types.py",
+      "source_sha256": "eb6c70370c039ec6746347d3a67b610b0d7d9c61b846f72bdc2911f1adcdb009",
+      "local_sha256": "eb6c70370c039ec6746347d3a67b610b0d7d9c61b846f72bdc2911f1adcdb009"
+    },
+    {
+      "source": "engine/sourcemap/vfs.py",
+      "destination": "source-lab/engine/source_lab/sourcemap/vfs.py",
+      "source_sha256": "74611ececef014d6c197f0ae61304b2898c9a01880908e313e9c36449fce4f80",
+      "local_sha256": "74611ececef014d6c197f0ae61304b2898c9a01880908e313e9c36449fce4f80"
+    },
+    {
+      "source": "engine/sourcemap/xcode.py",
+      "destination": "source-lab/engine/source_lab/sourcemap/xcode.py",
+      "source_sha256": "7db039e6c31a1871197ce176b59cf9298634b77280d961d907478946ecee54a5",
+      "local_sha256": "7db039e6c31a1871197ce176b59cf9298634b77280d961d907478946ecee54a5"
+    },
+    {
+      "source": "engine/tests/builders.py",
+      "destination": "source-lab/engine/tests/builders.py",
+      "source_sha256": "3c9f92b6eb6c9a8448253e1ed835f6218dc5065b116ccb212b3d85d2b0319d8c",
+      "local_sha256": "3c9f92b6eb6c9a8448253e1ed835f6218dc5065b116ccb212b3d85d2b0319d8c"
+    },
+    {
+      "source": "engine/tests/conftest.py",
+      "destination": "source-lab/engine/tests/conftest.py",
+      "source_sha256": "d60ed3f40c99ce9cd6720b51b2d63b87474baab06df11a1d9d76576a092f76bf",
+      "local_sha256": "d60ed3f40c99ce9cd6720b51b2d63b87474baab06df11a1d9d76576a092f76bf"
+    },
+    {
+      "source": "engine/tests/fixtures/injection/android_fixture/AndroidManifest.xml",
+      "destination": "source-lab/engine/tests/fixtures/injection/android_fixture/AndroidManifest.xml",
+      "source_sha256": "e0eea76b19fa1b7d32feea9dd00a7e912d841e15fa35fb3088bff84c7f0951b0",
+      "local_sha256": "817fda281401139ef18570133e8e160e7e3ba53b973b8679ccff8619b4cca2a8"
+    },
+    {
+      "source": "engine/tests/fixtures/injection/android_fixture/MainActivity.java",
+      "destination": "source-lab/engine/tests/fixtures/injection/android_fixture/MainActivity.java",
+      "source_sha256": "be985232a4c70f0ac10a56d39de905da4810c10367bd0092dfb6dd45312dd192",
+      "local_sha256": "2615b3087ca3f981d0264af026f68935c44b5a47da6d2701f1a1329d123aaa16"
+    },
+    {
+      "source": "engine/tests/fixtures/injection/browser_clean/content.js",
+      "destination": "source-lab/engine/tests/fixtures/injection/browser_clean/content.js",
+      "source_sha256": "b4c7c93a5d826e9831b80e0aaada24e28031c30fef096c9c7cd94f5e2105abb7",
+      "local_sha256": "7cfa3a3ac8fde4f7cfa81d13cc81aa84d3f89a675878a329379bb3303a6805a8"
+    },
+    {
+      "source": "engine/tests/fixtures/injection/browser_clean/manifest.json",
+      "destination": "source-lab/engine/tests/fixtures/injection/browser_clean/manifest.json",
+      "source_sha256": "0347cd2bd643a157fbe52b140fb6f4e381432f9fb0f88c79f2a47605b5d8116a",
+      "local_sha256": "ec9362dc692c5dbfe09f679e47ed45ea2343ca985bfb91c5dae6396459db5923"
+    },
+    {
+      "source": "engine/tests/fixtures/injection/browser_positive/content.js",
+      "destination": "source-lab/engine/tests/fixtures/injection/browser_positive/content.js",
+      "source_sha256": "86ca35e6df4829657afb772a7b27f3b9805155d03df8c337f505f3c4add5d9a7",
+      "local_sha256": "596017834196fa358142b817c1ebc298e9a9514d0f14335df6a031190d8d6edc"
+    },
+    {
+      "source": "engine/tests/fixtures/injection/browser_positive/manifest.json",
+      "destination": "source-lab/engine/tests/fixtures/injection/browser_positive/manifest.json",
+      "source_sha256": "7181b1381698ad1edb9c669df17f660eac95faaf517eaf228ef1232dfc0d487b",
+      "local_sha256": "b2da19eafc840002106fed8b5c487bd30eff45abe67829e60c52a05e5a483b3e"
+    },
+    {
+      "source": "engine/tests/fixtures/injection/ios_fixture/AppHook.m",
+      "destination": "source-lab/engine/tests/fixtures/injection/ios_fixture/AppHook.m",
+      "source_sha256": "45c21d3d2eaa1541b017b7240aaea11b0e075208db659778281a8374fbefd7fd",
+      "local_sha256": "9e16f4c188a6c1d760e3ad09dd2f8467af7480f3dc1debb47f34489d3dce682f"
+    },
+    {
+      "source": "engine/tests/fixtures/injection/ios_fixture/Fixture.xcodeproj/project.pbxproj",
+      "destination": "source-lab/engine/tests/fixtures/injection/ios_fixture/Fixture.xcodeproj/project.pbxproj",
+      "source_sha256": "0fa20d60ee2619cfdb8365d7a9377bb086e08648b15d1a0bf379fc3ae850f0f9",
+      "local_sha256": "0fa20d60ee2619cfdb8365d7a9377bb086e08648b15d1a0bf379fc3ae850f0f9"
+    },
+    {
+      "source": "engine/tests/fixtures/injection/ios_fixture/Info.plist",
+      "destination": "source-lab/engine/tests/fixtures/injection/ios_fixture/Info.plist",
+      "source_sha256": "140226151b1b6cb92692f3e2f4352ca6ab7fa034d7212f6f2d80d1fd2beb5ded",
+      "local_sha256": "140226151b1b6cb92692f3e2f4352ca6ab7fa034d7212f6f2d80d1fd2beb5ded"
+    },
+    {
+      "source": "engine/tests/fixtures/injection/windows_fixture/main.js",
+      "destination": "source-lab/engine/tests/fixtures/injection/windows_fixture/main.js",
+      "source_sha256": "4ac0f40f28026b6f09db7c29ac1af752127f02b620f6fc8690cba8ab7438f7c2",
+      "local_sha256": "8b56d31e2b3414de696409187754523654d7d4644adfba804c166978d0dc3298"
+    },
+    {
+      "source": "engine/tests/fixtures/injection/windows_fixture/package.json",
+      "destination": "source-lab/engine/tests/fixtures/injection/windows_fixture/package.json",
+      "source_sha256": "043141566d9463feabedd590546a84f87ccd8a66254001dce998ec12a6298848",
+      "local_sha256": "cdffb34ef73f52ba41324af1a492960f92041fad63c5b379fe933dc4cfd049af"
+    },
+    {
+      "source": "engine/tests/test_analyzers.py",
+      "destination": "source-lab/engine/tests/test_analyzers.py",
+      "source_sha256": "45001f6199f054147138cbc3aec999a1eb8c8fa9bce2d6fd65e306cde5ab7ec1",
+      "local_sha256": "c022951010251c16b12edaedfc9b9f019773eb10d2294322de2538b8bf48fb0d"
+    },
+    {
+      "source": "engine/tests/test_binfmt.py",
+      "destination": "source-lab/engine/tests/test_binfmt.py",
+      "source_sha256": "dc4a6189ce509f9999e1f603dd44094beb4638bda95e362ab8ffe2cf24fa6846",
+      "local_sha256": "7221cebe403497f65a1897826997046660e8a3210ff6d9351bfc5128d8e965cd"
+    },
+    {
+      "source": "engine/tests/test_collectors.py",
+      "destination": "source-lab/engine/tests/test_collectors.py",
+      "source_sha256": "996f36479e384ceebe3881fe33a9cd834d6abc31b77e7850b1b42f6c10afc400",
+      "local_sha256": "9811809eeefa1d9cf09fb9564057e90322e5952c53bcbe2d7649aff9cee52546"
+    },
+    {
+      "source": "engine/tests/test_correlator.py",
+      "destination": "source-lab/engine/tests/test_correlator.py",
+      "source_sha256": "dc8b9ab0fcdee763b080c4453f58b1abcf6c24bed55324c6a0664f9b2cbdf7a4",
+      "local_sha256": "74e672db1f951b80c4bd61c2c99f6938e670d1c568750a652159acef1eca17f3"
+    },
+    {
+      "source": "engine/tests/test_detection.py",
+      "destination": "source-lab/engine/tests/test_detection.py",
+      "source_sha256": "38aec6ef6eede44d8e02fb0225a25ca4583aaf39b55c7f58fa17bfa1ee6e857f",
+      "local_sha256": "bf789954e5bf6b045400b5f6dcf678a2ebb5030081be3b6229fc98b2ebe83e4d"
+    },
+    {
+      "source": "engine/tests/test_evidence_schema.py",
+      "destination": "source-lab/engine/tests/test_evidence_schema.py",
+      "source_sha256": "b032d76883b2540dcd6460541db3b64f05d5b6553f76cf3c3de89ab53190e7c6",
+      "local_sha256": "42fc721e3758912793b18c973a46d6dd9277daded6a28c489546c896a96e4f2e"
+    },
+    {
+      "source": "engine/tests/test_pipeline.py",
+      "destination": "source-lab/engine/tests/test_pipeline.py",
+      "source_sha256": "6d2be94f4a483ac7fd6d83ae3d8a701bf492998f958ac0aad8edd3bec64fb022",
+      "local_sha256": "af6179209d4733f2650b6e487abde3d098cbd562bb696a66822ad9ee37c6fa58"
+    },
+    {
+      "source": "engine/tests/test_report.py",
+      "destination": "source-lab/engine/tests/test_report.py",
+      "source_sha256": "959e74567e5f6cd11b8f4893ffa49f0498707016db66c32e4071b5372b15a410",
+      "local_sha256": "4819de87b23a099e7df19285794709f0bc40a8fcc64611bbbab9646b7e72f3e2"
+    },
+    {
+      "source": "engine/tests/test_research_android.py",
+      "destination": "source-lab/engine/tests/test_research_android.py",
+      "source_sha256": "da1e9f35763a46aaaeb3cc1f6d7bb1497992f89bc46e2bfa087cdf5e724e0c43",
+      "local_sha256": "ed9166b4792125199e3c42365204fa400c2bc0b5b24fa436a553a2ba55bb37e7"
+    },
+    {
+      "source": "engine/tests/test_research_browser.py",
+      "destination": "source-lab/engine/tests/test_research_browser.py",
+      "source_sha256": "56c861362c319cccd67f8a88bf2c4967415cd00b52ee2375e191c914c0f31c91",
+      "local_sha256": "8bea3d20596e921c4318e8251f993e8e0b89b9f39754078796c75dbb8df9e3ec"
+    },
+    {
+      "source": "engine/tests/test_research_ios.py",
+      "destination": "source-lab/engine/tests/test_research_ios.py",
+      "source_sha256": "6716155c478c362ae3554515c059747a147bf6638bc623b990ee375699b8eb02",
+      "local_sha256": "9485f700a67a2431aa01ee72d14179ac75282ba64138fbf4d23265370f31cdef"
+    },
+    {
+      "source": "engine/tests/test_research_macos.py",
+      "destination": "source-lab/engine/tests/test_research_macos.py",
+      "source_sha256": "85fd52480620598267867dd4dea10238ba8351e1ab72355644de88a91f01e4a6",
+      "local_sha256": "483693df8a22f32cb0f17a3eeb352687b36a0db4e0421401b2b39a92eddad4ce"
+    },
+    {
+      "source": "engine/tests/test_research_scorecard.py",
+      "destination": "source-lab/engine/tests/test_research_scorecard.py",
+      "source_sha256": "fe51a9d4690e878a371504b05abbce9b5d96bc44d04a7063e54b017060de3dc2",
+      "local_sha256": "b81d4a06b69894d67e72f1c7f911dafc4a7cdbabc88b2c5c4a43ece39cf0737a"
+    },
+    {
+      "source": "engine/tests/test_research_windows.py",
+      "destination": "source-lab/engine/tests/test_research_windows.py",
+      "source_sha256": "8194bb43f07971a65f620bfaf95be67bd318a32ffa2845bf1dca9e7d4aee397f",
+      "local_sha256": "2423e553ab234580b65c9b4f18f98e958d2505c49834f067c7db8a2652263207"
+    },
+    {
+      "source": "engine/tests/test_session_key.py",
+      "destination": "source-lab/engine/tests/test_session_key.py",
+      "source_sha256": "293b9b9594e7c80879fdbb44e6bcb715d0a0bb35c273508d4b3a292a4229fd2e",
+      "local_sha256": "c53921876bcca8de0aa413353a9cafc1f798174818125cd49153ac1fb8ae5a27"
+    },
+    {
+      "source": "engine/tests/test_sourcemap.py",
+      "destination": "source-lab/engine/tests/test_sourcemap.py",
+      "source_sha256": "d178a50282f0e4e4cb31f1b97e14532ddee527bbfd34bb01d228e2ab3a91e43c",
+      "local_sha256": "869384cc69fa47648707d14b1c0b51db0b7a22cd58a0a25511405e86f3b532a9"
+    },
+    {
+      "source": "engine/tests/test_sourcemap_android.py",
+      "destination": "source-lab/engine/tests/test_sourcemap_android.py",
+      "source_sha256": "5c8e99da9f0a0e495a18f5f8a804a6876fe5a544bfc298d71fa2fe693b1bb8b6",
+      "local_sha256": "3cfa27388de34e86dcde21d4027e3cc131832a6df151b4f160c7d947e228219c"
+    },
+    {
+      "source": "engine/tests/test_sourcemap_asar.py",
+      "destination": "source-lab/engine/tests/test_sourcemap_asar.py",
+      "source_sha256": "f0aede64fa0298ff3dd811db380c773c773d72f2a14883d23586282bd4d1e7ec",
+      "local_sha256": "c5993dda3ccf83bc0f142fa68b6700b5dfe21b9ed10d21423c4ab2c03a772a95"
+    },
+    {
+      "source": "engine/tests/test_sourcemap_core.py",
+      "destination": "source-lab/engine/tests/test_sourcemap_core.py",
+      "source_sha256": "d3dee3b45170cf0a40475b23886d323943814691dff5dee8698564d7e00407eb",
+      "local_sha256": "5e9b2074fd0f89e0f7c1cda608c4acda95adec76d59b210e39ceb58596003dc8"
+    },
+    {
+      "source": "engine/tests/test_sourcemap_ios.py",
+      "destination": "source-lab/engine/tests/test_sourcemap_ios.py",
+      "source_sha256": "4284a2f7fe55ea8e61c2e7215bce76d771e1467f2be2f527da47df5df4c95ca7",
+      "local_sha256": "19734f7eba06bb93e0ed3346768f80db51babe76eb6c1be1251c2c6837945436"
+    },
+    {
+      "source": "engine/tests/test_sourcemap_objc.py",
+      "destination": "source-lab/engine/tests/test_sourcemap_objc.py",
+      "source_sha256": "ba79b180fd574027dc74e30db3765026c2c00ad35b29dbeae940c27d940d4fb7",
+      "local_sha256": "b30dfd3af0a1c7b0a92d188c85615d83e8102d2cdb1060c7074c587847b03f66"
+    },
+    {
+      "source": "engine/tests/test_sourcemap_swift.py",
+      "destination": "source-lab/engine/tests/test_sourcemap_swift.py",
+      "source_sha256": "b68019d44dc1949b065f2dc47ae6065b6bf3db4be4dc9233c6e111f32868021a",
+      "local_sha256": "406fd3ab6e99ec881113652209c582d7c0d6376b2b645e8d48bf1c409c1fbae3"
+    },
+    {
+      "source": "engine/tests/test_sourcemap_vfs.py",
+      "destination": "source-lab/engine/tests/test_sourcemap_vfs.py",
+      "source_sha256": "8a5f4363bca24222557f9ba0ba78a7fcb4fcd848192678432abe973c5107d25e",
+      "local_sha256": "ca255cdfe0c01a12629272961235a09875badd0b7aeb68b4e3ce1c962e1479c3"
+    },
+    {
+      "source": "ui/src/app/api/analyzer/merged/route.ts",
+      "destination": "console/source_manifest_specs.json",
+      "source_sha256": "f480d714b2b62c27f5391088328205c543e71a75f30c012a7cc5ff7723a6b7d2",
+      "local_sha256": "687faeb38a2b594e4a0db43a57ade644ab2d5a499c532166e12ac1c545647102",
+      "adaptation": "Extracted first-party manifest annotation metadata only; snapshot guidance, no dataset or browser policy freshness claim."
+    },
+    {
+      "source": "ui/src/brain/data/pipeline.ts",
+      "destination": "console/source_pipeline.json",
+      "source_sha256": "005338c96abbde9e0e2e25cec40e46ea44aebed012c1b36aa21e3afbc9a3274a",
+      "local_sha256": "c1756136af3f80275b9beb6ee0f895a1921c81152476f80e3c26044fc1409bd5",
+      "adaptation": "First-party architecture descriptors only; fixed import date, no third-party dataset, repository output or live snapshot imported."
+    }
+  ],
+  "publication": {
+    "license": "Apache-2.0",
+    "authorization": "Source owner explicitly authorized the first-party port into public os-lab on 2026-11-09.",
+    "excluded": [
+      "third-party archives",
+      "datasets",
+      "binaries",
+      "credentials",
+      "local runtime state",
+      "deployment registrations"
+    ]
+  },
+  "historical_manifest": {
+    "source_sha256": "25d512f84b92d0ce78d6a837e698ac0474402adc0b15fbb0e05b01910709aaf8",
+    "local_sha256": "6961942336e10edddaef4412094640c901100a56cb60468213bdf787b04de04b",
+    "transformation": "CRLF normalized to LF; rows unchanged"
+  }
+}

@@ -11,9 +11,11 @@ backend: host detection, lab plans and jobs live in `console/oslab.py`.
 
 ## Pages
 
-The GitHub Pages build has a separate public home and publishes only Firewall
-Lab routes. `scripts/deploy-page.sh --dry-run` stages that artifact in
-`build-pages/`. The console-backed routes below remain local.
+The GitHub Pages build has a separate public home and retains Firewall Lab,
+informational Source Lab/workflow guides, Contribute, feedback and legal routes
+in all eight locales. `scripts/deploy-page.sh --dry-run` stages the final filtered
+artifact in `build-pages/`; run the Source Pages smoke against that directory,
+not only the raw Astro output. Console-backed lab controls remain local.
 
 | Route | What it shows |
 |-------|---------------|
@@ -61,3 +63,31 @@ npm run build                                 # refresh dist/ before committing
 ```
 
 Run the console with `./labctl ui` (or `--port N`).
+
+### How to use
+
+Workspace → **How to use** (`/how-to-use/`, including all locale routes) works
+in the local console and public Pages. Describe a task and submit to generate
+and copy an LLM-ready prompt with the shipped capability catalog, platform
+constraints, workflows and guide/legal links. No LLM API, live host inventory or
+request persistence is used. Review the prompt before sharing; clipboard errors
+keep a read-only preview available for manual selection or retry.
+
+Verify the final public artifact from the repository root with
+`bash scripts/deploy-page.sh --dry-run`, then
+`node dashboard/scripts/how-to-use-pages-smoke.mjs dashboard/build-pages`.
+Set `HOW_TO_USE_ORIGIN=https://keyvanarasteh.github.io` for the same check on
+the live site. Run the existing Source Pages smoke against the same filtered
+artifact as well.
+
+The full prompt embeds `docs/HOW_TO_USE_CHEATSHEET.md` (requirements, setup,
+workflows, API contracts, endpoints, state, recovery and limitations) and
+`docs/HOW_TO_USE_COMMANDS.md` (generated exact CLI/Make/PowerShell syntax,
+configuration key names, dependency pins and developer scripts). Every task gets
+the complete references; there is no keyword selection or silent truncation.
+Neither document reads real `.env` files or private state.
+
+After changing an allowlisted CLI, Makefile, example configuration, dependency
+list or npm script, run `python3 scripts/build-how-to-use-reference.py` from the
+repository root. Verify freshness with the same command plus `--check`. Review
+and update the operational cheatsheet whenever prerequisites or behavior change.

@@ -91,11 +91,11 @@
     "companies": 19,
     "branches": 79,
     "firewalls": 96,
-    "rules": 1818,
+    "rules": 1835,
     "priceUsd": {
       "min": 0,
       "max": 205357,
-      "total": 1908893.69
+      "total": 2003993.69
     },
     "chosenByVendor": {
       "Fortinet": 75,
@@ -656,11 +656,11 @@
       "product": "PA-3400 series (HA)",
       "vendor": "Palo Alto Networks",
       "throughputGbps": null,
-      "priceUsd": null,
-      "ruleCount": 8,
+      "priceUsd": 24000,
+      "ruleCount": 14,
       "actions": {
-        "allow": 5,
-        "deny": 3,
+        "allow": 9,
+        "deny": 5,
         "reject": 0,
         "limit": 0
       },
@@ -670,25 +670,25 @@
           "product": "FortiGate 400F / 600F class (HA)",
           "vendor": "Fortinet",
           "throughputGbps": null,
-          "priceUsd": null
+          "priceUsd": 12000
         },
         {
           "product": "Quantum 6000 series",
           "vendor": "Check Point",
           "throughputGbps": null,
-          "priceUsd": null
+          "priceUsd": 20000
         },
         {
           "product": "Secure Firewall 3100 series",
           "vendor": "Cisco",
           "throughputGbps": null,
-          "priceUsd": null
+          "priceUsd": 22000
         },
         {
           "product": "XGS 5500 / 6500",
           "vendor": "Sophos",
           "throughputGbps": null,
-          "priceUsd": null
+          "priceUsd": 15000
         }
       ]
     },
@@ -705,11 +705,11 @@
       "product": "FortiGate 200F class (ISFW mode)",
       "vendor": "Fortinet",
       "throughputGbps": null,
-      "priceUsd": null,
-      "ruleCount": 2,
+      "priceUsd": 4500,
+      "ruleCount": 3,
       "actions": {
         "allow": 1,
-        "deny": 1,
+        "deny": 2,
         "reject": 0,
         "limit": 0
       },
@@ -719,25 +719,25 @@
           "product": "PA-1400 series",
           "vendor": "Palo Alto Networks",
           "throughputGbps": null,
-          "priceUsd": null
+          "priceUsd": 9500
         },
         {
           "product": "Quantum 3000 series",
           "vendor": "Check Point",
           "throughputGbps": null,
-          "priceUsd": null
+          "priceUsd": 6000
         },
         {
           "product": "Secure Firewall 1200 / 3100",
           "vendor": "Cisco",
           "throughputGbps": null,
-          "priceUsd": null
+          "priceUsd": 8000
         },
         {
           "product": "OPNsense / pfSense",
           "vendor": "Netgate / Deciso",
           "throughputGbps": null,
-          "priceUsd": null
+          "priceUsd": 1500
         }
       ]
     },
@@ -754,11 +754,11 @@
       "product": "Cloudflare WAF",
       "vendor": "Cloudflare",
       "throughputGbps": null,
-      "priceUsd": null,
-      "ruleCount": 2,
+      "priceUsd": 2400,
+      "ruleCount": 3,
       "actions": {
         "allow": 1,
-        "deny": 1,
+        "deny": 2,
         "reject": 0,
         "limit": 0
       },
@@ -768,25 +768,25 @@
           "product": "AWS WAF",
           "vendor": "Amazon",
           "throughputGbps": null,
-          "priceUsd": null
+          "priceUsd": 1200
         },
         {
           "product": "App & API Protector",
           "vendor": "Akamai",
           "throughputGbps": null,
-          "priceUsd": null
+          "priceUsd": 30000
         },
         {
           "product": "Imperva WAF",
           "vendor": "Imperva",
           "throughputGbps": null,
-          "priceUsd": null
+          "priceUsd": 12000
         },
         {
           "product": "Advanced WAF / Distributed Cloud",
           "vendor": "F5",
           "throughputGbps": null,
-          "priceUsd": null
+          "priceUsd": 15000
         }
       ]
     },
@@ -803,10 +803,10 @@
       "product": "FortiGate 1800F class (HA)",
       "vendor": "Fortinet",
       "throughputGbps": null,
-      "priceUsd": null,
-      "ruleCount": 8,
+      "priceUsd": 60000,
+      "ruleCount": 11,
       "actions": {
-        "allow": 5,
+        "allow": 8,
         "deny": 3,
         "reject": 0,
         "limit": 0
@@ -817,25 +817,25 @@
           "product": "PA-5400 series",
           "vendor": "Palo Alto Networks",
           "throughputGbps": null,
-          "priceUsd": null
+          "priceUsd": 95000
         },
         {
           "product": "Quantum 9000 / 16000 series",
           "vendor": "Check Point",
           "throughputGbps": null,
-          "priceUsd": null
+          "priceUsd": 70000
         },
         {
           "product": "Secure Firewall 4200 series",
           "vendor": "Cisco",
           "throughputGbps": null,
-          "priceUsd": null
+          "priceUsd": 80000
         },
         {
           "product": "SRX4000 series",
           "vendor": "Juniper",
           "throughputGbps": null,
-          "priceUsd": null
+          "priceUsd": 45000
         }
       ]
     },
@@ -852,10 +852,10 @@
       "product": "FortiGate 100F class",
       "vendor": "Fortinet",
       "throughputGbps": null,
-      "priceUsd": null,
-      "ruleCount": 5,
+      "priceUsd": 3000,
+      "ruleCount": 8,
       "actions": {
-        "allow": 3,
+        "allow": 6,
         "deny": 2,
         "reject": 0,
         "limit": 0
@@ -866,25 +866,25 @@
           "product": "XGS 2100 / 2300",
           "vendor": "Sophos",
           "throughputGbps": null,
-          "priceUsd": null
+          "priceUsd": 2500
         },
         {
           "product": "PA-450",
           "vendor": "Palo Alto Networks",
           "throughputGbps": null,
-          "priceUsd": null
+          "priceUsd": 3500
         },
         {
           "product": "Firebox M-series",
           "vendor": "WatchGuard",
           "throughputGbps": null,
-          "priceUsd": null
+          "priceUsd": 3000
         },
         {
           "product": "Quantum Spark 1900",
           "vendor": "Check Point",
           "throughputGbps": null,
-          "priceUsd": null
+          "priceUsd": 5000
         }
       ]
     },
@@ -901,10 +901,10 @@
       "product": "Firebox T-series",
       "vendor": "WatchGuard",
       "throughputGbps": null,
-      "priceUsd": null,
-      "ruleCount": 4,
+      "priceUsd": 1200,
+      "ruleCount": 7,
       "actions": {
-        "allow": 2,
+        "allow": 5,
         "deny": 2,
         "reject": 0,
         "limit": 0
@@ -915,25 +915,25 @@
           "product": "FortiGate 60F / 70F",
           "vendor": "Fortinet",
           "throughputGbps": null,
-          "priceUsd": null
+          "priceUsd": 900
         },
         {
           "product": "XGS 1xx series",
           "vendor": "Sophos",
           "throughputGbps": null,
-          "priceUsd": null
+          "priceUsd": 1000
         },
         {
           "product": "PA-400 series",
           "vendor": "Palo Alto Networks",
           "throughputGbps": null,
-          "priceUsd": null
+          "priceUsd": 1500
         },
         {
           "product": "Quantum Spark 1600 / 1800",
           "vendor": "Check Point",
           "throughputGbps": null,
-          "priceUsd": null
+          "priceUsd": 3500
         }
       ]
     },

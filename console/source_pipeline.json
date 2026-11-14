@@ -1,0 +1,1103 @@
+{
+  "kind": "architecture-reference",
+  "date": "2026-11-09",
+  "revision": "51ce20b6210ab5a98a2dd2653b230bdf2282f93c",
+  "data": {
+    "stages": [
+      {
+        "id": "load-targets",
+        "order": 1,
+        "phase": "input",
+        "label": "Load & dedupe targets",
+        "description": "Reads positional slugs/URLs, CSV/XLSX datasets, or --scan-dir directories. GitHub URLs are normalised to owner/name, invalid slugs are rejected, and duplicates are dropped before any network work starts.",
+        "reads": [
+          "sources/*.csv",
+          "sources/*.xlsx",
+          "CLI arguments",
+          "--scan-dir"
+        ],
+        "writes": [
+          "in-memory Target[]"
+        ],
+        "network": [],
+        "failure": "AnalyzerError -> exit 2 before any clone"
+      },
+      {
+        "id": "resolve-token",
+        "order": 2,
+        "phase": "input",
+        "label": "Resolve GitHub token",
+        "description": "Looks for --token, GITHUB_TOKEN, GH_TOKEN, then falls back to `gh auth token`. Without a token the metadata stage is limited to 60 requests/hour; the run still proceeds.",
+        "reads": [
+          "CLI --token",
+          "GITHUB_TOKEN",
+          "GH_TOKEN",
+          "gh auth token"
+        ],
+        "writes": [
+          "GitHubClient token"
+        ],
+        "network": [
+          "gh CLI (local subprocess)"
+        ],
+        "failure": "No token is non-fatal; a warning is logged"
+      },
+      {
+        "id": "clone",
+        "order": 3,
+        "phase": "acquire",
+        "label": "Shallow clone repository",
+        "description": "Runs `git clone --quiet --depth N --single-branch https://github.com/{slug}.git` into the workspace. The subprocess is polled so a stop request terminates an in-flight clone immediately; timeout and retries are configurable.",
+        "reads": [
+          "github.com/{owner}/{repo}"
+        ],
+        "writes": [
+          "workspace/{owner__repo}/"
+        ],
+        "network": [
+          "git smart HTTP"
+        ],
+        "failure": "CLONE_FAILED -> repository skipped, loop continues"
+      },
+      {
+        "id": "locate-manifest",
+        "order": 4,
+        "phase": "analyze",
+        "label": "Locate manifest.json",
+        "description": "Tries ten known manifest locations (root, src/, extension/, webextension/, packages/extension/, q_extension/, ...) before a pruned recursive walk. .git, node_modules, dist, build, vendor, .venv and __pycache__ are skipped.",
+        "reads": [
+          "MANIFEST_CANDIDATES",
+          "repository tree"
+        ],
+        "writes": [
+          "manifest_path"
+        ],
+        "network": [],
+        "failure": "No manifest -> NOT_EXTENSION"
+      },
+      {
+        "id": "signatures",
+        "order": 5,
+        "phase": "analyze",
+        "label": "Manifest + H1-H5 signatures",
+        "description": "Parses the manifest, buckets permissions by risk, extracts content-script matches and LLM targets, checks architecture directories next to manifest.json, then applies the five weighted H1-H5 rules and assigns LOW / MEDIUM / HIGH / VERY_HIGH.",
+        "reads": [
+          "manifest.json",
+          "sibling background/, popup/, modules/, assets/, _locales/"
+        ],
+        "writes": [
+          "manifest-analysis.json payload (in memory)"
+        ],
+        "network": [],
+        "failure": "Unexpected errors are captured per stage, not fatal"
+      },
+      {
+        "id": "threat-scan",
+        "order": 6,
+        "phase": "analyze",
+        "label": "Threat signature scan",
+        "description": "Walks up to 400 JS/TS/HTML files under 512 KB each, skips minified bundles, and counts nine regex indicators grouped into APT, FINANCIAL and PRIVACY models. Up to five evidence files are retained per indicator.",
+        "reads": [
+          "*.js",
+          "*.mjs",
+          "*.cjs",
+          "*.jsx",
+          "*.ts",
+          "*.tsx",
+          "*.html"
+        ],
+        "writes": [
+          "threat_indicators",
+          "threat_scan counters",
+          "target_priority"
+        ],
+        "network": [],
+        "failure": "Stage failure leaves threat data empty; analysis continues"
+      },
+      {
+        "id": "dependencies",
+        "order": 7,
+        "phase": "analyze",
+        "label": "Dependency manifest scan",
+        "description": "Checks the repo root plus src/, extension/ and webextension/ for eleven ecosystems (npm, pip, Go, Cargo, Maven, Gradle, Composer, Bundler, pub). package.json production/dev/peer/optional sections are preserved.",
+        "reads": [
+          "package.json",
+          "requirements.txt",
+          "pyproject.toml",
+          "Pipfile",
+          "go.mod",
+          "Cargo.toml",
+          "pom.xml",
+          "build.gradle",
+          "composer.json",
+          "Gemfile",
+          "pubspec.yaml"
+        ],
+        "writes": [
+          "dependencies.json"
+        ],
+        "network": [],
+        "failure": "A bad manifest is recorded as {error} and does not break the scan"
+      },
+      {
+        "id": "file-tree",
+        "order": 8,
+        "phase": "analyze",
+        "label": "Pruned file tree",
+        "description": "Iterative traversal of the clone, pruning VCS/build/dependency directories, capped at --max-tree-entries (50,000). Produces blob entries with path, size and type.",
+        "reads": [
+          "repository tree"
+        ],
+        "writes": [
+          "file-tree.json",
+          "file/dir counters"
+        ],
+        "network": [],
+        "failure": "Stage failure leaves counters at zero"
+      },
+      {
+        "id": "metadata",
+        "order": 9,
+        "phase": "enrich",
+        "label": "GitHub REST metadata",
+        "description": "Calls GET https://api.github.com/repos/{owner}/{repo} with a 20s timeout. 404 is permanent; 403/429 with X-RateLimit-Remaining: 0 waits once for the reset when it is inside --api-max-wait (90s) and otherwise fails fast; 5xx/network errors use bounded exponential backoff + jitter.",
+        "reads": [
+          "api.github.com/repos/{owner}/{repo}"
+        ],
+        "writes": [
+          "metadata.json"
+        ],
+        "network": [
+          "GitHub REST API"
+        ],
+        "failure": "A failed call writes {\"error\": ...} to metadata.json"
+      },
+      {
+        "id": "ast",
+        "order": 10,
+        "phase": "enrich",
+        "label": "AST index",
+        "description": "Builds a per-file AST for up to --max-ast-files (200) JS/TS/JSX/Python files. Uses tree-sitter when installed, otherwise a regex fallback. Node counts are iterative, never recursive.",
+        "reads": [
+          "SOURCE_EXTENSIONS files"
+        ],
+        "writes": [
+          "ast/*.json",
+          "ast-index.json"
+        ],
+        "network": [],
+        "failure": "Individual AST write failures are logged and skipped"
+      },
+      {
+        "id": "persist",
+        "order": 11,
+        "phase": "persist",
+        "label": "Persist analysis bundle",
+        "description": "Appends repo and bundle_dir to the manifest payload and atomically writes manifest-analysis.json next to the dependency, tree, metadata and AST artefacts.",
+        "reads": [
+          "in-memory analysis payloads"
+        ],
+        "writes": [
+          "manifest-analysis.json",
+          "dependencies.json",
+          "file-tree.json",
+          "metadata.json",
+          "ast-index.json",
+          "ast/"
+        ],
+        "network": [],
+        "failure": "Atomic write errors raise and are captured per stage"
+      },
+      {
+        "id": "report",
+        "order": 12,
+        "phase": "report",
+        "label": "Summary, report & cleanup",
+        "description": "Writes checkpoint state, summary.csv and report.json, marks unfinished targets STOPPED on shutdown, prints the final table and removes the temporary workspace unless --keep-workspace was set.",
+        "reads": [
+          "RepoResult[]",
+          ".state.json"
+        ],
+        "writes": [
+          "summary.csv",
+          "report.json",
+          "analyzer.log",
+          ".state.json"
+        ],
+        "network": [],
+        "failure": "Exit 0 (clean), 1 (failures), 2 (setup/targets), 130 (interrupted)"
+      }
+    ],
+    "requests": [
+      {
+        "id": "repo-metadata",
+        "method": "GET",
+        "target": "https://api.github.com/repos/{owner}/{repo}",
+        "transport": "REST",
+        "auth": "Authorization: Bearer <token> when available; unauthenticated otherwise",
+        "rateLimit": "60 req/h unauthenticated · 5,000 req/h authenticated",
+        "retryPolicy": "404 permanent · 403/429 quota waits once for X-RateLimit-Reset when <= 90s, else fails · secondary 403/429, 5xx and network errors retry up to --retries (3) with 1-15s exponential backoff + jitter · 20s timeout",
+        "purpose": "Repository enrichment: stars, forks, watchers, language, license, default branch, topics, created/pushed timestamps.",
+        "response": "full_name, html_url, description, stargazers_count, forks_count, subscribers_count, language, license.spdx_id, default_branch, topics, created_at, pushed_at, fetched_at",
+        "calledFrom": "RepoProcessor.process -> stage \"metadata\" -> GitHubClient.repo_metadata"
+      },
+      {
+        "id": "git-clone",
+        "method": "CLONE",
+        "target": "https://github.com/{owner}/{repo}.git",
+        "transport": "Git smart HTTP",
+        "auth": "Delegated to the local git credential helper (the analyzer does not inject the token)",
+        "rateLimit": "GitHub git transport limits; no REST quota consumed",
+        "retryPolicy": "Bounded clone retries with backoff; --clone-timeout (300s) is polled so a stop request kills the clone; --depth 1 and --single-branch by default",
+        "purpose": "Acquire the source tree that every local analysis stage reads.",
+        "response": "A shallow single-branch checkout in workspace/{owner__repo}",
+        "calledFrom": "RepoProcessor.process -> stage \"clone\" -> clone_repo()"
+      },
+      {
+        "id": "gh-auth-token",
+        "method": "EXEC",
+        "target": "gh auth token",
+        "transport": "local CLI",
+        "auth": "Uses the machine's existing GitHub CLI session",
+        "rateLimit": "No network call from the analyzer",
+        "retryPolicy": "5s subprocess timeout; any failure silently falls back to anonymous access",
+        "purpose": "Discover a GitHub token without putting it on the command line.",
+        "response": "Raw token on stdout, or nothing",
+        "calledFrom": "resolve_token() during startup"
+      }
+    ],
+    "signatures": [
+      {
+        "name": "websocket",
+        "model": "APT: agent/connectivity",
+        "pattern": "new WebSocket(",
+        "description": "Persistent raw socket command and control."
+      },
+      {
+        "name": "native_messaging",
+        "model": "APT: native app messaging",
+        "pattern": "chrome.runtime.connectNative | chrome.runtime.sendNativeMessage",
+        "description": "Bridge to binaries outside the browser sandbox."
+      },
+      {
+        "name": "remote_code_exec",
+        "model": "APT: dynamic code eval",
+        "pattern": "eval('...') | new Function(",
+        "description": "Runtime code generation, usually forbidden in MV3."
+      },
+      {
+        "name": "telegram_api",
+        "model": "FINANCIAL: Telegram API access",
+        "pattern": "api.telegram.org",
+        "description": "Direct Telegram exfiltration beacon."
+      },
+      {
+        "name": "crypto_refs",
+        "model": "FINANCIAL: crypto wallet/exchange refs",
+        "pattern": "metamask | phantom_wallet | trustwallet | ledgerlive | coinbase | binance.com/api | ethereum_provider",
+        "description": "Wallet or exchange targeting."
+      },
+      {
+        "name": "cookie_access",
+        "model": "PRIVACY: cookie/session manipulation",
+        "pattern": "document.cookie = | chrome.cookies.",
+        "description": "Session or cookie tampering."
+      },
+      {
+        "name": "beacon_exfil",
+        "model": "PRIVACY: sendBeacon exfiltration",
+        "pattern": "navigator.sendBeacon(",
+        "description": "Fire-and-forget outbound exfiltration."
+      },
+      {
+        "name": "clipboard_read",
+        "model": "PRIVACY: clipboard reading",
+        "pattern": "navigator.clipboard.read / readText",
+        "description": "Clipboard harvesting."
+      },
+      {
+        "name": "credential_sniff",
+        "model": "PRIVACY: credential/keystroke capture",
+        "pattern": "keydown|keypress|keyup near password|passwd|credential",
+        "description": "Credential or keystroke interception."
+      }
+    ],
+    "riskRules": [
+      {
+        "rule": "H1",
+        "weight": 2,
+        "label": "manifest_version present (MV2/MV3)"
+      },
+      {
+        "rule": "H2a",
+        "weight": 3,
+        "label": "HIGH-risk permission (<all_urls>, webNavigation, host pattern)"
+      },
+      {
+        "rule": "H2b",
+        "weight": 2,
+        "label": "nativeMessaging / webRequest / webRequestBlocking"
+      },
+      {
+        "rule": "H3",
+        "weight": 1,
+        "label": "content_scripts.matches present"
+      },
+      {
+        "rule": "H4",
+        "weight": 2,
+        "label": "background section or assets/ + popup/ directories"
+      },
+      {
+        "rule": "H5",
+        "weight": 3,
+        "label": "modules/ architecture with >= 2 JS files"
+      }
+    ],
+    "manifestCandidates": [
+      "manifest.json",
+      "src/manifest.json",
+      "extension/manifest.json",
+      "extensions/manifest.json",
+      "webextension/manifest.json",
+      "src/drivers/webextension/manifest.json",
+      "packages/extension/manifest.json",
+      "browser-extension/manifest.json",
+      "app/manifest.json",
+      "q_extension/manifest.json"
+    ],
+    "dependencyManifests": [
+      "package.json",
+      "requirements.txt",
+      "pyproject.toml",
+      "Pipfile",
+      "go.mod",
+      "Cargo.toml",
+      "pom.xml",
+      "build.gradle",
+      "composer.json",
+      "Gemfile",
+      "pubspec.yaml"
+    ],
+    "flowSteps": [
+      {
+        "type": "call",
+        "label": "load_targets() — CSV / XLSX / text / slugs / --scan-dir → deduped Target[]"
+      },
+      {
+        "type": "assign",
+        "label": "resolve_token() — --token → GITHUB_TOKEN → GH_TOKEN → `gh auth token` (optional)"
+      },
+      {
+        "type": "loop",
+        "label": "for each target in targets  (ThreadPoolExecutor(--workers))",
+        "body": [
+          {
+            "type": "if",
+            "label": "target.source === \"github\"?",
+            "then": [
+              {
+                "type": "call",
+                "label": "git clone --quiet --depth 1 --single-branch https://github.com/{slug}.git → workspace/{owner__repo}",
+                "http": [
+                  {
+                    "client": "git",
+                    "method": "CLONE",
+                    "url": "https://github.com/{owner}/{repo}.git",
+                    "host": "github.com",
+                    "urlSource": "constructed",
+                    "configKey": "",
+                    "timeout": 300,
+                    "retryTimes": 3,
+                    "retrySleep": 1,
+                    "async": false
+                  }
+                ]
+              },
+              {
+                "type": "call",
+                "label": "find_manifest(root) — 10 candidate paths, then pruned recursive walk"
+              }
+            ],
+            "else": [
+              {
+                "type": "assign",
+                "label": "resolve local directory — no clone, no GitHub request"
+              },
+              {
+                "type": "call",
+                "label": "find_manifest(root) — 10 candidate paths, then pruned recursive walk"
+              }
+            ]
+          },
+          {
+            "type": "if",
+            "label": "manifest.json parsed and is_browser_extension(manifest)?",
+            "then": [
+              {
+                "type": "call",
+                "label": "analyze_manifest() — permissions bucket, content scripts, LLM targets, architecture dirs, H1-H5 scoring → risk_level"
+              },
+              {
+                "type": "loop",
+                "label": "scan_threats() — up to 400 files × 512 KB, 9 regex signatures (APT / FINANCIAL / PRIVACY)",
+                "body": [
+                  {
+                    "type": "assign",
+                    "label": "record indicator name, model, match_count, up to 5 evidence files"
+                  },
+                  {
+                    "type": "assign",
+                    "label": "derive_target_priority() → PRIMARY / SECONDARY / TERTIARY"
+                  }
+                ]
+              }
+            ],
+            "else": [
+              {
+                "type": "throw",
+                "label": "manifest.json present but not a browser extension → status NOT_EXTENSION"
+              }
+            ]
+          },
+          {
+            "type": "call",
+            "label": "parse_dependencies() — package.json / pip / go / cargo / maven / composer / … → dependencies.json"
+          },
+          {
+            "type": "call",
+            "label": "build_file_tree() — iterative pruned walk, cap 50,000 entries → file-tree.json"
+          },
+          {
+            "type": "if",
+            "label": "cfg.do_metadata && GitHubClient && target.source === \"github\"?",
+            "then": [
+              {
+                "type": "call",
+                "label": "GitHubClient.repo_metadata(slug) — GET /repos/{owner}/{repo}",
+                "http": [
+                  {
+                    "client": "urllib",
+                    "method": "GET",
+                    "url": "https://api.github.com/repos/{owner}/{repo}",
+                    "host": "api.github.com",
+                    "urlSource": "constructed",
+                    "configKey": "GITHUB_TOKEN",
+                    "timeout": 20,
+                    "retryTimes": 3,
+                    "retrySleep": 1,
+                    "async": false
+                  }
+                ]
+              },
+              {
+                "type": "if",
+                "label": "HTTP 403/429 and X-RateLimit-Remaining: 0?",
+                "then": [
+                  {
+                    "type": "if",
+                    "label": "X-RateLimit-Reset within --api-max-wait (90s)?",
+                    "then": [
+                      {
+                        "type": "assign",
+                        "label": "wait once for quota reset, then retry the request"
+                      }
+                    ],
+                    "else": [
+                      {
+                        "type": "throw",
+                        "label": "MetadataError — rate limit exhausted; set GITHUB_TOKEN for 5,000 req/h"
+                      }
+                    ]
+                  }
+                ],
+                "else": [
+                  {
+                    "type": "if",
+                    "label": "5xx / network error with retries left?",
+                    "then": [
+                      {
+                        "type": "loop",
+                        "label": "bounded retry — 1-15s exponential backoff + jitter",
+                        "body": [
+                          {
+                            "type": "assign",
+                            "label": "re-issue GET /repos/{owner}/{repo}"
+                          }
+                        ]
+                      }
+                    ],
+                    "else": [
+                      {
+                        "type": "return",
+                        "label": "write {\"error\": \"...\"} to metadata.json; continue with the next stage"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "dispatch",
+                "label": "atomic_write_json(metadata.json)"
+              }
+            ],
+            "else": [
+              {
+                "type": "assign",
+                "label": "metadata stage skipped (--no-metadata, local target, or no client)"
+              }
+            ]
+          },
+          {
+            "type": "if",
+            "label": "cfg.do_ast && file tree available?",
+            "then": [
+              {
+                "type": "loop",
+                "label": "for each source file (max 200) — tree-sitter when present, regex fallback",
+                "body": [
+                  {
+                    "type": "call",
+                    "label": "build_ast_file() → node_count, imports, exports"
+                  },
+                  {
+                    "type": "dispatch",
+                    "label": "atomic_write_json(ast/{path}.json)"
+                  }
+                ]
+              },
+              {
+                "type": "dispatch",
+                "label": "atomic_write_json(ast-index.json)"
+              }
+            ],
+            "else": [
+              {
+                "type": "assign",
+                "label": "AST stage skipped (--no-ast)"
+              }
+            ]
+          },
+          {
+            "type": "dispatch",
+            "label": "atomic_write_json(manifest-analysis.json) — signatures + threats + repo + bundle_dir"
+          },
+          {
+            "type": "if",
+            "label": "any stage failed?",
+            "then": [
+              {
+                "type": "return",
+                "label": "status PARTIAL — failed stages recorded"
+              }
+            ],
+            "else": [
+              {
+                "type": "if",
+                "label": "manifest_found?",
+                "then": [
+                  {
+                    "type": "return",
+                    "label": "status OK"
+                  }
+                ],
+                "else": [
+                  {
+                    "type": "return",
+                    "label": "status NOT_EXTENSION"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "dispatch",
+        "label": "save_state(.state.json) after every repo — resumable with --resume"
+      },
+      {
+        "type": "call",
+        "label": "write_summary_csv(summary.csv) + report.json + analyzer.log"
+      },
+      {
+        "type": "cache",
+        "label": "cleanup workspace unless --keep-workspace · exit 0 / 1 (failures) / 130 (interrupted)"
+      }
+    ],
+    "graph": {
+      "meta": {
+        "project": "extension-hunter / ext_repo_analyzer.py",
+        "analyzedAt": "2026-11-09T00:00:00.000Z",
+        "nodeCount": 15,
+        "edgeCount": 14
+      },
+      "nodes": [
+        {
+          "id": "load-targets",
+          "type": "entry_point",
+          "label": "1. Load & dedupe targets",
+          "data": {
+            "file": "input",
+            "description": "Reads positional slugs/URLs, CSV/XLSX datasets, or --scan-dir directories. GitHub URLs are normalised to owner/name, invalid slugs are rejected, and duplicates are dropped before any network work starts.",
+            "reads": [
+              "sources/*.csv",
+              "sources/*.xlsx",
+              "CLI arguments",
+              "--scan-dir"
+            ],
+            "writes": [
+              "in-memory Target[]"
+            ],
+            "network": [],
+            "failure": "AnalyzerError -> exit 2 before any clone",
+            "metrics": {
+              "lineCount": 0,
+              "cyclomaticComplexity": 0,
+              "statementCount": 0,
+              "paramCount": 0
+            }
+          }
+        },
+        {
+          "id": "resolve-token",
+          "type": "entry_point",
+          "label": "2. Resolve GitHub token",
+          "data": {
+            "file": "input",
+            "description": "Looks for --token, GITHUB_TOKEN, GH_TOKEN, then falls back to `gh auth token`. Without a token the metadata stage is limited to 60 requests/hour; the run still proceeds.",
+            "reads": [
+              "CLI --token",
+              "GITHUB_TOKEN",
+              "GH_TOKEN",
+              "gh auth token"
+            ],
+            "writes": [
+              "GitHubClient token"
+            ],
+            "network": [
+              "gh CLI (local subprocess)"
+            ],
+            "failure": "No token is non-fatal; a warning is logged",
+            "metrics": {
+              "lineCount": 0,
+              "cyclomaticComplexity": 0,
+              "statementCount": 0,
+              "paramCount": 0
+            }
+          }
+        },
+        {
+          "id": "clone",
+          "type": "job",
+          "label": "3. Shallow clone repository",
+          "data": {
+            "file": "acquire",
+            "description": "Runs `git clone --quiet --depth N --single-branch https://github.com/{slug}.git` into the workspace. The subprocess is polled so a stop request terminates an in-flight clone immediately; timeout and retries are configurable.",
+            "reads": [
+              "github.com/{owner}/{repo}"
+            ],
+            "writes": [
+              "workspace/{owner__repo}/"
+            ],
+            "network": [
+              "git smart HTTP"
+            ],
+            "failure": "CLONE_FAILED -> repository skipped, loop continues",
+            "metrics": {
+              "lineCount": 0,
+              "cyclomaticComplexity": 0,
+              "statementCount": 0,
+              "paramCount": 0
+            }
+          }
+        },
+        {
+          "id": "locate-manifest",
+          "type": "service",
+          "label": "4. Locate manifest.json",
+          "data": {
+            "file": "analyze",
+            "description": "Tries ten known manifest locations (root, src/, extension/, webextension/, packages/extension/, q_extension/, ...) before a pruned recursive walk. .git, node_modules, dist, build, vendor, .venv and __pycache__ are skipped.",
+            "reads": [
+              "MANIFEST_CANDIDATES",
+              "repository tree"
+            ],
+            "writes": [
+              "manifest_path"
+            ],
+            "network": [],
+            "failure": "No manifest -> NOT_EXTENSION",
+            "metrics": {
+              "lineCount": 0,
+              "cyclomaticComplexity": 0,
+              "statementCount": 0,
+              "paramCount": 0
+            }
+          }
+        },
+        {
+          "id": "signatures",
+          "type": "service",
+          "label": "5. Manifest + H1-H5 signatures",
+          "data": {
+            "file": "analyze",
+            "description": "Parses the manifest, buckets permissions by risk, extracts content-script matches and LLM targets, checks architecture directories next to manifest.json, then applies the five weighted H1-H5 rules and assigns LOW / MEDIUM / HIGH / VERY_HIGH.",
+            "reads": [
+              "manifest.json",
+              "sibling background/, popup/, modules/, assets/, _locales/"
+            ],
+            "writes": [
+              "manifest-analysis.json payload (in memory)"
+            ],
+            "network": [],
+            "failure": "Unexpected errors are captured per stage, not fatal",
+            "metrics": {
+              "lineCount": 0,
+              "cyclomaticComplexity": 0,
+              "statementCount": 0,
+              "paramCount": 0
+            }
+          }
+        },
+        {
+          "id": "threat-scan",
+          "type": "service",
+          "label": "6. Threat signature scan",
+          "data": {
+            "file": "analyze",
+            "description": "Walks up to 400 JS/TS/HTML files under 512 KB each, skips minified bundles, and counts nine regex indicators grouped into APT, FINANCIAL and PRIVACY models. Up to five evidence files are retained per indicator.",
+            "reads": [
+              "*.js",
+              "*.mjs",
+              "*.cjs",
+              "*.jsx",
+              "*.ts",
+              "*.tsx",
+              "*.html"
+            ],
+            "writes": [
+              "threat_indicators",
+              "threat_scan counters",
+              "target_priority"
+            ],
+            "network": [],
+            "failure": "Stage failure leaves threat data empty; analysis continues",
+            "metrics": {
+              "lineCount": 0,
+              "cyclomaticComplexity": 0,
+              "statementCount": 0,
+              "paramCount": 0
+            }
+          }
+        },
+        {
+          "id": "dependencies",
+          "type": "service",
+          "label": "7. Dependency manifest scan",
+          "data": {
+            "file": "analyze",
+            "description": "Checks the repo root plus src/, extension/ and webextension/ for eleven ecosystems (npm, pip, Go, Cargo, Maven, Gradle, Composer, Bundler, pub). package.json production/dev/peer/optional sections are preserved.",
+            "reads": [
+              "package.json",
+              "requirements.txt",
+              "pyproject.toml",
+              "Pipfile",
+              "go.mod",
+              "Cargo.toml",
+              "pom.xml",
+              "build.gradle",
+              "composer.json",
+              "Gemfile",
+              "pubspec.yaml"
+            ],
+            "writes": [
+              "dependencies.json"
+            ],
+            "network": [],
+            "failure": "A bad manifest is recorded as {error} and does not break the scan",
+            "metrics": {
+              "lineCount": 0,
+              "cyclomaticComplexity": 0,
+              "statementCount": 0,
+              "paramCount": 0
+            }
+          }
+        },
+        {
+          "id": "file-tree",
+          "type": "service",
+          "label": "8. Pruned file tree",
+          "data": {
+            "file": "analyze",
+            "description": "Iterative traversal of the clone, pruning VCS/build/dependency directories, capped at --max-tree-entries (50,000). Produces blob entries with path, size and type.",
+            "reads": [
+              "repository tree"
+            ],
+            "writes": [
+              "file-tree.json",
+              "file/dir counters"
+            ],
+            "network": [],
+            "failure": "Stage failure leaves counters at zero",
+            "metrics": {
+              "lineCount": 0,
+              "cyclomaticComplexity": 0,
+              "statementCount": 0,
+              "paramCount": 0
+            }
+          }
+        },
+        {
+          "id": "metadata",
+          "type": "action",
+          "label": "9. GitHub REST metadata",
+          "data": {
+            "file": "enrich",
+            "description": "Calls GET https://api.github.com/repos/{owner}/{repo} with a 20s timeout. 404 is permanent; 403/429 with X-RateLimit-Remaining: 0 waits once for the reset when it is inside --api-max-wait (90s) and otherwise fails fast; 5xx/network errors use bounded exponential backoff + jitter.",
+            "reads": [
+              "api.github.com/repos/{owner}/{repo}"
+            ],
+            "writes": [
+              "metadata.json"
+            ],
+            "network": [
+              "GitHub REST API"
+            ],
+            "failure": "A failed call writes {\"error\": ...} to metadata.json",
+            "metrics": {
+              "lineCount": 0,
+              "cyclomaticComplexity": 0,
+              "statementCount": 0,
+              "paramCount": 0
+            }
+          }
+        },
+        {
+          "id": "ast",
+          "type": "action",
+          "label": "10. AST index",
+          "data": {
+            "file": "enrich",
+            "description": "Builds a per-file AST for up to --max-ast-files (200) JS/TS/JSX/Python files. Uses tree-sitter when installed, otherwise a regex fallback. Node counts are iterative, never recursive.",
+            "reads": [
+              "SOURCE_EXTENSIONS files"
+            ],
+            "writes": [
+              "ast/*.json",
+              "ast-index.json"
+            ],
+            "network": [],
+            "failure": "Individual AST write failures are logged and skipped",
+            "metrics": {
+              "lineCount": 0,
+              "cyclomaticComplexity": 0,
+              "statementCount": 0,
+              "paramCount": 0
+            }
+          }
+        },
+        {
+          "id": "persist",
+          "type": "event",
+          "label": "11. Persist analysis bundle",
+          "data": {
+            "file": "persist",
+            "description": "Appends repo and bundle_dir to the manifest payload and atomically writes manifest-analysis.json next to the dependency, tree, metadata and AST artefacts.",
+            "reads": [
+              "in-memory analysis payloads"
+            ],
+            "writes": [
+              "manifest-analysis.json",
+              "dependencies.json",
+              "file-tree.json",
+              "metadata.json",
+              "ast-index.json",
+              "ast/"
+            ],
+            "network": [],
+            "failure": "Atomic write errors raise and are captured per stage",
+            "metrics": {
+              "lineCount": 0,
+              "cyclomaticComplexity": 0,
+              "statementCount": 0,
+              "paramCount": 0
+            }
+          }
+        },
+        {
+          "id": "report",
+          "type": "schedule",
+          "label": "12. Summary, report & cleanup",
+          "data": {
+            "file": "report",
+            "description": "Writes checkpoint state, summary.csv and report.json, marks unfinished targets STOPPED on shutdown, prints the final table and removes the temporary workspace unless --keep-workspace was set.",
+            "reads": [
+              "RepoResult[]",
+              ".state.json"
+            ],
+            "writes": [
+              "summary.csv",
+              "report.json",
+              "analyzer.log",
+              ".state.json"
+            ],
+            "network": [],
+            "failure": "Exit 0 (clean), 1 (failures), 2 (setup/targets), 130 (interrupted)",
+            "metrics": {
+              "lineCount": 0,
+              "cyclomaticComplexity": 0,
+              "statementCount": 0,
+              "paramCount": 0
+            }
+          }
+        },
+        {
+          "id": "gh-clone",
+          "type": "unreached_class",
+          "label": "git clone",
+          "data": {
+            "file": "github.com",
+            "description": "Shallow single-branch clone over Git smart HTTP.",
+            "metrics": {
+              "lineCount": 0,
+              "cyclomaticComplexity": 0,
+              "statementCount": 0,
+              "paramCount": 0
+            }
+          }
+        },
+        {
+          "id": "gh-metadata",
+          "type": "unreached_class",
+          "label": "GET /repos/{owner}/{repo}",
+          "data": {
+            "file": "api.github.com",
+            "description": "REST enrichment with bounded rate-limit handling.",
+            "metrics": {
+              "lineCount": 0,
+              "cyclomaticComplexity": 0,
+              "statementCount": 0,
+              "paramCount": 0
+            }
+          }
+        },
+        {
+          "id": "gh-token",
+          "type": "unreached_class",
+          "label": "gh auth token",
+          "data": {
+            "file": "local CLI",
+            "description": "Optional local token discovery — no analyzer network call.",
+            "metrics": {
+              "lineCount": 0,
+              "cyclomaticComplexity": 0,
+              "statementCount": 0,
+              "paramCount": 0
+            }
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "e-load-targets-resolve-token",
+          "source": "load-targets",
+          "target": "resolve-token",
+          "label": "",
+          "type": "flow"
+        },
+        {
+          "id": "e-resolve-token-clone",
+          "source": "resolve-token",
+          "target": "clone",
+          "label": "",
+          "type": "flow"
+        },
+        {
+          "id": "e-clone-locate-manifest",
+          "source": "clone",
+          "target": "locate-manifest",
+          "label": "",
+          "type": "flow"
+        },
+        {
+          "id": "e-locate-manifest-signatures",
+          "source": "locate-manifest",
+          "target": "signatures",
+          "label": "",
+          "type": "flow"
+        },
+        {
+          "id": "e-signatures-threat-scan",
+          "source": "signatures",
+          "target": "threat-scan",
+          "label": "",
+          "type": "flow"
+        },
+        {
+          "id": "e-threat-scan-dependencies",
+          "source": "threat-scan",
+          "target": "dependencies",
+          "label": "",
+          "type": "flow"
+        },
+        {
+          "id": "e-dependencies-file-tree",
+          "source": "dependencies",
+          "target": "file-tree",
+          "label": "",
+          "type": "flow"
+        },
+        {
+          "id": "e-file-tree-metadata",
+          "source": "file-tree",
+          "target": "metadata",
+          "label": "GET /repos/{slug}",
+          "type": "http"
+        },
+        {
+          "id": "e-metadata-ast",
+          "source": "metadata",
+          "target": "ast",
+          "label": "",
+          "type": "flow"
+        },
+        {
+          "id": "e-ast-persist",
+          "source": "ast",
+          "target": "persist",
+          "label": "",
+          "type": "flow"
+        },
+        {
+          "id": "e-persist-report",
+          "source": "persist",
+          "target": "report",
+          "label": "",
+          "type": "flow"
+        },
+        {
+          "id": "e-clone-gh",
+          "source": "clone",
+          "target": "gh-clone",
+          "label": "git smart HTTP",
+          "type": "http"
+        },
+        {
+          "id": "e-metadata-gh",
+          "source": "metadata",
+          "target": "gh-metadata",
+          "label": "REST",
+          "type": "http"
+        },
+        {
+          "id": "e-token-gh",
+          "source": "resolve-token",
+          "target": "gh-token",
+          "label": "exec",
+          "type": "http"
+        }
+      ]
+    }
+  }
+}

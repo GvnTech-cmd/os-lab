@@ -316,6 +316,8 @@ export function ConsolePage() {
   const running = Boolean(data?.running);
   const jobs = useMemo(() => parseJobs(data?.logs ?? [], running), [data, running]);
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
+  const [clearing, setClearing] = useState(false);
+  const [clearError, setClearError] = useState<string | null>(null);
   const lines = (data?.logs ?? []).map((l) => l.replace(/^\n+|\n+$/g, "")).filter((l, i) => l || i > 0);
   return (
     <Frame id="console" title="Execution & Progress Console">
@@ -336,12 +338,12 @@ export function ConsolePage() {
                     setStatus({ ok: false, text: message(e) });
                   }
                 }}
-                className="flex items-center gap-1.5 rounded-lg border border-red-500/50 bg-red-500/10 px-3.5 py-1.5 text-xs font-semibold text-red-400 transition-colors hover:bg-red-500/20"
+                className="iux-touch-target flex items-center gap-1.5 rounded-lg border border-red-500/50 bg-red-500/10 px-3.5 py-1.5 text-xs font-semibold text-red-400 transition-colors hover:bg-red-500/20"
               >
                 <StopIcon size={14} weight="fill" /> Stop job
               </button>
             ) : (
-              <a href="/android/workflows/" className="flex items-center gap-1.5 rounded-lg bg-[#00d084] px-3.5 py-1.5 text-xs font-semibold text-zinc-950 transition-colors hover:bg-[#00d084]/90">
+              <a href="/android/workflows/" className="iux-touch-target flex items-center gap-1.5 rounded-lg bg-[#00d084] px-3.5 py-1.5 text-xs font-semibold text-zinc-950 transition-colors hover:bg-[#00d084]/90">
                 <PlayIcon size={14} weight="fill" /> New run
               </a>
             )}
@@ -349,18 +351,29 @@ export function ConsolePage() {
               type="button"
               className="iux-btn"
               data-variant="outline"
-              disabled={running}
+              disabled={running || clearing}
               onClick={async () => {
-                await api.clearLogs();
-                await androidLogsStore.refresh();
+                setClearing(true);
+                setStatus(null);
+                setClearError(null);
+                try {
+                  await api.clearLogs();
+                  await androidLogsStore.refresh();
+                  setStatus({ ok: true, text: "Logs cleared." });
+                } catch (error) {
+                  setClearError(message(error));
+                } finally {
+                  setClearing(false);
+                }
               }}
             >
-              <TrashIcon size={14} /> Clear
+              <TrashIcon size={14} /> {clearing ? "Clearing…" : "Clear"}
             </button>
           </>
         }
       />
       <Status value={status} />
+      {clearError ? <p role="alert" className="text-sm text-(--iux-danger)"><span>Could not clear logs:</span> <span data-no-translate>{clearError}</span>. <span>Try again.</span></p> : null}
       <ProgressConsoleReport
         title="Execution Pipeline Status"
         description="Jobs started from this console, newest first. Output streams below as it arrives."

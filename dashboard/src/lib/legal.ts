@@ -1,4 +1,6 @@
 /** The legal documents, rendered from docs/legal/*.md (the single source for the repo and the dashboard). */
+import type { FirewallLocale } from "../firewall/locale";
+import { localePath } from "../i18n/paths";
 export const REPO_BLOB = "https://github.com/keyvanarasteh/os-lab/blob/master";
 
 export const LEGAL_DOCS = [
@@ -26,15 +28,15 @@ function resolve(baseDir: string, href: string): string {
  * Point a compiled Markdown file's links at dashboard routes or GitHub.
  * `baseDir` is the repo folder the Markdown lives in ("docs/legal" or "" for the root).
  */
-export function rewriteLinks(html: string, baseDir = "docs/legal"): string {
+export function rewriteLinks(html: string, baseDir = "docs/legal", locale: FirewallLocale = "en"): string {
   return html.replace(/href="([^"]+)"/g, (whole, href: string) => {
     if (/^https?:/.test(href)) return `href="${href}" target="_blank" rel="noreferrer"`;
     if (href.startsWith("#") || href.startsWith("mailto:")) return whole;
     const [path, anchor = ""] = href.split("#");
     const target = resolve(baseDir, path);
     const doc = LEGAL_DOCS.find((d) => target === `docs/legal/${d.file}`);
-    if (doc) return `href="/legal/${doc.slug}/${anchor ? `#${anchor}` : ""}"`;
-    if (target === "CONTRIBUTING.md") return `href="/contribute/${anchor ? `#${anchor}` : ""}"`;
+    if (doc) return `href="${localePath(`/legal/${doc.slug}/`, locale)}${anchor ? `#${anchor}` : ""}"`;
+    if (target === "CONTRIBUTING.md") return `href="${localePath("/contribute/", locale)}${anchor ? `#${anchor}` : ""}"`;
     const url = `${target.endsWith("/") ? REPO_TREE : REPO_BLOB}/${target}${anchor ? `#${anchor}` : ""}`;
     return `href="${url}" target="_blank" rel="noreferrer"`;
   });

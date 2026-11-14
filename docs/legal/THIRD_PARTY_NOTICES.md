@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-_Last updated: November 8, 2026_
+_Last updated: November 9, 2026_
 
 os-lab is licensed under the [Apache License 2.0](../../LICENSE). It
 orchestrates, downloads or bundles software from other projects, which remains
@@ -63,6 +63,19 @@ IP address through ipinfo.io. The image honours the opt-out variable
   set `OSLAB_NO_DOWNLOAD=1` to stop the automatic download.
 - `dashboard/src/shell/` and `dashboard/src/apk-lab/`: user-interface code
   ported from the qLar project by the same maintainers.
+
+## Source Lab code and excluded material
+
+`source-lab/engine/source_lab/`, its retained tests, and first-party manifest
+annotations/Pipeline architecture metadata in `console/source_*.json` were ported from the
+maintainer's iQ-SourceContol code with the owner's explicit authorization for
+publication in os-lab under Apache-2.0. This is a first-party contribution, not
+a claim that the private source repository declared an open-source license.
+The source revision, file hashes and exclusions are recorded in
+[Source Lab import policy](../../source-lab/IMPORT_POLICY.md) and its provenance
+manifest. No third-party archive, dataset, binary, browser or parser grammar is
+bundled with the port. The core engine uses Python's standard library; optional
+tools are installed separately by the operator under their own terms.
 
 ## Operating systems
 

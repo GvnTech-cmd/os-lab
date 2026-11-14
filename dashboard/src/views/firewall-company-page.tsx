@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type KeyboardEvent } from "react";
 import { ArrowLeftIcon, ArrowRightIcon, FireIcon, MapPinIcon, ShieldCheckIcon, WarningDiamondIcon, GraphIcon } from "@phosphor-icons/react";
 import { AppShell } from "../shell/app-shell";
 import { TopBar } from "../shell/top-bar";
@@ -92,6 +92,15 @@ export function FirewallCompanyPage({ company: seeded, locale = "en" }: { compan
   const [tab, setTab] = useState<"network" | "gaps">(() => (typeof location !== "undefined" && location.hash.startsWith("#gap") ? "gaps" : "network"));
   const gaps = auditCompany(company).total;
   const pick = (t: "network" | "gaps") => { setTab(t); history.replaceState(null, "", t === "gaps" ? "#gaps" : location.pathname + location.search); };
+  const onTabKey = (event: KeyboardEvent<HTMLButtonElement>, current: "network" | "gaps") => {
+    const direction = document.documentElement.dir === "rtl" ? -1 : 1;
+    const delta = event.key === "ArrowRight" ? direction : event.key === "ArrowLeft" ? -direction : 0;
+    const next = event.key === "Home" ? "network" : event.key === "End" ? "gaps" : delta ? (current === "network" ? "gaps" : "network") : null;
+    if (!next) return;
+    event.preventDefault();
+    pick(next);
+    document.getElementById(`firewall-company-tab-${next}`)?.focus();
+  };
   const selected = company.branches.find((branch) => branch.id === selectedId) ?? company.branches[0];
   const next = companies[(companies.findIndex((item) => item.slug === company.slug) + 1) % companies.length];
   return (
@@ -107,10 +116,11 @@ export function FirewallCompanyPage({ company: seeded, locale = "en" }: { compan
 
           <div className="fw-tabs" data-tab={tab} role="tablist" aria-label={t.companyViews}>
             <span className="fw-tab-pill" aria-hidden="true" />
-            <button type="button" role="tab" className="fw-tab" aria-selected={tab === "network"} onClick={() => pick("network")}><GraphIcon size={15} weight="bold" /> {t.network}</button>
-            <button type="button" role="tab" className="fw-tab" aria-selected={tab === "gaps"} onClick={() => pick("gaps")}><WarningDiamondIcon size={15} weight="bold" /> {t.gaps} <b>{gaps}</b></button>
+            <button id="firewall-company-tab-network" type="button" role="tab" className="fw-tab" aria-selected={tab === "network"} aria-controls="firewall-company-panel" tabIndex={tab === "network" ? 0 : -1} onClick={() => pick("network")} onKeyDown={event => onTabKey(event, "network")}><GraphIcon size={15} weight="bold" /> {t.network}</button>
+            <button id="firewall-company-tab-gaps" type="button" role="tab" className="fw-tab" aria-selected={tab === "gaps"} aria-controls="firewall-company-panel" tabIndex={tab === "gaps" ? 0 : -1} onClick={() => pick("gaps")} onKeyDown={event => onTabKey(event, "gaps")}><WarningDiamondIcon size={15} weight="bold" /> {t.gaps} <b>{gaps}</b></button>
           </div>
 
+          <div id="firewall-company-panel" role="tabpanel" aria-labelledby={`firewall-company-tab-${tab}`} tabIndex={0}>
           {tab === "gaps" ? <GapsTab company={company} locale={locale} /> : <>
           <section className="fw-map" aria-label={t.branches}>
             <div className="fw-map-heading"><div><span className="fw-eyebrow">01 / {t.overview}</span><h2>{t.branchComposition}</h2></div><span>{t.selectBranch}</span></div>
@@ -121,6 +131,7 @@ export function FirewallCompanyPage({ company: seeded, locale = "en" }: { compan
 
           {selected && <BranchDetail branch={selected} locale={locale} />}
           </>}
+          </div>
           <footer className="fw-footer"><a href={firewallPath(locale)}>{t.allDesigns}</a><a href={firewallPath(locale, next.slug)}>{t.next}: {next.name} <ArrowRightIcon size={15} /></a></footer>
         </main>
       </div>

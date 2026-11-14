@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "family": "vms",
+  "entries": [
+    {"id":"vms.parallels","name":"Parallels","extensions":[".pvm"],"roots":{"macos":["~/Parallels","~/Documents/Parallels"]}},
+    {"id":"vms.vmware","name":"VMware","extensions":[".vmwarevm",".vmx"],"roots":{"macos":["~/Documents/Virtual Machines.localized"],"linux":["~/vmware"],"windows":["~/Documents/Virtual Machines"]}},
+    {"id":"vms.virtualbox","name":"VirtualBox","extensions":[".vbox"],"roots":{"macos":["~/VirtualBox VMs"],"linux":["~/VirtualBox VMs"],"windows":["~/VirtualBox VMs"]}},
+    {"id":"vms.utm","name":"UTM","extensions":[".utm"],"roots":{"macos":["~/Library/Containers/com.utmapp.UTM/Data/Documents","~/Documents/UTM"]}}
+  ]
+}

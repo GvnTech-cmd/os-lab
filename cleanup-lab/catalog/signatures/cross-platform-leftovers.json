@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "family": "leftovers",
+  "roots": {
+    "linux": [
+      {"kind":"config","path":"${XDG_CONFIG_HOME:-~/.config}"},
+      {"kind":"share","path":"${XDG_DATA_HOME:-~/.local/share}"},
+      {"kind":"cache","path":"${XDG_CACHE_HOME:-~/.cache}"}
+    ],
+    "windows": [
+      {"kind":"appdata","path":"%APPDATA%"},
+      {"kind":"localappdata","path":"%LOCALAPPDATA%"}
+    ]
+  }
+}

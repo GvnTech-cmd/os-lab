@@ -5,29 +5,32 @@ import type { Finding } from "../firewall/audit";
 import { IMPACT } from "../firewall/impact";
 import type { FirewallLocale } from "../firewall/locale";
 import { auditCategory, auditUi } from "../firewall/audit-ui";
+import { keepModalFocus } from "./modal-focus";
 
 const METERS = [["Hackable", "hack"], ["Weak", "weak"], ["Expensive", "cost"]] as const;
 
 export function GapModal({ f, onClose, locale = "en" }: { f: Finding; onClose: () => void; locale?: FirewallLocale }) {
   const t = auditUi[locale];
-  const box = useRef<HTMLDivElement>(null);
+  const box = useRef<HTMLDialogElement>(null);
   const im = IMPACT[f.id];
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null;
-    const key = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    document.addEventListener("keydown", key);
+    const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    box.current?.showModal();
     box.current?.focus();
     return () => {
-      document.removeEventListener("keydown", key);
-      document.body.style.overflow = "";
+      if (box.current?.open) box.current.close();
+      document.body.style.overflow = previousOverflow;
       prev?.focus();
     };
-  }, [onClose]);
+  }, []);
 
   return (
-    <div className="cm-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="cm gm" role="dialog" aria-modal="true" aria-labelledby="gm-title" ref={box} tabIndex={-1} data-sev={f.severity}>
+    <dialog className="cm gm" aria-labelledby="gm-title" ref={box} tabIndex={-1} data-sev={f.severity} onClose={onClose} onKeyDown={keepModalFocus} onMouseDown={(e) => {
+      const rect = e.currentTarget.getBoundingClientRect();
+      if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) { e.preventDefault(); onClose(); }
+    }}>
         <button className="cm-x" type="button" onClick={onClose} aria-label={t.close}><XIcon size={16} weight="bold" /></button>
         <span className="cm-eyebrow">{auditCategory(f.category, locale)} · {t.severity} {f.severity}/5</span>
         <h2 id="gm-title" className="gm-title" lang="en">{f.title}</h2>
@@ -59,7 +62,6 @@ export function GapModal({ f, onClose, locale = "en" }: { f: Finding; onClose: (
         )}
 
         <p className="gm-fix" lang="en"><WrenchIcon size={14} weight="bold" /> {f.fix}</p>
-      </div>
-    </div>
+    </dialog>
   );
 }

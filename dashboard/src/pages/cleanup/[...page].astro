@@ -1,0 +1,9 @@
+---
+import Base from "../../layouts/Base.astro";
+import CleanupPage, { CLEANUP_PAGES, type CleanupPageId } from "../../views/cleanup/pages";
+export function getStaticPaths() {
+  return CLEANUP_PAGES.map(page => ({ params: { page: page || undefined } }));
+}
+const page = (Astro.params.page ?? "") as CleanupPageId;
+---
+<Base title="Cleanup Lab"><CleanupPage page={page} client:only="react" /></Base>

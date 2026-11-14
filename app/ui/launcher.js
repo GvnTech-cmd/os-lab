@@ -78,7 +78,7 @@
   function fail(err) {
     show(t.failed, true);
     var message = String(err && err.message ? err.message : err);
-    pythonBtn.hidden = message.indexOf("Python 3.9 or newer was not found") === -1;
+    pythonBtn.hidden = message.indexOf("Python 3.11 or newer was not found") === -1;
     containerBtn.hidden = true;
     recoverBtn.hidden = true;
     continueBtn.hidden = !consoleInfo;

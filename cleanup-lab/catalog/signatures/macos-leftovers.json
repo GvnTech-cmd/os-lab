@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "family": "leftovers.macos",
+  "appRoots": ["/Applications", "/System/Applications", "~/Applications"],
+  "candidateRoots": [
+    {"kind":"container","path":"~/Library/Containers","match":"bundle"},
+    {"kind":"group-container","path":"~/Library/Group Containers","match":"team"},
+    {"kind":"preference","path":"~/Library/Preferences","match":"bundle","suffix":".plist"},
+    {"kind":"app-support","path":"~/Library/Application Support","match":"name"},
+    {"kind":"launch-agent","path":"~/Library/LaunchAgents","match":"bundle","suffix":".plist"},
+    {"kind":"cache","path":"~/Library/Caches","match":"bundle"},
+    {"kind":"library","path":"~/Library/Saved Application State","match":"bundle"}
+  ],
+  "largeAppDataBytes": 1073741824
+}

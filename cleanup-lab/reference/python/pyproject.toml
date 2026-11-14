@@ -1,0 +1,10 @@
+[project]
+name = "os-lab-cleanup-reference"
+version = "0.1.0"
+description = "Cleanup Lab reference logic (path policy, artifact signatures, tool cache paths, relocation planner, learning profile). Read-only, standard library only."
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

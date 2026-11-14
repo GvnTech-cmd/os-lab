@@ -3,7 +3,8 @@
 #
 # No CI, no workflow files, no paid runners: the site is built locally, committed to an
 # orphan `gh-pages` branch and force-pushed with `gh`. GitHub Pages then serves that branch.
-# Publishes the public home and Firewall Lab only; console-backed routes stay local.
+# Publishes public home, Firewall/Source information, guides and community/legal pages.
+# Console-backed lab controls stay local.
 #
 # Usage:
 #   scripts/deploy-page.sh                      build + deploy to this repo's Pages
@@ -66,7 +67,7 @@ if [ -n "$BASE" ]; then
   export BASE
   find "$OUT" -type f \( -name '*.html' -o -name '*.js' -o -name '*.css' \) -print0 |
     xargs -0 perl -pi -e '
-      s!(["\x27`(=])/(tr|firewall|android|labs|jobs|contribute|legal|apk-lab|favicon\.svg|_astro)(?=[/"\x27`#?)\s>])!$1$ENV{BASE}/$2!g;
+      s!(["\x27`(=])/(tr|de|fr|es|it|fa|ar|source|cleanup|how-to-use|feedback|firewall|android|labs|jobs|contribute|legal|apk-lab|favicon\.svg|_astro)(?=[/"\x27`#?)\s>])!$1$ENV{BASE}/$2!g;
       s{(href=["\x27]|href:\s*["\x27])/(?=["\x27])}{$1$ENV{BASE}/}g;
     '
 fi
@@ -74,9 +75,9 @@ fi
 # ---- 3. keep only routes usable without the local console ----
 for path in "$OUT"/*; do
   case "$(basename "$path")" in
-    index.html|404.html|favicon.svg|_astro|firewall|.nojekyll) ;;
+    index.html|404.html|favicon.svg|_astro|firewall|source|cleanup|how-to-use|contribute|legal|feedback|.nojekyll) ;;
     tr|de|fr|es|it|fa|ar)
-      find "$path" -mindepth 1 -maxdepth 1 ! -name firewall -exec rm -rf {} + ;;
+      find "$path" -mindepth 1 -maxdepth 1 ! -name index.html ! -name firewall ! -name source ! -name cleanup ! -name how-to-use ! -name contribute ! -name legal ! -name feedback -exec rm -rf {} + ;;
     *) rm -rf "$path" ;;
   esac
 done

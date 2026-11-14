@@ -1,0 +1,157 @@
+{
+  "$schema": "./schema.json",
+  "version": 1,
+  "family": "system",
+  "entries": [
+    {
+      "id": "system.user-caches",
+      "name": "User caches",
+      "category": "system",
+      "risk": "low",
+      "hint": "Application caches for the current user. They speed up loading.",
+      "impact": "Apps rebuild these; the first launch after cleaning is slower.",
+      "defaultSelected": true,
+      "needsPrivilege": false,
+      "owningProcesses": ["explorer.exe"],
+      "detector": "paths",
+      "paths": {
+        "macos": ["~/Library/Caches"],
+        "linux": ["${XDG_CACHE_HOME:-~/.cache}"],
+        "windows": ["%LOCALAPPDATA%\\Microsoft\\Windows\\Explorer"]
+      }
+    },
+    {
+      "id": "system.user-logs",
+      "name": "User logs",
+      "category": "system",
+      "risk": "low",
+      "hint": "Log files written by applications, used for debugging.",
+      "impact": "Apps start a new log file on their next run.",
+      "defaultSelected": true,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": ["~/Library/Logs"],
+        "linux": ["${XDG_STATE_HOME:-~/.local/state}/log"],
+        "windows": ["%LOCALAPPDATA%\\Microsoft\\Windows\\WebCache\\Logs"]
+      }
+    },
+    {
+      "id": "system.trash",
+      "name": "Trash",
+      "category": "system",
+      "risk": "medium",
+      "hint": "Items already in the Trash. Their space is only freed when the Trash is emptied.",
+      "impact": "Trashed files are removed permanently.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": ["~/.Trash"],
+        "linux": ["${XDG_DATA_HOME:-~/.local/share}/Trash/files"]
+      }
+    },
+    {
+      "id": "system.temp",
+      "name": "Temporary data",
+      "category": "system",
+      "risk": "medium",
+      "hint": "Files and folders in this user's temporary directories. Small files and lock files are omitted.",
+      "impact": "An application may need to recreate temporary data; close apps before cleaning.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "temp",
+      "paths": {
+        "macos": ["${TMPDIR}", "~/.tmp", "~/tmp"],
+        "linux": ["${TMPDIR}", "~/.tmp", "~/tmp"],
+        "windows": ["%TEMP%"]
+      }
+    },
+    {
+      "id": "system.local-temp",
+      "name": "Windows local temporary data",
+      "category": "system",
+      "risk": "medium",
+      "hint": "Temporary files under the current Windows account.",
+      "impact": "Applications may need to recreate temporary files; close apps before cleaning.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "temp",
+      "paths": {"windows": ["%LOCALAPPDATA%\\Temp"]}
+    },
+    {
+      "id": "system.shared-temp",
+      "name": "Shared temporary data",
+      "category": "system",
+      "risk": "high",
+      "hint": "Shared system temporary areas may hold files owned by other users or active services.",
+      "impact": "Removing live temporary files can disrupt applications and services.",
+      "defaultSelected": false,
+      "needsPrivilege": true,
+      "detector": "temp",
+      "paths": {
+        "macos": ["/private/tmp", "/private/var/folders"],
+        "linux": ["/tmp", "/var/tmp"],
+        "windows": ["%WINDIR%\\Temp"]
+      }
+    },
+    {
+      "id": "system.crash-reports",
+      "name": "Crash reports",
+      "category": "system",
+      "risk": "medium",
+      "hint": "Application crash diagnostics for this account.",
+      "impact": "Old crash diagnostics will no longer be available for debugging.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": ["~/Library/Logs/DiagnosticReports", "~/Library/Logs/CrashReporter"],
+        "linux": ["~/.local/share/apport"],
+        "windows": ["%LOCALAPPDATA%\\CrashDumps", "%LOCALAPPDATA%\\Microsoft\\Windows\\WER\\ReportArchive", "%LOCALAPPDATA%\\Microsoft\\Windows\\WER\\ReportQueue"]
+      }
+    },
+    {
+      "id": "system.font-caches",
+      "name": "Font caches",
+      "category": "system",
+      "risk": "low",
+      "hint": "Generated font indexes for this account.",
+      "impact": "Fonts may load more slowly while the cache is rebuilt.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": ["~/Library/Caches/com.apple.ATS"],
+        "linux": ["${XDG_CACHE_HOME:-~/.cache}/fontconfig"],
+        "windows": ["%LOCALAPPDATA%\\FontCache"]
+      }
+    },
+    {
+      "id": "system.shared-font-caches",
+      "name": "Shared font caches",
+      "category": "system",
+      "risk": "medium",
+      "hint": "System-wide generated font indexes, shared by every account on this machine.",
+      "impact": "Fonts may load more slowly while the system caches are rebuilt.",
+      "defaultSelected": false,
+      "needsPrivilege": true,
+      "detector": "paths",
+      "paths": {
+        "linux": ["/var/cache/fontconfig"]
+      }
+    },
+    {
+      "id": "system.spotlight-index",
+      "name": "Spotlight indexes",
+      "category": "system",
+      "risk": "high",
+      "hint": "Per-volume Spotlight search indexes on macOS.",
+      "impact": "Search results are unavailable or incomplete while macOS rebuilds the index.",
+      "defaultSelected": false,
+      "needsPrivilege": true,
+      "detector": "spotlight",
+      "paths": {"macos": ["/.Spotlight-V100", "/Volumes/*/.Spotlight-V100"]}
+    }
+  ]
+}

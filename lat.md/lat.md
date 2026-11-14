@@ -11,6 +11,9 @@ This is the main project documentation; start here when changing behavior.
 - [[android-lab]] — Android app security / RE stack
 - [[ios-lab]] — iOS Simulator (macOS VM or native macOS)
 - [[linux-lab]] — Linux VM on `qemux/qemu`
+- [[source-lab]] — local multi-platform source/package analysis
+- [[source-tests]] — retained engine contracts and distribution regressions
+- [[cleanup-lab]] — disk cleanup: readiness, catalog, scan jobs, guarded cleaning
 - [[labctl]] — the cross-lab management CLI
 - [[setup]] — one-command installers for Linux, macOS and Windows
 - [[dashboard]] — the browser console: host overview, every lab, Android workbench

@@ -1,0 +1,168 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/keyvanarasteh/os-lab/cleanup-lab/catalog/schema.json",
+  "title": "Cleanup Lab detector catalog file",
+  "description": "One file per detector family. The loader in cleanup-lab/engine/cleanup_lab/catalog.py enforces the same rules and additionally rejects duplicate ids across files and pre-selected high/credentials/privacy entries.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "family", "entries"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Optional editor hint; the loader ignores it."
+    },
+    "version": {
+      "const": 1
+    },
+    "family": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "Entry ids must start with this family and a dot."
+    },
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/entry"
+      }
+    }
+  },
+  "$defs": {
+    "templates": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "category",
+        "risk",
+        "hint",
+        "impact",
+        "defaultSelected",
+        "needsPrivilege",
+        "paths"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*(?:\\.[a-z0-9][a-z0-9-]*)+$",
+          "examples": ["system.user-caches", "browser.chrome.cache"]
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "category": {
+          "enum": [
+            "system",
+            "browser",
+            "developer",
+            "project",
+            "container",
+            "vm",
+            "leftover",
+            "package",
+            "simulator"
+          ]
+        },
+        "risk": {
+          "enum": ["low", "medium", "high", "credentials", "privacy"],
+          "description": "low: regenerable. medium: rebuildable but slow or user-visible. high: not a cache. credentials/privacy: rule 5, never pre-selected."
+        },
+        "hint": {
+          "type": "string",
+          "minLength": 1
+        },
+        "impact": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What the user loses or waits for after cleaning."
+        },
+        "defaultSelected": {
+          "type": "boolean"
+        },
+        "needsPrivilege": {
+          "type": "boolean"
+        },
+        "owningProcesses": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Process names whose presence skips the item (CLN-12 lock)."
+        },
+        "detector": {
+          "enum": ["paths", "profile-glob", "temp", "spotlight", "artifacts", "signatures", "tool"],
+          "description": "How the entry is found. Defaults to paths."
+        },
+        "toolName": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional executable to look up on PATH without a shell. Shell functions are omitted."
+        },
+        "cacheEnv": {
+          "type": "array",
+          "items": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
+          "minItems": 1
+        },
+        "envSuffix": {"type": "string", "pattern": "^[A-Za-z0-9_-]+$"},
+        "probeArgv": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "minItems": 1
+        },
+        "cleanable": {
+          "type": "boolean",
+          "description": "False for toolchains and other data that may be inspected but never cleaned."
+        },
+        "note": {
+          "type": "string"
+        },
+        "paths": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": false,
+          "properties": {
+            "macos": {
+              "$ref": "#/$defs/templates"
+            },
+            "linux": {
+              "$ref": "#/$defs/templates"
+            },
+            "windows": {
+              "$ref": "#/$defs/templates"
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "risk": {
+                "enum": ["high", "credentials", "privacy"]
+              }
+            },
+            "required": ["risk"]
+          },
+          "then": {
+            "properties": {
+              "defaultSelected": {
+                "const": false
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

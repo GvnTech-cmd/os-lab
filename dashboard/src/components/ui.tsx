@@ -10,6 +10,7 @@ export function Section({
   title,
   description,
   action,
+  className,
   children
 }: {
   id?: string;
@@ -17,10 +18,11 @@ export function Section({
   title: string;
   description?: ReactNode;
   action?: ReactNode;
+  className?: string;
   children: ReactNode;
 }) {
   return (
-    <section id={id} className="iux-card gap-4 py-5">
+    <section id={id} className={"iux-card gap-4 py-5" + (className ? ` ${className}` : "")}>
       <div className="flex flex-wrap items-start gap-3 px-5">
         <div className="min-w-0 flex-1">
           <h2 className="flex items-center gap-2 text-sm leading-none font-semibold">
@@ -104,21 +106,31 @@ export function PageHead({ icon, title, description, actions }: { icon: ReactNod
 }
 
 export function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) {
-  const [done, setDone] = useState(false);
+  const [state, setState] = useState<"idle" | "copying" | "copied" | "failed">("idle");
   return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      className="flex size-7 shrink-0 items-center justify-center rounded-md border border-(--iux-border)/80 text-(--iux-muted-foreground) transition-colors hover:bg-(--iux-muted) hover:text-(--iux-foreground)"
-      onClick={() => {
-        void navigator.clipboard?.writeText(text).catch(() => {});
-        setDone(true);
-        setTimeout(() => setDone(false), 1500);
-      }}
-    >
-      {done ? <CheckIcon size={14} className="text-[#00d084]" weight="bold" /> : <CopyIcon size={14} />}
-    </button>
+    <span className="relative inline-flex shrink-0">
+      <button
+        type="button"
+        data-size="icon"
+        disabled={state === "copying"}
+        aria-label={label}
+        title={label}
+        className="iux-touch-target flex size-7 items-center justify-center rounded-md border border-(--iux-border)/80 text-(--iux-muted-foreground) transition-colors hover:bg-(--iux-muted) hover:text-(--iux-foreground)"
+        onClick={async () => {
+          setState("copying");
+          try {
+            await navigator.clipboard.writeText(text);
+            setState("copied");
+            setTimeout(() => setState(current => current === "copied" ? "idle" : current), 2000);
+          } catch {
+            setState("failed");
+          }
+        }}
+      >
+        {state === "copied" ? <CheckIcon size={14} className="text-[#00d084]" weight="bold" /> : <CopyIcon size={14} />}
+      </button>
+      {state === "copied" || state === "failed" ? <span role="status" className="absolute right-0 top-full z-10 mt-1 w-48 rounded-md border border-(--iux-border) bg-(--iux-card) p-2 text-xs text-(--iux-foreground) shadow-lg">{state === "copied" ? "Copied" : "Clipboard unavailable. Select the text manually."}</span> : null}
+    </span>
   );
 }
 

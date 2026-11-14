@@ -7,7 +7,7 @@ single-instance, store, dialog and opener plugins, without its agent-host code.
 ## How it works
 
 1. A local launcher page (`ui/`, plain HTML/JS) calls the `console_start` command.
-2. The shell finds an os-lab root (see below), finds Python 3.9+, starts
+2. The shell finds an os-lab root (see below), finds Python 3.11+, starts
    `android-lab/lab/web_ui.py` on a free `127.0.0.1` port and waits for `/healthz`.
 3. The window navigates to that URL. The page is the normal dashboard, served by the normal
    console, so every page and lab action (preview → token → run) behaves as in `./labctl ui`.
@@ -35,7 +35,7 @@ set, still override the runtime checkout and content location respectively.
 
 ## Develop and build
 
-Needs Node 22+, Rust 1.85+ and Python 3.9+.
+Needs Node 22+, Rust 1.85+ and Python 3.11+.
 
 ```bash
 cd app
@@ -47,14 +47,15 @@ npm run test:stage
 (cd src-tauri && cargo test)
 ```
 
-`npm run stage` bundles **git-tracked** files from `labctl`, the console, all five lab folders,
+`npm run stage` bundles **git-tracked** files from `labctl`, the console, the lab folders,
 `docs/legal`, and a fresh dashboard build. It excludes credentials and guest data, so an
 untracked `.env` or VM disk cannot ship. Staging fails if a required lab entry point is missing.
+The staged runtime includes the Cleanup Lab engine and catalog used by the local dashboard.
 `--no-build` stages the committed `dashboard/dist`.
 
 The installer contains the lab scripts and Compose definitions, not the host tools or guest
-payloads they operate. The console needs Python 3.9+ (the Debian package declares this
-dependency, and the app can get a managed copy on other hosts). Container labs need a working
+payloads they operate. The desktop console needs Python 3.11+ for Cleanup Lab; the launcher
+can install a managed copy if the host lacks one. Container labs need a working
 Docker or Podman engine with Compose and pull their images
 separately; VM labs also need the host virtualization support and guest media their Doctor page
 reports. Native iOS simulation needs full Xcode, an iOS Simulator runtime and an available device;
@@ -64,7 +65,7 @@ bundled copy without a Git checkout, and the dashboard shows each lab's setup re
 If no suitable Python is installed, the launcher offers **Get Python**. Release builds include a
 SHA-256-verified uv helper for each supported architecture; it downloads CPython 3.12 into the
 app's data folder on request, without changing the system Python or `PATH`. The release scripts
-stage this helper before building. An existing Python 3.9+ installation still works without a
+stage this helper before building. An existing Python 3.11+ installation still works without a
 download.
 
 If Docker or Podman is installed but stopped, the launcher can start an existing Colima, Podman
@@ -106,9 +107,12 @@ GitHub release `app-v<version>` (whichever runs first creates it), each asset wi
 file. The release version must match `app/src-tauri/tauri.conf.json` and the tag must point at the
 published commit.
 
-- `app\scripts\release-win.ps1 [-Publish] [-NoSign]` (PowerShell on Windows) builds the NSIS setup `.exe` and the WiX `.msi`
-  as `os-lab_<v>_windows_x64-setup.exe` / `.msi`. Authenticode signing is optional: it is used when a certificate
+- `app\scripts\release-win.ps1 [-Publish] [-NoSign] [-SmokeInstall]` (PowerShell on Windows) builds the NSIS setup `.exe` and the WiX `.msi`
+  as `os-lab_<v>_windows_x64-setup.exe` / `.msi`. The setup program installs for the current user only
+  (`%LOCALAPPDATA%\os-lab`, no elevation); the MSI installs for all users (`Program Files`, administrator).
+  Authenticode signing is optional: it is used when a certificate
   thumbprint or `.pfx` is configured (`secrets/README.md`), otherwise the installers are unsigned and SmartScreen warns.
+  `-SmokeInstall` installs the setup `.exe` for the current user, launches it, uninstalls it and fails unless every step stayed per-user.
   `-Publish` uses `gh`, or the credential git already stores for pushes.
 - `app/scripts/release-deb.sh [--publish] [--install-deps] [--all-formats]` (Debian/Ubuntu) builds
   `os-lab_<v>_linux_<arch>.deb`, checks that it bundles the runtime and dashboard and contains no

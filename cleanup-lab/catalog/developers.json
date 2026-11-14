@@ -1,0 +1,1160 @@
+{
+  "$schema": "./schema.json",
+  "version": 1,
+  "family": "developers",
+  "entries": [
+    {
+      "id": "developers.gradle",
+      "name": "Gradle caches",
+      "category": "developer",
+      "risk": "low",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "tool",
+      "paths": {
+        "macos": [
+          "~/.gradle/caches"
+        ],
+        "linux": [
+          "~/.gradle/caches"
+        ],
+        "windows": [
+          "~/.gradle/caches"
+        ]
+      },
+      "toolName": "gradle",
+      "cacheEnv": [
+        "GRADLE_USER_HOME"
+      ],
+      "envSuffix": "caches"
+    },
+    {
+      "id": "developers.maven",
+      "name": "Maven repository",
+      "category": "developer",
+      "risk": "low",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": [
+          "~/.m2/repository"
+        ],
+        "linux": [
+          "~/.m2/repository"
+        ],
+        "windows": [
+          "~/.m2/repository"
+        ]
+      },
+      "toolName": "mvn"
+    },
+    {
+      "id": "developers.ivy2",
+      "name": "Ivy cache",
+      "category": "developer",
+      "risk": "low",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": [
+          "~/.ivy2/cache"
+        ],
+        "linux": [
+          "~/.ivy2/cache"
+        ],
+        "windows": [
+          "~/.ivy2/cache"
+        ]
+      }
+    },
+    {
+      "id": "developers.coursier",
+      "name": "Coursier cache",
+      "category": "developer",
+      "risk": "low",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": [
+          "~/Library/Caches/Coursier/v1"
+        ],
+        "linux": [
+          "{cache}/coursier/v1"
+        ],
+        "windows": [
+          "%LOCALAPPDATA%\\Coursier\\Cache\\v1"
+        ]
+      }
+    },
+    {
+      "id": "developers.poetry",
+      "name": "Poetry cache",
+      "category": "developer",
+      "risk": "low",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": [
+          "~/Library/Caches/pypoetry"
+        ],
+        "linux": [
+          "{cache}/pypoetry"
+        ],
+        "windows": [
+          "%LOCALAPPDATA%\\pypoetry\\Cache"
+        ]
+      },
+      "toolName": "poetry"
+    },
+    {
+      "id": "developers.pip",
+      "name": "pip cache",
+      "category": "developer",
+      "risk": "low",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "tool",
+      "paths": {
+        "macos": [
+          "~/Library/Caches/pip"
+        ],
+        "linux": [
+          "{cache}/pip"
+        ],
+        "windows": [
+          "%LOCALAPPDATA%\\pip\\Cache"
+        ]
+      },
+      "toolName": "pip3",
+      "cacheEnv": [
+        "PIP_CACHE_DIR"
+      ],
+      "probeArgv": [
+        "pip3",
+        "cache",
+        "dir"
+      ]
+    },
+    {
+      "id": "developers.composer",
+      "name": "Composer cache",
+      "category": "developer",
+      "risk": "low",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": [
+          "~/Library/Caches/composer"
+        ],
+        "linux": [
+          "{cache}/composer"
+        ],
+        "windows": [
+          "%LOCALAPPDATA%\\Composer"
+        ]
+      },
+      "toolName": "composer"
+    },
+    {
+      "id": "developers.go-mod",
+      "name": "Go module cache",
+      "category": "developer",
+      "risk": "low",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "tool",
+      "paths": {
+        "macos": [
+          "~/go/pkg/mod"
+        ],
+        "linux": [
+          "~/go/pkg/mod"
+        ],
+        "windows": [
+          "~/go/pkg/mod"
+        ]
+      },
+      "toolName": "go",
+      "cacheEnv": [
+        "GOMODCACHE"
+      ],
+      "probeArgv": [
+        "go",
+        "env",
+        "GOMODCACHE"
+      ]
+    },
+    {
+      "id": "developers.go-build",
+      "name": "Go build cache",
+      "category": "developer",
+      "risk": "low",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "tool",
+      "paths": {
+        "macos": [
+          "~/Library/Caches/go-build"
+        ],
+        "linux": [
+          "{cache}/go-build"
+        ],
+        "windows": [
+          "%LOCALAPPDATA%\\go-build"
+        ]
+      },
+      "toolName": "go",
+      "cacheEnv": [
+        "GOCACHE"
+      ],
+      "probeArgv": [
+        "go",
+        "env",
+        "GOCACHE"
+      ]
+    },
+    {
+      "id": "developers.rubygems-cache",
+      "name": "RubyGems specs",
+      "category": "developer",
+      "risk": "low",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": [
+          "~/.gem/specs"
+        ],
+        "linux": [
+          "~/.gem/specs"
+        ],
+        "windows": [
+          "~/.gem/specs"
+        ]
+      },
+      "toolName": "gem"
+    },
+    {
+      "id": "developers.ansible",
+      "name": "Ansible temp",
+      "category": "developer",
+      "risk": "low",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": [
+          "~/.ansible/tmp"
+        ],
+        "linux": [
+          "~/.ansible/tmp"
+        ],
+        "windows": [
+          "~/.ansible/tmp"
+        ]
+      },
+      "toolName": "ansible"
+    },
+    {
+      "id": "developers.terraform",
+      "name": "Terraform plugin cache",
+      "category": "developer",
+      "risk": "low",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": [
+          "~/.terraform.d/plugin-cache"
+        ],
+        "linux": [
+          "~/.terraform.d/plugin-cache"
+        ],
+        "windows": [
+          "~/.terraform.d/plugin-cache"
+        ]
+      },
+      "toolName": "terraform"
+    },
+    {
+      "id": "developers.pulumi",
+      "name": "Pulumi plugins",
+      "category": "developer",
+      "risk": "medium",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": [
+          "~/.pulumi/plugins"
+        ],
+        "linux": [
+          "~/.pulumi/plugins"
+        ],
+        "windows": [
+          "~/.pulumi/plugins"
+        ]
+      },
+      "toolName": "pulumi"
+    },
+    {
+      "id": "developers.k9s",
+      "name": "k9s data",
+      "category": "developer",
+      "risk": "credentials",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": [
+          "~/.k9s"
+        ],
+        "linux": [
+          "~/.k9s"
+        ],
+        "windows": [
+          "%APPDATA%\\k9s"
+        ]
+      },
+      "toolName": "k9s"
+    },
+    {
+      "id": "developers.helm",
+      "name": "Helm cache",
+      "category": "developer",
+      "risk": "low",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": [
+          "~/Library/Caches/helm"
+        ],
+        "linux": [
+          "{cache}/helm"
+        ],
+        "windows": [
+          "%LOCALAPPDATA%\\helm\\Cache"
+        ]
+      },
+      "toolName": "helm"
+    },
+    {
+      "id": "developers.gh",
+      "name": "GitHub CLI configuration",
+      "category": "developer",
+      "risk": "credentials",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": [
+          "~/.config/gh"
+        ],
+        "linux": [
+          "~/.config/gh"
+        ],
+        "windows": [
+          "%APPDATA%\\GitHub CLI"
+        ]
+      },
+      "toolName": "gh"
+    },
+    {
+      "id": "developers.aws",
+      "name": "AWS CLI cache",
+      "category": "developer",
+      "risk": "credentials",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": [
+          "~/.aws/cli/cache"
+        ],
+        "linux": [
+          "~/.aws/cli/cache"
+        ],
+        "windows": [
+          "%USERPROFILE%\\.aws\\cli\\cache"
+        ]
+      },
+      "toolName": "aws"
+    },
+    {
+      "id": "developers.gcloud",
+      "name": "Google Cloud configuration",
+      "category": "developer",
+      "risk": "credentials",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": [
+          "~/.config/gcloud"
+        ],
+        "linux": [
+          "~/.config/gcloud"
+        ],
+        "windows": [
+          "%APPDATA%\\gcloud"
+        ]
+      },
+      "toolName": "gcloud"
+    },
+    {
+      "id": "developers.azure",
+      "name": "Azure CLI configuration",
+      "category": "developer",
+      "risk": "credentials",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": [
+          "~/.azure"
+        ],
+        "linux": [
+          "~/.azure"
+        ],
+        "windows": [
+          "%USERPROFILE%\\.azure"
+        ]
+      },
+      "toolName": "az"
+    },
+    {
+      "id": "developers.kubectl",
+      "name": "kubectl cache",
+      "category": "developer",
+      "risk": "low",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": [
+          "~/.kube/cache"
+        ],
+        "linux": [
+          "~/.kube/cache"
+        ],
+        "windows": [
+          "%USERPROFILE%\\.kube\\cache"
+        ]
+      },
+      "toolName": "kubectl"
+    },
+    {
+      "id": "developers.minikube",
+      "name": "Minikube data",
+      "category": "developer",
+      "risk": "high",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": [
+          "~/.minikube"
+        ],
+        "linux": [
+          "~/.minikube"
+        ],
+        "windows": [
+          "%USERPROFILE%\\.minikube"
+        ]
+      },
+      "toolName": "minikube",
+      "cleanable": false
+    },
+    {
+      "id": "developers.virtualenvwrapper",
+      "name": "Virtualenvwrapper environments",
+      "category": "developer",
+      "risk": "high",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": [
+          "${WORKON_HOME:-~/.virtualenvs}"
+        ],
+        "linux": [
+          "${WORKON_HOME:-~/.virtualenvs}"
+        ],
+        "windows": [
+          "${WORKON_HOME:-~/.virtualenvs}"
+        ]
+      },
+      "cleanable": false
+    },
+    {
+      "id": "developers.pyenv",
+      "name": "pyenv interpreters",
+      "category": "developer",
+      "risk": "high",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": [
+          "${PYENV_ROOT:-~/.pyenv}/versions"
+        ],
+        "linux": [
+          "${PYENV_ROOT:-~/.pyenv}/versions"
+        ],
+        "windows": [
+          "%USERPROFILE%\\.pyenv\\pyenv-win\\versions"
+        ]
+      },
+      "cleanable": false
+    },
+    {
+      "id": "developers.nvm",
+      "name": "nvm installations",
+      "category": "developer",
+      "risk": "high",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": [
+          "${NVM_DIR:-~/.nvm}"
+        ],
+        "linux": [
+          "${NVM_DIR:-~/.nvm}"
+        ],
+        "windows": [
+          "%APPDATA%\\nvm"
+        ]
+      },
+      "cleanable": false
+    },
+    {
+      "id": "developers.rbenv",
+      "name": "rbenv interpreters",
+      "category": "developer",
+      "risk": "high",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": [
+          "~/.rbenv/versions"
+        ],
+        "linux": [
+          "~/.rbenv/versions"
+        ]
+      },
+      "cleanable": false
+    },
+    {
+      "id": "developers.rustup",
+      "name": "rustup toolchains",
+      "category": "developer",
+      "risk": "high",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": [
+          "${RUSTUP_HOME:-~/.rustup}/toolchains"
+        ],
+        "linux": [
+          "${RUSTUP_HOME:-~/.rustup}/toolchains"
+        ],
+        "windows": [
+          "%USERPROFILE%\\.rustup\\toolchains"
+        ]
+      },
+      "cleanable": false
+    },
+    {
+      "id": "developers.rustup-tmp",
+      "name": "rustup temporary downloads",
+      "category": "developer",
+      "risk": "low",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": [
+          "${RUSTUP_HOME:-~/.rustup}/tmp"
+        ],
+        "linux": [
+          "${RUSTUP_HOME:-~/.rustup}/tmp"
+        ],
+        "windows": [
+          "%USERPROFILE%\\.rustup\\tmp"
+        ]
+      },
+      "toolName": "rustup"
+    },
+    {
+      "id": "developers.bun",
+      "name": "Bun install cache",
+      "category": "developer",
+      "risk": "low",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "tool",
+      "paths": {
+        "macos": [
+          "~/.bun/install/cache"
+        ],
+        "linux": [
+          "~/.bun/install/cache"
+        ],
+        "windows": [
+          "%USERPROFILE%\\.bun\\install\\cache"
+        ]
+      },
+      "toolName": "bun",
+      "cacheEnv": [
+        "BUN_INSTALL_CACHE_DIR"
+      ]
+    },
+    {
+      "id": "developers.deno",
+      "name": "Deno cache",
+      "category": "developer",
+      "risk": "low",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "tool",
+      "paths": {
+        "macos": [
+          "~/Library/Caches/deno"
+        ],
+        "linux": [
+          "{cache}/deno"
+        ],
+        "windows": [
+          "%LOCALAPPDATA%\\deno"
+        ]
+      },
+      "toolName": "deno",
+      "cacheEnv": [
+        "DENO_DIR"
+      ]
+    },
+    {
+      "id": "developers.wasm-pack",
+      "name": "wasm-pack cache",
+      "category": "developer",
+      "risk": "low",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": [
+          "{cache}/.wasm-pack"
+        ],
+        "linux": [
+          "{cache}/.wasm-pack"
+        ],
+        "windows": [
+          "%LOCALAPPDATA%\\.wasm-pack"
+        ]
+      },
+      "toolName": "wasm-pack"
+    },
+    {
+      "id": "developers.sccache",
+      "name": "sccache data",
+      "category": "developer",
+      "risk": "low",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": [
+          "{cache}/sccache"
+        ],
+        "linux": [
+          "{cache}/sccache"
+        ],
+        "windows": [
+          "%LOCALAPPDATA%\\Mozilla\\sccache"
+        ]
+      },
+      "toolName": "sccache"
+    },
+    {
+      "id": "developers.ccache",
+      "name": "ccache data",
+      "category": "developer",
+      "risk": "low",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": [
+          "{cache}/ccache"
+        ],
+        "linux": [
+          "{cache}/ccache"
+        ],
+        "windows": [
+          "%LOCALAPPDATA%\\ccache"
+        ]
+      },
+      "toolName": "ccache"
+    },
+    {
+      "id": "developers.jest",
+      "name": "Jest cache",
+      "category": "developer",
+      "risk": "low",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": [
+          "{cache}/jest"
+        ],
+        "linux": [
+          "{cache}/jest"
+        ],
+        "windows": [
+          "%LOCALAPPDATA%\\jest"
+        ]
+      }
+    },
+    {
+      "id": "developers.eslint",
+      "name": "ESLint cache",
+      "category": "developer",
+      "risk": "low",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": [
+          "{cache}/eslint"
+        ],
+        "linux": [
+          "{cache}/eslint"
+        ],
+        "windows": [
+          "%LOCALAPPDATA%\\eslint"
+        ]
+      }
+    },
+    {
+      "id": "developers.prettier",
+      "name": "Prettier cache",
+      "category": "developer",
+      "risk": "low",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": [
+          "{cache}/prettier"
+        ],
+        "linux": [
+          "{cache}/prettier"
+        ],
+        "windows": [
+          "%LOCALAPPDATA%\\prettier"
+        ]
+      }
+    },
+    {
+      "id": "developers.turbo",
+      "name": "Turborepo cache",
+      "category": "developer",
+      "risk": "low",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": [
+          "{cache}/turbo"
+        ],
+        "linux": [
+          "{cache}/turbo"
+        ],
+        "windows": [
+          "%LOCALAPPDATA%\\turbo"
+        ]
+      },
+      "toolName": "turbo"
+    },
+    {
+      "id": "developers.nx",
+      "name": "Nx cache",
+      "category": "developer",
+      "risk": "low",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": [
+          "{cache}/nx"
+        ],
+        "linux": [
+          "{cache}/nx"
+        ],
+        "windows": [
+          "%LOCALAPPDATA%\\nx"
+        ]
+      },
+      "toolName": "nx"
+    },
+    {
+      "id": "developers.npm",
+      "name": "npm cache",
+      "category": "developer",
+      "risk": "low",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "tool",
+      "paths": {
+        "macos": [
+          "~/.npm"
+        ],
+        "linux": [
+          "~/.npm"
+        ],
+        "windows": [
+          "%LOCALAPPDATA%\\npm-cache"
+        ]
+      },
+      "toolName": "npm",
+      "cacheEnv": [
+        "npm_config_cache",
+        "NPM_CONFIG_CACHE"
+      ],
+      "probeArgv": [
+        "npm",
+        "config",
+        "get",
+        "cache"
+      ]
+    },
+    {
+      "id": "developers.pnpm",
+      "name": "pnpm store",
+      "category": "developer",
+      "risk": "low",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "tool",
+      "paths": {
+        "macos": [
+          "~/Library/pnpm/store"
+        ],
+        "linux": [
+          "~/.local/share/pnpm/store"
+        ],
+        "windows": [
+          "%LOCALAPPDATA%\\pnpm\\store"
+        ]
+      },
+      "toolName": "pnpm",
+      "cacheEnv": [
+        "PNPM_STORE_DIR"
+      ],
+      "probeArgv": [
+        "pnpm",
+        "store",
+        "path"
+      ]
+    },
+    {
+      "id": "developers.yarn",
+      "name": "Yarn cache",
+      "category": "developer",
+      "risk": "low",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "tool",
+      "paths": {
+        "macos": [
+          "~/Library/Caches/Yarn"
+        ],
+        "linux": [
+          "{cache}/yarn"
+        ],
+        "windows": [
+          "%LOCALAPPDATA%\\Yarn\\Cache"
+        ]
+      },
+      "toolName": "yarn",
+      "cacheEnv": [
+        "YARN_CACHE_FOLDER"
+      ],
+      "probeArgv": [
+        "yarn",
+        "cache",
+        "dir"
+      ]
+    },
+    {
+      "id": "developers.cargo-registry",
+      "name": "Cargo registry",
+      "category": "developer",
+      "risk": "low",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "tool",
+      "paths": {
+        "macos": [
+          "${CARGO_HOME:-~/.cargo}/registry"
+        ],
+        "linux": [
+          "${CARGO_HOME:-~/.cargo}/registry"
+        ],
+        "windows": [
+          "%USERPROFILE%\\.cargo\\registry"
+        ]
+      },
+      "toolName": "cargo",
+      "cacheEnv": [
+        "CARGO_HOME"
+      ],
+      "envSuffix": "registry"
+    },
+    {
+      "id": "developers.cargo-git",
+      "name": "Cargo git cache",
+      "category": "developer",
+      "risk": "low",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "tool",
+      "paths": {
+        "macos": [
+          "${CARGO_HOME:-~/.cargo}/git"
+        ],
+        "linux": [
+          "${CARGO_HOME:-~/.cargo}/git"
+        ],
+        "windows": [
+          "%USERPROFILE%\\.cargo\\git"
+        ]
+      },
+      "toolName": "cargo",
+      "cacheEnv": [
+        "CARGO_HOME"
+      ],
+      "envSuffix": "git"
+    },
+    {
+      "id": "developers.playwright",
+      "name": "Playwright browsers",
+      "category": "developer",
+      "risk": "low",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "tool",
+      "paths": {
+        "macos": [
+          "~/Library/Caches/ms-playwright"
+        ],
+        "linux": [
+          "{cache}/ms-playwright"
+        ],
+        "windows": [
+          "%LOCALAPPDATA%\\ms-playwright"
+        ]
+      },
+      "cacheEnv": [
+        "PLAYWRIGHT_BROWSERS_PATH"
+      ]
+    },
+    {
+      "id": "developers.homebrew",
+      "name": "Homebrew downloads",
+      "category": "developer",
+      "risk": "low",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "tool",
+      "paths": {
+        "macos": [
+          "~/Library/Caches/Homebrew"
+        ],
+        "linux": [
+          "{cache}/Homebrew"
+        ]
+      },
+      "toolName": "brew",
+      "cacheEnv": [
+        "HOMEBREW_CACHE"
+      ],
+      "probeArgv": [
+        "brew",
+        "--cache"
+      ]
+    },
+    {
+      "id": "developers.cocoapods",
+      "name": "CocoaPods cache",
+      "category": "developer",
+      "risk": "low",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "tool",
+      "paths": {
+        "macos": [
+          "~/Library/Caches/CocoaPods"
+        ]
+      },
+      "toolName": "pod",
+      "cacheEnv": [
+        "CP_CACHE_DIR"
+      ]
+    },
+    {
+      "id": "developers.discord",
+      "name": "Discord cache",
+      "category": "developer",
+      "risk": "low",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": [
+          "~/Library/Application Support/discord/Cache"
+        ],
+        "linux": [
+          "~/.config/discord/Cache"
+        ],
+        "windows": [
+          "%APPDATA%\\discord\\Cache"
+        ]
+      },
+      "owningProcesses": [
+        "Discord",
+        "discord",
+        "Discord.exe"
+      ]
+    },
+    {
+      "id": "developers.slack",
+      "name": "Slack cache",
+      "category": "developer",
+      "risk": "low",
+      "hint": "Developer tool data under this account. Review the path and risk before cleaning.",
+      "impact": "The tool may redownload or rebuild data, or lose local configuration.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "detector": "paths",
+      "paths": {
+        "macos": [
+          "~/Library/Application Support/Slack/Cache"
+        ],
+        "linux": [
+          "~/.config/Slack/Cache"
+        ],
+        "windows": [
+          "%APPDATA%\\Slack\\Cache"
+        ]
+      },
+      "owningProcesses": [
+        "Slack",
+        "slack",
+        "Slack.exe"
+      ]
+    }
+  ]
+}

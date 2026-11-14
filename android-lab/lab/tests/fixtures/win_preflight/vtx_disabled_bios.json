@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "platform": "windows",
+  "arch": "AMD64",
+  "python": {
+    "version": "3.12.4"
+  },
+  "disk_free_gb": 120.0,
+  "os_caption": "Microsoft Windows 11 Education",
+  "os_build": "22631",
+  "is_admin": false,
+  "cpu": {
+    "name": "Lab CPU",
+    "virtualization_firmware_enabled": false,
+    "vmx_extensions": true,
+    "slat": true
+  },
+  "hypervisor_present": false,
+  "ram_gb": 16.0,
+  "execution_policy": "RemoteSigned",
+  "wsl": {
+    "installed": true,
+    "distros": [
+      {
+        "name": "Ubuntu",
+        "state": "Running",
+        "version": 2,
+        "default": true
+      }
+    ]
+  },
+  "podman": {
+    "installed": true,
+    "version": "5.2.1",
+    "machines": [
+      {
+        "name": "podman-machine-default",
+        "running": true
+      }
+    ]
+  },
+  "virtualbox": {
+    "installed": true,
+    "version": "7.0.20"
+  },
+  "_scenario": "VT-x turned off in BIOS/UEFI; no hypervisor; WSL2 distro cannot start"
+}

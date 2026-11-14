@@ -19,15 +19,34 @@ const commands = [
   { label: "Windows PowerShell", command: "irm https://raw.githubusercontent.com/keyvanarasteh/os-lab/master/scripts/setup/install.ps1 | iex" }
 ];
 
+function CommandCard({ label, command }: { label: string; command: string }) {
+  const [copyState, setCopyState] = useState<"idle" | "copying" | "copied" | "failed">("idle");
+  async function copyCommand() {
+    setCopyState("copying");
+    try {
+      await navigator.clipboard.writeText(command);
+      setCopyState("copied");
+    } catch {
+      setCopyState("failed");
+    }
+  }
+  return <div className="iux-card p-4">
+    <div className="mb-2 flex items-center justify-between gap-2"><strong>{label}</strong><button className="iux-btn" data-variant="outline" type="button" disabled={copyState === "copying"} onClick={() => void copyCommand()}>Copy</button></div>
+    <code className="block overflow-x-auto whitespace-nowrap text-xs sm:text-sm">{command}</code>
+    {copyState === "copied" || copyState === "failed" ? <p role="status" className="mt-2 text-sm">{copyState === "copied" ? "Copied" : "Clipboard unavailable. Select the text manually."}</p> : null}
+  </div>;
+}
+
 export default function PublicHome() {
   const firewallHref = localePath("/firewall/", localeFromPath(window.location.pathname));
   const [release, setRelease] = useState<Release | null>(null);
+  const [releaseStatus, setReleaseStatus] = useState<"loading" | "ready" | "unavailable">("loading");
   useEffect(() => {
     const controller = new AbortController();
     fetch("https://api.github.com/repos/keyvanarasteh/os-lab/releases/latest", { signal: controller.signal, cache: "no-store", headers: { Accept: "application/vnd.github+json" } })
       .then((response) => { if (!response.ok) throw new Error(`Release: ${response.status}`); return response.json(); })
-      .then((value: Release) => setRelease(value))
-      .catch(() => {});
+      .then((value: Release) => { if (!value.tag_name || !Array.isArray(value.assets)) throw new Error("Invalid release response"); setRelease(value); setReleaseStatus("ready"); })
+      .catch(() => { if (!controller.signal.aborted) setReleaseStatus("unavailable"); });
     return () => controller.abort();
   }, []);
   return <AppShell activeId="host">
@@ -40,7 +59,7 @@ export default function PublicHome() {
         <div className="mt-7 flex flex-wrap gap-3"><a className="iux-btn" data-variant="primary" href="#download">Download</a><a className="iux-btn" data-variant="outline" href={firewallHref}>Explore Firewall Lab</a><a className="iux-btn" data-variant="outline" href={REPO_URL}>Source code</a></div>
       </header>
       <section id="download" className="space-y-4">
-        <div><h2 className="text-2xl font-bold">Desktop downloads</h2><p className="mt-1 text-sm text-(--iux-muted-foreground)">Latest published release {release?.tag_name ? `· ${release.tag_name}` : "· checking GitHub"}</p></div>
+        <div><h2 className="text-2xl font-bold">Desktop downloads</h2><p role="status" className="mt-1 text-sm text-(--iux-muted-foreground)">{releaseStatus === "loading" ? <span>Checking latest release…</span> : releaseStatus === "unavailable" ? <span>Release details unavailable. Open the latest release page.</span> : <><span>Latest published release</span> · <span data-no-translate>{release?.tag_name}</span></>}</p></div>
         <div className="grid gap-3 sm:grid-cols-2">{installers.map(({ label, suffix }) => {
           const asset = release?.assets.find((item) => item.name.endsWith(`_${suffix}`));
           return <a key={suffix} className="iux-card p-4 hover:border-[#f36c21]" href={asset?.browser_download_url ?? latest}><strong className="block">{label}</strong><span className="mt-1 block break-all text-xs text-(--iux-muted-foreground)">{asset?.name ?? "View latest release"}</span></a>;
@@ -48,7 +67,7 @@ export default function PublicHome() {
         <p className="text-sm text-(--iux-muted-foreground)">Each installer has a checksum and signature on the <a className="underline" href={release?.html_url ?? latest}>release page</a>. For other formats, check the release assets.</p>
       </section>
       <section className="space-y-4"><h2 className="text-2xl font-bold">One-line setup</h2><p className="text-sm text-(--iux-muted-foreground)">These commands install prerequisites, fetch the checkout, and launch the local web console. Review the script before running it.</p>
-        {commands.map(({ label, command }) => <div key={label} className="iux-card p-4"><div className="mb-2 flex items-center justify-between"><strong>{label}</strong><button className="iux-btn" data-variant="outline" type="button" onClick={() => void navigator.clipboard.writeText(command)}>Copy</button></div><code className="block overflow-x-auto whitespace-nowrap text-xs sm:text-sm">{command}</code></div>)}
+        {commands.map(({ label, command }) => <CommandCard key={label} label={label} command={command} />)}
       </section>
       <section className="grid gap-3 sm:grid-cols-2"><a className="iux-card p-5 hover:border-[#f36c21]" href={firewallHref}><strong>Firewall Lab</strong><p className="mt-2 text-sm text-(--iux-muted-foreground)">Explore student company networks, firewalls, and rule sets.</p></a><a className="iux-card p-5 hover:border-[#f36c21]" href={`${REPO_URL}/blob/master/README.md`}><strong>Documentation</strong><p className="mt-2 text-sm text-(--iux-muted-foreground)">Requirements, installation, and lab guides.</p></a></section>
     </main>

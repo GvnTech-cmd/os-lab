@@ -8,6 +8,8 @@
 
 ### [keyvanarasteh.github.io/os-lab](https://keyvanarasteh.github.io/os-lab/)
 
+[Code signing policy](CODE_SIGNING.md) · [Desktop releases](https://github.com/keyvanarasteh/os-lab/releases?q=app-v)
+
 Four research-backed, runnable operating-system security labs in one repository,
 each a reproducible, isolated guest driven by `make` and a shared management CLI.
 
@@ -21,11 +23,14 @@ each a reproducible, isolated guest driven by `make` and a shared management CLI
 
 | Platform | Installer | Also available |
 |:--|:--|:--|
-| **macOS** — Apple Silicon & Intel | [`os-lab_0.2.9_macos_universal.dmg`](https://github.com/keyvanarasteh/os-lab/releases/download/app-v0.2.9/os-lab_0.2.9_macos_universal.dmg) | [`.app.tar.gz`](https://github.com/keyvanarasteh/os-lab/releases/download/app-v0.2.9/os-lab_0.2.9_macos_universal.app.tar.gz) |
-| **Windows x64** | [`os-lab_0.2.9_windows_x64-setup.exe`](https://github.com/keyvanarasteh/os-lab/releases/download/app-v0.2.9/os-lab_0.2.9_windows_x64-setup.exe) | [`.msi`](https://github.com/keyvanarasteh/os-lab/releases/download/app-v0.2.9/os-lab_0.2.9_windows_x64.msi) |
-| **Linux amd64** | [`os-lab_0.2.9_linux_amd64.deb`](https://github.com/keyvanarasteh/os-lab/releases/download/app-v0.2.9/os-lab_0.2.9_linux_amd64.deb) | [`.rpm`](https://github.com/keyvanarasteh/os-lab/releases/download/app-v0.2.9/os-lab_0.2.9_linux_amd64.rpm) · [`.AppImage`](https://github.com/keyvanarasteh/os-lab/releases/download/app-v0.2.9/os-lab_0.2.9_linux_amd64.AppImage) |
+| **macOS** — Apple Silicon & Intel | [`os-lab_0.3.5_macos_universal.dmg`](https://github.com/keyvanarasteh/os-lab/releases/download/app-v0.3.5/os-lab_0.3.5_macos_universal.dmg) | [`.app.tar.gz`](https://github.com/keyvanarasteh/os-lab/releases/download/app-v0.3.5/os-lab_0.3.5_macos_universal.app.tar.gz) |
+| **Windows x64** | [`os-lab_0.3.5_windows_x64-setup.exe`](https://github.com/keyvanarasteh/os-lab/releases/download/app-v0.3.5/os-lab_0.3.5_windows_x64-setup.exe) | [`.msi`](https://github.com/keyvanarasteh/os-lab/releases/download/app-v0.3.5/os-lab_0.3.5_windows_x64.msi) |
+| **Linux amd64** | [`os-lab_0.3.5_linux_amd64.deb`](https://github.com/keyvanarasteh/os-lab/releases/download/app-v0.3.5/os-lab_0.3.5_linux_amd64.deb) | [`.rpm`](https://github.com/keyvanarasteh/os-lab/releases/download/app-v0.3.5/os-lab_0.3.5_linux_amd64.rpm) · [`.AppImage`](https://github.com/keyvanarasteh/os-lab/releases/download/app-v0.3.5/os-lab_0.3.5_linux_amd64.AppImage) |
 
-<sub>Latest **0.2.9** · [all files, checksums & signatures](https://github.com/keyvanarasteh/os-lab/releases/tag/app-v0.2.9) · [install & uninstall](app/INSTALL.md) · [release notes](docs/RELEASES.md). Every asset has a `.sha256` and detached `.sig`; in-app updates use the signed feed published by the `updater-manifest` workflow.</sub>
+<sub>Latest **0.3.5** · [all files, checksums & signatures](https://github.com/keyvanarasteh/os-lab/releases/tag/app-v0.3.5) · [install & uninstall](app/INSTALL.md) · [release notes](docs/RELEASES.md). Every asset has a `.sha256` and detached `.sig`; in-app updates use the signed feed published by the `updater-manifest` workflow.</sub>
+
+Windows installers have verified updater signatures but no Authenticode signature;
+SmartScreen may warn. See [Windows signing](app/SIGNING.md).
 
 ## Labs
 
@@ -35,6 +40,7 @@ each a reproducible, isolated guest driven by `make` and a shared management CLI
 | [**Android**](android-lab/) | Emulator + MobSF, mitmproxy, Frida and containerized RE tools; static and dynamic workflows |
 | [**iOS**](ios-lab/) | macOS VM on Ubuntu, or native Xcode / Simulator / Appium on macOS |
 | [**Linux**](linux-lab/) | Disposable KVM guest for malware detonation, ELF RE, exploit/kernel and container-escape practice |
+| [**Source Lab**](source-lab/) | Portable Python source/package analysis, signed evidence, structural maps and local dashboard workflows; native/live verification remains open as bonus contributions |
 | [**Firewall**](firewall-lab/) | Student-built company network and firewall designs, rendered at [`/firewall/`](https://keyvanarasteh.github.io/os-lab/firewall/) |
 
 ## Quick start

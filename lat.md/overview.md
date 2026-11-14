@@ -47,3 +47,11 @@ The labs are siblings with a shared operating model and one CLI ([[labctl]]).
 
 Keeping them together lets `./labctl all status` report every Linux-host lab at
 once and lets the common script/Makefile pattern evolve in lockstep.
+
+## Portable Source Lab
+
+[[source-lab]] adds native Python source/package analysis beside the OS guests.
+Static detection and structural maps need no VM, Node or container runtime.
+
+The local dashboard provides guarded jobs and file-backed artifact views; public
+Pages provides information and first-party workflow docs, without engine polling.

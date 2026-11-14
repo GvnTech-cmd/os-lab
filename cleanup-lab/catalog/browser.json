@@ -1,0 +1,268 @@
+{
+  "$schema": "./schema.json",
+  "version": 1,
+  "family": "browser",
+  "entries": [
+    {
+      "id": "browser.chrome.cache",
+      "name": "Google Chrome caches",
+      "category": "browser",
+      "risk": "low",
+      "hint": "Generated browser cache data across every local profile.",
+      "impact": "The browser rebuilds this data; first page loads may be slower.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "owningProcesses": [
+        "Google Chrome",
+        "chrome",
+        "chrome.exe"
+      ],
+      "detector": "profile-glob",
+      "paths": {
+        "macos": [
+          "~/Library/Caches/Google/Chrome/*/Cache",
+          "~/Library/Application Support/Google/Chrome/*/Code Cache",
+          "~/Library/Application Support/Google/Chrome/*/GPUCache"
+        ],
+        "linux": [
+          "${XDG_CACHE_HOME:-~/.cache}/google-chrome/*/Cache",
+          "${XDG_CONFIG_HOME:-~/.config}/google-chrome/*/Code Cache",
+          "${XDG_CONFIG_HOME:-~/.config}/google-chrome/*/GPUCache"
+        ],
+        "windows": [
+          "%LOCALAPPDATA%\\Google\\Chrome\\User Data\\*\\Cache",
+          "%LOCALAPPDATA%\\Google\\Chrome\\User Data\\*\\Code Cache",
+          "%LOCALAPPDATA%\\Google\\Chrome\\User Data\\*\\GPUCache"
+        ]
+      }
+    },
+    {
+      "id": "browser.chrome.history",
+      "name": "Chrome history",
+      "category": "browser",
+      "risk": "privacy",
+      "hint": "Visited-page history in each Chrome profile.",
+      "impact": "Clearing this removes browsing history from those profiles.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "owningProcesses": [
+        "Google Chrome",
+        "chrome",
+        "chrome.exe"
+      ],
+      "detector": "profile-glob",
+      "paths": {
+        "macos": [
+          "~/Library/Application Support/Google/Chrome/*/History"
+        ],
+        "linux": [
+          "${XDG_CONFIG_HOME:-~/.config}/google-chrome/*/History"
+        ],
+        "windows": [
+          "%LOCALAPPDATA%\\Google\\Chrome\\User Data\\*\\History"
+        ]
+      }
+    },
+    {
+      "id": "browser.chrome.extension-traces",
+      "name": "Chrome extension traces",
+      "category": "browser",
+      "risk": "privacy",
+      "hint": "Extension telemetry and state in each Chrome profile.",
+      "impact": "Extensions may lose local state or regenerate telemetry.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "owningProcesses": [
+        "Google Chrome",
+        "chrome",
+        "chrome.exe"
+      ],
+      "detector": "profile-glob",
+      "paths": {
+        "macos": [
+          "~/Library/Application Support/Google/Chrome/*/Extension State"
+        ],
+        "linux": [
+          "${XDG_CONFIG_HOME:-~/.config}/google-chrome/*/Extension State"
+        ],
+        "windows": [
+          "%LOCALAPPDATA%\\Google\\Chrome\\User Data\\*\\Extension State"
+        ]
+      }
+    },
+    {
+      "id": "browser.edge.cache",
+      "name": "Microsoft Edge caches",
+      "category": "browser",
+      "risk": "low",
+      "hint": "Generated browser cache data across every local profile.",
+      "impact": "The browser rebuilds this data; first page loads may be slower.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "owningProcesses": [
+        "Microsoft Edge",
+        "msedge",
+        "msedge.exe"
+      ],
+      "detector": "profile-glob",
+      "paths": {
+        "macos": [
+          "~/Library/Caches/Microsoft Edge/*/Cache",
+          "~/Library/Application Support/Microsoft Edge/*/Code Cache",
+          "~/Library/Application Support/Microsoft Edge/*/GPUCache"
+        ],
+        "linux": [
+          "${XDG_CACHE_HOME:-~/.cache}/microsoft-edge/*/Cache",
+          "${XDG_CONFIG_HOME:-~/.config}/microsoft-edge/*/Code Cache",
+          "${XDG_CONFIG_HOME:-~/.config}/microsoft-edge/*/GPUCache"
+        ],
+        "windows": [
+          "%LOCALAPPDATA%\\Microsoft\\Edge\\User Data\\*\\Cache",
+          "%LOCALAPPDATA%\\Microsoft\\Edge\\User Data\\*\\Code Cache",
+          "%LOCALAPPDATA%\\Microsoft\\Edge\\User Data\\*\\GPUCache"
+        ]
+      }
+    },
+    {
+      "id": "browser.brave.cache",
+      "name": "Brave Browser caches",
+      "category": "browser",
+      "risk": "low",
+      "hint": "Generated browser cache data across every local profile.",
+      "impact": "The browser rebuilds this data; first page loads may be slower.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "owningProcesses": [
+        "Brave Browser",
+        "brave",
+        "brave.exe"
+      ],
+      "detector": "profile-glob",
+      "paths": {
+        "macos": [
+          "~/Library/Caches/BraveSoftware/Brave-Browser/*/Cache",
+          "~/Library/Application Support/BraveSoftware/Brave-Browser/*/Code Cache",
+          "~/Library/Application Support/BraveSoftware/Brave-Browser/*/GPUCache"
+        ],
+        "linux": [
+          "${XDG_CACHE_HOME:-~/.cache}/BraveSoftware/Brave-Browser/*/Cache",
+          "${XDG_CONFIG_HOME:-~/.config}/BraveSoftware/Brave-Browser/*/Code Cache",
+          "${XDG_CONFIG_HOME:-~/.config}/BraveSoftware/Brave-Browser/*/GPUCache"
+        ],
+        "windows": [
+          "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser\\User Data\\*\\Cache",
+          "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser\\User Data\\*\\Code Cache",
+          "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser\\User Data\\*\\GPUCache"
+        ]
+      }
+    },
+    {
+      "id": "browser.vivaldi.cache",
+      "name": "Vivaldi caches",
+      "category": "browser",
+      "risk": "low",
+      "hint": "Generated browser cache data across every local profile.",
+      "impact": "The browser rebuilds this data; first page loads may be slower.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "owningProcesses": [
+        "Vivaldi",
+        "vivaldi",
+        "vivaldi.exe"
+      ],
+      "detector": "profile-glob",
+      "paths": {
+        "macos": [
+          "~/Library/Caches/Vivaldi/*/Cache",
+          "~/Library/Application Support/Vivaldi/*/Code Cache",
+          "~/Library/Application Support/Vivaldi/*/GPUCache"
+        ],
+        "linux": [
+          "${XDG_CACHE_HOME:-~/.cache}/vivaldi/*/Cache",
+          "${XDG_CONFIG_HOME:-~/.config}/vivaldi/*/Code Cache",
+          "${XDG_CONFIG_HOME:-~/.config}/vivaldi/*/GPUCache"
+        ],
+        "windows": [
+          "%LOCALAPPDATA%\\Vivaldi\\User Data\\*\\Cache",
+          "%LOCALAPPDATA%\\Vivaldi\\User Data\\*\\Code Cache",
+          "%LOCALAPPDATA%\\Vivaldi\\User Data\\*\\GPUCache"
+        ]
+      }
+    },
+    {
+      "id": "browser.opera.cache",
+      "name": "Opera caches",
+      "category": "browser",
+      "risk": "low",
+      "hint": "Generated browser cache data across every local profile.",
+      "impact": "The browser rebuilds this data; first page loads may be slower.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "owningProcesses": [
+        "Opera",
+        "opera",
+        "opera.exe"
+      ],
+      "detector": "profile-glob",
+      "paths": {
+        "macos": [
+        "~/Library/Caches/com.operasoftware.Opera*/Cache"
+        ],
+        "linux": [
+        "${XDG_CACHE_HOME:-~/.cache}/opera*/Cache"
+        ],
+        "windows": [
+        "%LOCALAPPDATA%\\Opera Software\\*\\Cache"
+        ]
+      }
+    },
+    {
+      "id": "browser.firefox.cache",
+      "name": "Firefox profile caches",
+      "category": "browser",
+      "risk": "low",
+      "hint": "Generated browser cache data across every local profile.",
+      "impact": "The browser rebuilds this data; first page loads may be slower.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "owningProcesses": [
+        "Firefox",
+        "firefox",
+        "firefox.exe"
+      ],
+      "detector": "profile-glob",
+      "paths": {
+        "macos": [
+          "~/Library/Caches/Firefox/Profiles/*/cache2"
+        ],
+        "linux": [
+          "${XDG_CACHE_HOME:-~/.cache}/mozilla/firefox/*/cache2"
+        ],
+        "windows": [
+          "%LOCALAPPDATA%\\Mozilla\\Firefox\\Profiles\\*\\cache2"
+        ]
+      }
+    },
+    {
+      "id": "browser.safari.cache",
+      "name": "Safari caches",
+      "category": "browser",
+      "risk": "low",
+      "hint": "Generated browser cache data across every local profile.",
+      "impact": "The browser rebuilds this data; first page loads may be slower.",
+      "defaultSelected": false,
+      "needsPrivilege": false,
+      "owningProcesses": [
+        "Safari"
+      ],
+      "detector": "profile-glob",
+      "paths": {
+        "macos": [
+        "~/Library/Caches/com.apple.Safari",
+        "~/Library/Caches/Safari/*",
+        "~/Library/Containers/com.apple.Safari/Data/Library/Caches/*"
+        ]
+      }
+    }
+  ]
+}

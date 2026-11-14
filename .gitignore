@@ -46,6 +46,7 @@ lat.md/.cache/
 .private/
 teached/**/*
 dashboard/node_modules/
+dashboard/.check-source-pages/
 dashboard/test-results/
 dashboard/playwright-report/
 # Release credentials (Apple signing + notarization). Only the READMEs are tracked.

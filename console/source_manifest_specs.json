@@ -1,0 +1,224 @@
+{
+  "manifest_version": {
+    "category": "Core",
+    "mvStatus": "Universal",
+    "specNote": "Specifies manifest specification version (2 or 3). MV2 is deprecated on Chrome Web Store.",
+    "migrationNote": "Increment from 2 to 3. Initiates all MV3 breaking changes and security policies."
+  },
+  "name": {
+    "category": "Identity",
+    "mvStatus": "Universal",
+    "specNote": "Extension display title in browser UI, Web Store, and extensions management page.",
+    "migrationNote": "Unchanged between MV2 and MV3. Can use i18n __MSG_messagename__ format."
+  },
+  "version": {
+    "category": "Identity",
+    "mvStatus": "Universal",
+    "specNote": "SemVer string (1-4 dot-separated integers) indicating release version.",
+    "migrationNote": "Unchanged between MV2 and MV3."
+  },
+  "version_name": {
+    "category": "Identity",
+    "mvStatus": "Universal",
+    "specNote": "Descriptive release version string (e.g. '1.0.0-beta', '2026.1 Spring').",
+    "migrationNote": "Unchanged between MV2 and MV3."
+  },
+  "description": {
+    "category": "Identity",
+    "mvStatus": "Universal",
+    "specNote": "Brief summary (max 132 chars) displayed in Web Store and extension listings.",
+    "migrationNote": "Unchanged between MV2 and MV3."
+  },
+  "author": {
+    "category": "Identity",
+    "mvStatus": "Universal",
+    "specNote": "Developer or publishing organization identity string.",
+    "migrationNote": "Unchanged between MV2 and MV3."
+  },
+  "icons": {
+    "category": "Identity",
+    "mvStatus": "Universal",
+    "specNote": "Map of sizes (16, 32, 48, 128) pointing to icon asset files.",
+    "migrationNote": "Unchanged between MV2 and MV3."
+  },
+  "action": {
+    "category": "UI Surface",
+    "mvStatus": "MV3 Only",
+    "specNote": "Consolidated toolbar action button. Unifies MV2 browser_action and page_action.",
+    "migrationNote": "Replace 'browser_action' or 'page_action' key with 'action'. Update chrome.browserAction API calls to chrome.action."
+  },
+  "browser_action": {
+    "category": "UI Surface",
+    "mvStatus": "MV2 Only (Deprecated)",
+    "specNote": "Legacy toolbar button present on all pages.",
+    "migrationNote": "Deprecated in MV3. Must migrate to 'action' and chrome.action.* APIs."
+  },
+  "page_action": {
+    "category": "UI Surface",
+    "mvStatus": "MV2 Only (Deprecated)",
+    "specNote": "Legacy contextual toolbar/address bar button enabled conditionally per tab.",
+    "migrationNote": "Deprecated in MV3. Merge into 'action' and use chrome.action.enable/disable(tabId)."
+  },
+  "background": {
+    "category": "Architecture",
+    "mvStatus": "Modified in MV3",
+    "specNote": "MV3: service_worker (event-driven, ephemeral). MV2: persistent background scripts/page.",
+    "migrationNote": "Change 'scripts: [...]' or 'page: ...' to 'service_worker: ...'. Remove DOM/window references. Use chrome.alarms and chrome.storage instead of global in-memory state."
+  },
+  "permissions": {
+    "category": "Security & API",
+    "mvStatus": "Modified in MV3",
+    "specNote": "Declared browser APIs. In MV3, host domain match patterns are forbidden here.",
+    "migrationNote": "Move all host patterns (e.g. *://*.example.com/*) out of 'permissions' into 'host_permissions'."
+  },
+  "host_permissions": {
+    "category": "Security & API",
+    "mvStatus": "MV3 Only",
+    "specNote": "Dedicated separation of web domain match patterns that the extension can access.",
+    "migrationNote": "Added in MV3. Extract all URLs and match patterns from MV2 'permissions' into this key."
+  },
+  "optional_permissions": {
+    "category": "Security & API",
+    "mvStatus": "Universal",
+    "specNote": "APIs requested at runtime via chrome.permissions.request() upon user action.",
+    "migrationNote": "Unchanged. Recommended in MV3 to minimize store review delays."
+  },
+  "content_scripts": {
+    "category": "Architecture",
+    "mvStatus": "Universal",
+    "specNote": "Scripts and stylesheets injected directly into web pages matching defined URL patterns.",
+    "migrationNote": "In MV3, match patterns are strictly validated. For programmatic injection, use chrome.scripting.executeScript()."
+  },
+  "web_accessible_resources": {
+    "category": "Architecture",
+    "mvStatus": "Modified in MV3",
+    "specNote": "Assets accessible to web page contexts. MV3 enforces scoped match patterns.",
+    "migrationNote": "In MV3, must be an array of objects specifying both 'resources: [...]' and 'matches: [...]' instead of a flat string array."
+  },
+  "options_ui": {
+    "category": "UI Surface",
+    "mvStatus": "Universal",
+    "specNote": "Embedded settings modal inside chrome://extensions.",
+    "migrationNote": "Preferred over legacy options_page in both MV2 and MV3."
+  },
+  "options_page": {
+    "category": "UI Surface",
+    "mvStatus": "MV2 Only (Deprecated)",
+    "specNote": "Legacy full-tab options page URL.",
+    "migrationNote": "Replace with 'options_ui: { page: ..., open_in_tab: true }'."
+  },
+  "side_panel": {
+    "category": "UI Surface",
+    "mvStatus": "MV3 Only",
+    "specNote": "Modern native browser side panel UI surface (Chrome 114+).",
+    "migrationNote": "Added in MV3. Declare 'side_panel: { default_path: ... }' and request 'sidePanel' permission."
+  },
+  "commands": {
+    "category": "Core",
+    "mvStatus": "Universal",
+    "specNote": "Global or browser-scoped keyboard shortcuts via chrome.commands API.",
+    "migrationNote": "Unchanged. In MV3, _execute_action replaces _execute_browser_action."
+  },
+  "declarativeNetRequest": {
+    "category": "Network",
+    "mvStatus": "MV3 Only",
+    "specNote": "Privacy-preserving declarative network request modification and ad/tracker blocking engine.",
+    "migrationNote": "Added in MV3 to replace blocking chrome.webRequest. Define rule_resources and rule JSON files."
+  },
+  "declarativeNetRequestWithHostAccess": {
+    "category": "Network",
+    "mvStatus": "MV3 Only",
+    "specNote": "Declarative network rules applied only to domains for which the extension has host permissions.",
+    "migrationNote": "Allows conditional DNR blocking without requesting full host permissions globally upfront."
+  },
+  "content_security_policy": {
+    "category": "Security & API",
+    "mvStatus": "Modified in MV3",
+    "specNote": "Sandbox and script execution security policy. MV3 strictly forbids remote hosted code.",
+    "migrationNote": "In MV3, must be an object with 'extension_pages' and optional 'sandbox' keys. 'unsafe-eval' and remote CDN scripts are banned."
+  },
+  "devtools_page": {
+    "category": "UI Surface",
+    "mvStatus": "Universal",
+    "specNote": "Inspect panel extension page embedded into Chrome Developer Tools.",
+    "migrationNote": "Unchanged. Communicates with background worker via chrome.runtime.connect()."
+  },
+  "omnibox": {
+    "category": "UI Surface",
+    "mvStatus": "Universal",
+    "specNote": "Keyword triggering interactive search or suggestions in the browser address bar.",
+    "migrationNote": "Unchanged between MV2 and MV3."
+  },
+  "default_locale": {
+    "category": "Identity",
+    "mvStatus": "Universal",
+    "specNote": "Default locale folder under _locales/ for internationalized extensions.",
+    "migrationNote": "Unchanged between MV2 and MV3."
+  },
+  "short_name": {
+    "category": "Identity",
+    "mvStatus": "Universal",
+    "specNote": "Short title displayed when space is constrained (e.g. app launchers).",
+    "migrationNote": "Unchanged between MV2 and MV3."
+  },
+  "offline_enabled": {
+    "category": "Platform",
+    "mvStatus": "Universal",
+    "specNote": "Boolean indicating whether the extension operates without an active internet connection.",
+    "migrationNote": "Unchanged between MV2 and MV3."
+  },
+  "incognito": {
+    "category": "Platform",
+    "mvStatus": "Universal",
+    "specNote": "Behavior in incognito mode: 'spanning', 'split', or 'not_allowed'.",
+    "migrationNote": "Unchanged between MV2 and MV3."
+  },
+  "minimum_chrome_version": {
+    "category": "Platform",
+    "mvStatus": "Universal",
+    "specNote": "Minimum browser version required to run this extension.",
+    "migrationNote": "Set to at least '88' for MV3, or '114' for side_panel support."
+  },
+  "key": {
+    "category": "Security & API",
+    "mvStatus": "Universal",
+    "specNote": "Public key fingerprint preserving persistent extension ID during local development.",
+    "migrationNote": "Unchanged. Useful in development to avoid ID churn."
+  },
+  "update_url": {
+    "category": "Platform",
+    "mvStatus": "Universal",
+    "specNote": "Custom autoupdate XML manifest URL for self-hosted enterprise extensions.",
+    "migrationNote": "Forbidden for extensions published directly to the Chrome Web Store."
+  },
+  "sandbox": {
+    "category": "Security & API",
+    "mvStatus": "Universal",
+    "specNote": "Isolated HTML pages running in a unique origin sandbox (allowed eval/inline scripts).",
+    "migrationNote": "In MV3, communication must go through window.postMessage with extension pages."
+  },
+  "chrome_url_overrides": {
+    "category": "UI Surface",
+    "mvStatus": "Universal",
+    "specNote": "Custom replacement pages for 'newtab', 'history', or 'bookmarks'.",
+    "migrationNote": "Only one override allowed per extension."
+  },
+  "storage": {
+    "category": "Security & API",
+    "mvStatus": "Universal",
+    "specNote": "Declaration of managed storage schema for enterprise enterprise policies.",
+    "migrationNote": "Used with chrome.storage.managed."
+  },
+  "externally_connectable": {
+    "category": "Security & API",
+    "mvStatus": "Universal",
+    "specNote": "Specifies which web pages and other extensions can connect via chrome.runtime.connect().",
+    "migrationNote": "Unchanged. Critical for Web-to-Extension communication."
+  },
+  "user_scripts": {
+    "category": "Architecture",
+    "mvStatus": "MV3 Only",
+    "specNote": "API allowing user scripts managers (like Violentmonkey/Tampermonkey) to execute in MV3.",
+    "migrationNote": "Added in Chrome 120+. Requires 'userScripts' permission and developer mode."
+  }
+}

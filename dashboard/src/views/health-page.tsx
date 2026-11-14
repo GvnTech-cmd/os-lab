@@ -208,6 +208,12 @@ function CapabilityTree({ groups, platform, hostOs, labs }: { groups: Capability
 
 function PlatformTabs({ catalog, hostOs, labs }: { catalog: CapabilityCatalog; hostOs: PlatformId | null; labs: LabStatus[] }) {
   const [platform, setPlatform] = useState<PlatformId>(hostOs ?? "macos");
+  const selectAt = (index: number) => {
+    const next = catalog.platforms[index];
+    if (!next) return;
+    setPlatform(next.id);
+    document.getElementById(`health-platform-${next.id}`)?.focus();
+  };
   const info = catalog.platforms.find((p) => p.id === platform)!;
   const counts = summarize(catalog.groups, platform);
   const total = counts.full + counts.partial + counts.none;
@@ -220,10 +226,20 @@ function PlatformTabs({ catalog, hostOs, labs }: { catalog: CapabilityCatalog; h
           return (
             <button
               key={p.id}
+              id={`health-platform-${p.id}`}
               role="tab"
               type="button"
               aria-selected={active}
+              aria-controls="health-platform-panel"
+              tabIndex={active ? 0 : -1}
               onClick={() => setPlatform(p.id)}
+              onKeyDown={(event) => {
+                const index = catalog.platforms.findIndex(item => item.id === p.id);
+                const direction = document.documentElement.dir === "rtl" ? -1 : 1;
+                const delta = event.key === "ArrowRight" ? direction : event.key === "ArrowLeft" ? -direction : 0;
+                const next = event.key === "Home" ? 0 : event.key === "End" ? catalog.platforms.length - 1 : delta ? (index + delta + catalog.platforms.length) % catalog.platforms.length : -1;
+                if (next >= 0) { event.preventDefault(); selectAt(next); }
+              }}
               className={`rounded-lg border px-3 py-2.5 text-left transition-colors ${active ? "border-[#f36c21] bg-[#f36c21]/10" : "border-(--iux-border) hover:bg-(--iux-muted)"}`}
             >
               <span className="flex items-center gap-2 text-sm font-semibold">
@@ -245,7 +261,7 @@ function PlatformTabs({ catalog, hostOs, labs }: { catalog: CapabilityCatalog; h
         <p><strong className="text-(--iux-foreground)">Installer:</strong> {info.installer}</p>
         <p><strong className="text-(--iux-foreground)">Runs labs with:</strong> {info.engine}</p>
       </div>
-      <div role="tabpanel">
+      <div id="health-platform-panel" role="tabpanel" aria-labelledby={`health-platform-${platform}`} tabIndex={0}>
         <CapabilityTree key={platform} groups={catalog.groups} platform={platform} hostOs={hostOs} labs={labs} />
       </div>
     </div>

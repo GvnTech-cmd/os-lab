@@ -23,6 +23,19 @@ pub fn is_root(dir: &Path) -> bool {
 }
 
 const BUNDLE_FILES: &[&str] = &[
+    "source-lab/engine/source_lab/import_legacy.py",
+    "source-lab/run.py",
+    "source-lab/list_inputs.py",
+    "source-lab/engine/source_lab/cli/run_detection.py",
+    "source-lab/engine/source_lab/collectors/browser/canary.js",
+    "console/source_api.py",
+    "console/source_control.py",
+    "console/source_jobs.py",
+    "console/source_worker.py",
+    "console/source_artifacts.py",
+    "console/source_overview.py",
+    "console/source_manifest_specs.json",
+    "console/source_pipeline.json",
     "console/content.py",
     "dashboard/dist/index.html",
     "docs/legal/PRIVACY.md",
@@ -233,5 +246,25 @@ mod tests {
         assert!(sync_bundle(&bundle, &data, "1").unwrap() > 0);
         assert!(data.join("docs/legal/PRIVACY.md").is_file());
         assert_eq!(fs::read_to_string(data.join("android-lab/lab/.env")).unwrap(), "SECRET=1");
+    }
+}
+
+#[cfg(test)]
+mod source_tests {
+    use super::*;
+    #[test]
+    fn source_private_state_survives_tree_update() {
+        let root = std::env::temp_dir().join(format!("oslab-source-sync-{}", std::process::id()));
+        let source = root.join("bundle/source-lab");
+        let target = root.join("data/source-lab");
+        fs::create_dir_all(source.join("storage/control")).unwrap();
+        fs::create_dir_all(target.join("storage/control")).unwrap();
+        fs::write(source.join("run.py"), "new code").unwrap();
+        fs::write(source.join("storage/control/runtime-settings.json"), "bundle").unwrap();
+        fs::write(target.join("storage/control/runtime-settings.json"), "operator").unwrap();
+        sync_tree(&source, &target).unwrap();
+        assert_eq!(fs::read_to_string(target.join("run.py")).unwrap(), "new code");
+        assert_eq!(fs::read_to_string(target.join("storage/control/runtime-settings.json")).unwrap(), "operator");
+        fs::remove_dir_all(root).unwrap();
     }
 }

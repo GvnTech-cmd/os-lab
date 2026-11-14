@@ -86,15 +86,15 @@
               "support": {
                 "macos": {
                   "level": "full",
-                  "note": "English, Türkçe, Deutsch, Français, Español, Italiano, فارسی, العربية"
+                  "note": "English, T\u00fcrk\u00e7e, Deutsch, Fran\u00e7ais, Espa\u00f1ol, Italiano, \u0641\u0627\u0631\u0633\u06cc, \u0627\u0644\u0639\u0631\u0628\u064a\u0629"
                 },
                 "windows": {
                   "level": "full",
-                  "note": "English, Türkçe, Deutsch, Français, Español, Italiano, فارسی, العربية"
+                  "note": "English, T\u00fcrk\u00e7e, Deutsch, Fran\u00e7ais, Espa\u00f1ol, Italiano, \u0641\u0627\u0631\u0633\u06cc, \u0627\u0644\u0639\u0631\u0628\u064a\u0629"
                 },
                 "linux": {
                   "level": "full",
-                  "note": "English, Türkçe, Deutsch, Français, Español, Italiano, فارسی, العربية"
+                  "note": "English, T\u00fcrk\u00e7e, Deutsch, Fran\u00e7ais, Espa\u00f1ol, Italiano, \u0641\u0627\u0631\u0633\u06cc, \u0627\u0644\u0639\u0631\u0628\u064a\u0629"
                 }
               }
             }
@@ -474,6 +474,33 @@
             "linux": {
               "level": "full",
               "note": "Rendered from the repository's own Markdown"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "source",
+      "title": "Source Lab",
+      "description": "Local source and package analysis.",
+      "items": [
+        {
+          "id": "source-static",
+          "lab": "source",
+          "title": "Source Lab",
+          "summary": "Five-platform static detection and structural maps; optional browser tooling.",
+          "support": {
+            "linux": {
+              "level": "full",
+              "note": "Native Python 3.11+; no Docker or KVM required."
+            },
+            "macos": {
+              "level": "full",
+              "note": "Native Python 3.11+; no Docker or KVM required."
+            },
+            "windows": {
+              "level": "full",
+              "note": "Native Python 3.11+; no Docker or KVM required."
             }
           }
         }

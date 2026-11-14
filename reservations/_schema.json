@@ -3,13 +3,18 @@
   "$comment": "Files beginning with _ are ignored by the dashboard. This is the shape of every reservations/<TASK-ID>.json file.",
   "title": "os-lab task reservation",
   "type": "object",
-  "required": ["id", "github", "status", "date"],
+  "required": [
+    "id",
+    "github",
+    "status",
+    "date"
+  ],
   "additionalProperties": false,
   "properties": {
     "id": {
       "type": "string",
-      "description": "The roadmap task id being reserved, exactly as shown on the Contribute page (e.g. PENT-02, OS-11, FW-16). The file name must be <id>.json.",
-      "pattern": "^(PENT|OS|FW)-[0-9]{2}$"
+      "description": "The roadmap task id being reserved, exactly as shown on the Contribute page (e.g. PENT-02, OS-11, FW-16, SRC-B01, CLN-04). The file name must be <id>.json.",
+      "pattern": "^((PENT|OS|FW|CLN)-[0-9]{2}|SRC-B[0-9]{2})$"
     },
     "name": {
       "type": "string",
@@ -22,7 +27,12 @@
     "course": {
       "type": "string",
       "description": "Course code if this is a midterm reservation, else omit.",
-      "enum": ["MYO062", "BGT207", "MYO203"]
+      "enum": [
+        "MYO062",
+        "BGT207",
+        "MYO203",
+        "MYO063"
+      ]
     },
     "note": {
       "type": "string",
@@ -31,7 +41,13 @@
     "status": {
       "type": "string",
       "description": "reserved = claimed, not started · in-progress = working · pr-open = PR opened (fill pr) · done = merged · released = giving it back.",
-      "enum": ["reserved", "in-progress", "pr-open", "done", "released"]
+      "enum": [
+        "reserved",
+        "in-progress",
+        "pr-open",
+        "done",
+        "released"
+      ]
     },
     "pr": {
       "type": "string",

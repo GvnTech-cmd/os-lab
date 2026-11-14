@@ -4,12 +4,13 @@ import { ListChecksIcon, StopIcon } from "@phosphor-icons/react";
 import { AppShell, LAB_ICON, labHref } from "../shell/app-shell";
 import { TopBar } from "../shell/top-bar";
 import { Badge, Empty, PageHead, Section, Skeleton } from "../components/ui";
-import { ago, api, jobsStore, usePoll, type LabJob } from "../lib/api";
+import { ago, api, jobsStore, message, usePoll, type LabJob } from "../lib/api";
 
 const TONE: Record<LabJob["state"], "success" | "warning" | "danger" | undefined> = {
   running: "warning",
   succeeded: "success",
   failed: "danger",
+  interrupted: "danger",
   "timed-out": "danger",
   cancelled: undefined
 };
@@ -23,6 +24,8 @@ function lineClass(line: string) {
 
 function JobLog({ job }: { job: LabJob }) {
   const { data } = usePoll(() => api.job(job.id), job.state === "running" ? 1500 : 0, [job.id, job.state]);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
   const box = useRef<HTMLDivElement>(null);
   const logs = data?.logs ?? [];
   useEffect(() => {
@@ -41,17 +44,27 @@ function JobLog({ job }: { job: LabJob }) {
           {job.state === "running" ? (
             <button
               type="button"
+              disabled={cancelling}
               onClick={async () => {
-                await api.cancel(job.id);
-                await jobsStore.refresh();
+                setCancelling(true);
+                setCancelError(null);
+                try {
+                  await api.cancel(job.id);
+                  await jobsStore.refresh();
+                } catch (error) {
+                  setCancelError(message(error));
+                } finally {
+                  setCancelling(false);
+                }
               }}
-              className="flex items-center gap-1.5 rounded-lg border border-red-500/50 bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-400 hover:bg-red-500/20"
+              className="flex items-center gap-1.5 rounded-lg border border-red-500/50 bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-400 hover:bg-red-500/20 disabled:opacity-50"
             >
-              <StopIcon size={12} weight="fill" /> Cancel
+              <StopIcon size={12} weight="fill" /> {cancelling ? "Cancelling…" : "Cancel"}
             </button>
           ) : null}
         </div>
       </div>
+      {cancelError ? <p role="alert" className="mb-3 text-sm text-red-400"><span>Could not cancel job:</span> <span data-no-translate>{cancelError}</span>. <span>Try again.</span></p> : null}
       <div ref={box} className="apk-code-scroll max-h-[28rem] overflow-y-auto rounded-xl border border-white/10 bg-black/90 p-4 font-mono text-xs leading-relaxed">
         {data?.truncated ? <p className="mb-2 text-zinc-500">… earlier output was trimmed</p> : null}
         {logs.length === 0 ? (
@@ -82,7 +95,7 @@ export default function JobsPage() {
           <PageHead
             icon={<ListChecksIcon size={22} />}
             title="Lab jobs"
-            description="Every lab action started from this console. Jobs keep running when the page is closed; the 50 most recent are kept until the console restarts."
+            description="The 50 most recent lab jobs. Source Lab keeps private restart records and marks unfinished work as interrupted."
           />
           {error && !jobs ? (
             <Empty>Could not load jobs: {error}</Empty>

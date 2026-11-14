@@ -1,0 +1,9 @@
+---
+import Base from "../../layouts/Base.astro";
+import SourcePage, { SOURCE_PAGES, sourceTitles, type SourcePageId } from "../../views/source/pages";
+export function getStaticPaths() {
+  return SOURCE_PAGES.map(page => ({ params: { page: page || undefined } }));
+}
+const page = (Astro.params.page ?? "") as SourcePageId;
+---
+<Base title={`Source Lab · ${sourceTitles[page]}`}><SourcePage page={page} client:only="react" /></Base>

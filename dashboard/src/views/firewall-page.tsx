@@ -105,7 +105,7 @@ function FirewallCard({ fw, locale }: { fw: Firewall; locale: FirewallLocale }) 
       <button
         type="button"
         onClick={() => setShowAlts((v) => !v)}
-        className="mt-2 text-xs font-semibold text-[#f36c21] hover:underline"
+        className="iux-touch-target mt-2 inline-flex items-center text-xs font-semibold text-[#f36c21] hover:underline"
       >
         {showAlts ? t.hide : t.show} {fw.alternatives.length} {t.alternatives}
       </button>

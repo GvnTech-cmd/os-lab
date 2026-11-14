@@ -1,17 +1,20 @@
 #!/usr/bin/env bash
 # os-lab local test runner — the CI replacement.
 #
-# GitHub Actions is disabled for this repo; run this script locally instead.
+# Run locally alongside the enabled browser/content and package workflows.
 # It mirrors what the old workflow did, plus repo-wide shell and graph checks.
 #
 # Usage:
 #   scripts/run-tests.sh            run everything
-#   scripts/run-tests.sh --quick    only the android unit tests
+#   scripts/run-tests.sh --quick    unit suites only (stage 1); skips stages 2-5
 #   scripts/run-tests.sh --no-venv  use the current environment, do not create .venv
 #   scripts/run-tests.sh -h|--help  show this help
 #
 # Stages:
-#   1. android unit tests (pytest)          [required]
+#   1. unit suites                          [required; all that --quick runs]
+#      android (pytest), source-lab engine (pytest), cleanup-lab reference
+#      and engine (unittest), cleanup-lab qrust-scan (cargo test; skipped
+#      without cargo), OS-30 linux-lab hardening mocks (unittest)
 #   2. android sample analysis pipeline     [smoke, non-fatal]
 #   3. shell script syntax check (bash -n)  [required]
 #   4. lat.md knowledge-graph check         [if `lat` is installed]
@@ -19,7 +22,7 @@
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$ROOT"
+cd "$ROOT" || exit 1
 ANDROID_LAB="$ROOT/android-lab/lab"
 
 QUICK=0
@@ -28,7 +31,7 @@ for arg in "$@"; do
   case "$arg" in
     --quick) QUICK=1 ;;
     --no-venv) USE_VENV=0 ;;
-    -h|--help) sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "unknown option: $arg" >&2; exit 2 ;;
   esac
 done
@@ -85,6 +88,62 @@ else
   bad "could not prepare a Python environment with pytest"
 fi
 
+# Source Lab runs separately to keep its package/test imports out of Android.
+hdr "Source Lab engine tests (pytest)"
+if [ -n "$PY" ] && ( cd "$ROOT/source-lab/engine" && "$PY" -m pytest tests -q ); then
+  ok "source-lab/engine test suite"
+else
+  bad "source-lab/engine test suite"
+fi
+
+# Cleanup Lab reference logic: standard library only, so plain unittest is enough.
+hdr "Cleanup Lab reference tests (unittest)"
+if [ -n "$PY" ] || pick_python; then
+  if ( cd "$ROOT/cleanup-lab/reference/python" && "$PY" -m unittest discover -s tests -p 'test_*.py' -q ); then
+    ok "cleanup-lab/reference/python"
+  else
+    bad "cleanup-lab/reference/python"
+  fi
+else
+  bad "no python3 for cleanup-lab/reference/python"
+fi
+
+# Cleanup Lab engine: stdlib-only package, plain unittest is enough (CLN-01).
+hdr "Cleanup Lab engine tests (unittest)"
+if [ -n "$PY" ] || pick_python; then
+  if ( cd "$ROOT/cleanup-lab/engine" && "$PY" -m unittest discover -s tests -p 'test_*.py' -q ); then
+    ok "cleanup-lab/engine"
+  else
+    bad "cleanup-lab/engine"
+  fi
+else
+  bad "no python3 for cleanup-lab/engine"
+fi
+
+hdr "Cleanup Lab qrust-scan crate (cargo test)"
+if command -v cargo >/dev/null 2>&1; then
+  if ( cd "$ROOT/cleanup-lab/reference/qrust-scan" && cargo test --quiet ); then
+    ok "cleanup-lab/reference/qrust-scan"
+  else
+    bad "cleanup-lab/reference/qrust-scan"
+  fi
+else
+  skip "cargo not installed; qrust-scan tests not run"
+fi
+
+# OS-30 Ubuntu hardening checker: stdlib unittest with fake system commands
+# and temporary fixtures; it changes nothing on the host.
+hdr "OS-30 linux-lab hardening tests (unittest)"
+if [ -n "$PY" ] || pick_python; then
+  if ( cd "$ROOT" && "$PY" -m unittest discover -s linux-lab/tests -q ); then
+    ok "linux-lab/tests (OS-30 hardening)"
+  else
+    bad "linux-lab/tests (OS-30 hardening)"
+  fi
+else
+  bad "no python3 for linux-lab/tests (OS-30 hardening)"
+fi
+
 if [ "$QUICK" = "1" ]; then
   printf '\n%s--quick: skipping remaining stages%s\n' "$YELLOW" "$RESET"
 else
@@ -126,7 +185,7 @@ else
   hdr "Stage 5: dashboard (typecheck + committed build is current)"
   DASH="$ROOT/dashboard"
   if [ -d "$DASH/node_modules" ] && command -v node >/dev/null 2>&1; then
-    if ( cd "$DASH" && ./node_modules/.bin/tsc --noEmit ); then ok "dashboard typecheck"; else bad "dashboard typecheck (cd dashboard && npm run check)"; fi
+    if ( cd "$DASH" && ./node_modules/.bin/astro sync && ./node_modules/.bin/tsc --noEmit ); then ok "dashboard typecheck"; else bad "dashboard typecheck (cd dashboard && npm run check)"; fi
     # Same filesystem as the project: Astro moves build files with rename(2)
     TMP_OUT="$(mktemp -d "$DASH/.check-build.XXXXXX")"
     if ( cd "$DASH" && ./node_modules/.bin/astro build --outDir "$TMP_OUT" >/dev/null 2>&1 ); then
