@@ -76,7 +76,7 @@ LABS = {
         "dir": "ios-lab/mac",
         "labctl": None,
         "containers": [],
-        "summary": "Manage this Mac's Xcode simulators and optional Appium/XCUITest automation.",
+        "summary": "Automate this Mac's applications with Appium and the mac2 driver.",
     },
 }
 
@@ -116,8 +116,11 @@ def tools_for_host(os_name: str) -> list[tuple[str, str]]:
 
 LABCTL_ACTIONS = ["status", "doctor", "urls", "logs", "monitor", "start", "stop", "restart",
                   "profile", "resize", "setup", "backup", "service-install", "service-uninstall"]
+# The iOS Lab's native path: simulator lifecycle plus optional Appium/idb device automation.
 MAC_ACTIONS = ["status", "doctor", "setup", "start", "stop", "appium-install", "appium-start", "appium-stop",
                "idb-install", "idb-start", "idb-stop", "xcuitest-smoke"]
+# The macOS Lab automates installed macOS applications through Appium mac2 — no simulator.
+MACOS_APP_ACTIONS = ["status", "doctor", "setup", "appium-install", "appium-start", "appium-stop", "macos-smoke"]
 
 ACTION_INFO = {
     "csv-merge": ("Join catalogs", "Join operator catalogs into private storage."),
@@ -139,16 +142,17 @@ ACTION_INFO = {
     "backup": ("Backup", "Write a guest backup archive into the lab's backups/ folder."),
     "service-install": ("Install boot service", "Start this lab automatically at boot (systemd)."),
     "service-uninstall": ("Remove boot service", "Remove the systemd boot unit."),
-    "appium-install": ("Install Appium", "Install Node (Homebrew if needed), Appium and the XCUITest driver for this user only. No administrator rights."),
-    "appium-start": ("Start Appium", "Start the Appium server with XCUITest."),
+    "appium-install": ("Install Appium", "Install Node (Homebrew if needed), Appium and the XCUITest/mac2 drivers for this user only. No administrator rights."),
+    "appium-start": ("Start Appium", "Start the Appium server for the installed automation drivers."),
     "appium-stop": ("Stop Appium", "Stop the Appium server."),
     "idb-install": ("Install idb", "Install idb companion (Homebrew) and the idb client for this user only. No administrator rights."),
     "idb-start": ("Start idb", "Start an idb companion for the booted simulator."),
     "idb-stop": ("Stop idb", "Stop the idb companion."),
     "xcuitest-smoke": ("XCUITest smoke test", "Run one real XCUITest session through Appium and WebDriverAgent on the booted simulator."),
+    "macos-smoke": ("macOS app smoke test", "Run one real Appium mac2 session that activates Finder on this Mac."),
 }
 
-# On the native Mac path "start" and "stop" drive the iOS Simulator, not a container stack.
+# On the iOS Lab's native path "start" and "stop" drive the iOS Simulator, not a container stack.
 NATIVE_SIMULATOR_INFO = {
     "start": ("Start iOS Simulator", "Boot an installed iOS Simulator device on this Mac."),
     "stop": ("Stop iOS Simulator", "Shut every booted iOS Simulator down."),
@@ -468,7 +472,7 @@ def lab_status(lab: str, host: dict) -> dict:
 
     if provider is None:
         if lab == "macos":
-            reasons.append("Native Simulator and Appium need a Mac. On Linux use the iOS Lab's macOS VM.")
+            reasons.append("macOS application automation needs a Mac.")
         else:
             reasons.append("This lab needs a Linux/KVM host (or Windows with WSL2). Use a remote Linux machine.")
         return {"id": lab, "label": meta["label"], "summary": meta["summary"], "state": "unavailable",
@@ -476,23 +480,33 @@ def lab_status(lab: str, host: dict) -> dict:
                 "actions": [], "installed": os.path.isdir(os.path.join(host["root"], meta["dir"]))}
 
     if provider == "native-macos":
-        if lab == "ios":
+        if lab == "macos":
+            # The macOS Lab drives installed applications through Appium mac2 — no Xcode or simulator needed.
+            reqs += [
+                _req("brew", "Homebrew", tools.get("brew"), required=False, hint="https://brew.sh (needed for automated Appium setup)"),
+                _req("node", "Node.js", tools.get("node"), required=False, hint="brew install node"),
+                _req("appium", "Appium (mac2)", tools.get("appium"), required=False, hint="Install Appium (no administrator rights)"),
+            ]
+            if not tools.get("appium"):
+                notes.append("macOS app automation needs Appium with its mac2 driver; status and doctor work without it.")
+            notes.append("mac2 sessions need Accessibility permission (System Settings > Privacy & Security) to control applications.")
+        else:
             notes.append("Uses the same native Xcode installation as macOS Lab on this Mac.")
-        xcode = host.get("xcode") or {}
-        idb_ready = bool(tools.get("idb")) and bool(tools.get("idb-companion"))
-        reqs += [
-            _req("xcode", "Full Xcode", xcode.get("installed"), hint="Install and open Xcode, then accept its license"),
-            _req("ios-runtime", "iOS Simulator runtime", xcode.get("iosRuntime"), hint="Xcode > Settings > Components"),
-            _req("ios-device", "Available iOS Simulator device", xcode.get("iosDevice"), hint="Add a simulator in Xcode"),
-            _req("brew", "Homebrew", tools.get("brew"), required=False, hint="https://brew.sh (needed for automated Appium and idb setup)"),
-            _req("node", "Node.js", tools.get("node"), required=False, hint="brew install node"),
-            _req("appium", "Appium (XCUITest)", tools.get("appium"), required=False, hint="Install Appium (no administrator rights)"),
-            _req("idb", "idb (companion + client)", idb_ready, required=False, hint="Install idb (companion via Homebrew, client for this user)"),
-        ]
-        if not tools.get("appium"):
-            notes.append("Appium automation needs Appium and its XCUITest driver; the simulator can run without them.")
-        if not idb_ready:
-            notes.append("idb device automation needs the idb companion and client; the simulator can run without them.")
+            xcode = host.get("xcode") or {}
+            idb_ready = bool(tools.get("idb")) and bool(tools.get("idb-companion"))
+            reqs += [
+                _req("xcode", "Full Xcode", xcode.get("installed"), hint="Install and open Xcode, then accept its license"),
+                _req("ios-runtime", "iOS Simulator runtime", xcode.get("iosRuntime"), hint="Xcode > Settings > Components"),
+                _req("ios-device", "Available iOS Simulator device", xcode.get("iosDevice"), hint="Add a simulator in Xcode"),
+                _req("brew", "Homebrew", tools.get("brew"), required=False, hint="https://brew.sh (needed for automated Appium and idb setup)"),
+                _req("node", "Node.js", tools.get("node"), required=False, hint="brew install node"),
+                _req("appium", "Appium (XCUITest)", tools.get("appium"), required=False, hint="Install Appium (no administrator rights)"),
+                _req("idb", "idb (companion + client)", idb_ready, required=False, hint="Install idb (companion via Homebrew, client for this user)"),
+            ]
+            if not tools.get("appium"):
+                notes.append("Appium automation needs Appium and its XCUITest driver; the simulator can run without them.")
+            if not idb_ready:
+                notes.append("idb device automation needs the idb companion and client; the simulator can run without them.")
     elif provider == "wsl2":
         distros = host["wsl"]["distributions"]
         reqs += [
@@ -529,11 +543,14 @@ def lab_status(lab: str, host: dict) -> dict:
         actions = [x for x in actions if x["id"] in SETUP_STATE_ACTIONS]
     if provider == "native-macos":
         # Installed tooling: offer start/stop, not install. Missing tooling: offer install, not start/stop.
-        # The XCUITest smoke test additionally needs Appium with its XCUITest driver.
-        drop = {"appium-install"} if tools.get("appium") else {"appium-start", "appium-stop"}
-        drop |= {"idb-install"} if tools.get("idb") and tools.get("idb-companion") else {"idb-start", "idb-stop"}
-        if not tools.get("appium"):
-            drop.add("xcuitest-smoke")
+        # The XCUITest/mac2 smoke runs additionally need Appium with their driver.
+        if lab == "macos":
+            drop = {"appium-install"} if tools.get("appium") else {"appium-start", "appium-stop", "macos-smoke"}
+        else:
+            drop = {"appium-install"} if tools.get("appium") else {"appium-start", "appium-stop"}
+            drop |= {"idb-install"} if tools.get("idb") and tools.get("idb-companion") else {"idb-start", "idb-stop"}
+            if not tools.get("appium"):
+                drop.add("xcuitest-smoke")
         actions = [a for a in actions if a["id"] not in drop]
         for a in actions:
             if a["id"] in NATIVE_SIMULATOR_INFO:
@@ -547,7 +564,7 @@ def lab_status(lab: str, host: dict) -> dict:
 
 def actions_for(lab: str, provider: str | None) -> list[dict]:
     if provider == "native-macos":
-        names = MAC_ACTIONS
+        names = MACOS_APP_ACTIONS if lab == "macos" else MAC_ACTIONS
     elif provider:
         names = [a for a in LABCTL_ACTIONS if not (a == "backup" and lab == "android")]
         if provider == "macos-containers":
@@ -712,10 +729,16 @@ def setup_details(root: str, lab: str, provider: str) -> dict:
         values.update(env_entries(_read(os.path.join(root, meta["dir"], ".env"))))
     disk = values.get("DISK_SIZE") if SIZE.match(values.get("DISK_SIZE", "")) else meta.get("disk_default")
     if provider == "native-macos":
-        deps = ["Xcode and an installed iOS Simulator runtime", "Homebrew", "Node.js", "Appium with XCUITest"]
-        downloads = ["The setup script checks prerequisites and installs Homebrew packages. Xcode/runtime "
-                     "installation and license acceptance remain explicit user actions."]
-        privileges = "Runs as the current user; Xcode installation or license acceptance may need macOS authorization."
+        if lab == "macos":
+            deps = ["Homebrew (optional)", "Node.js", "Appium with the mac2 driver"]
+            downloads = ["The setup installs Appium and the mac2 driver into your user folder. macOS may ask to "
+                         "grant Accessibility permission before mac2 can control applications."]
+            privileges = "Runs as the current user; no administrator rights."
+        else:
+            deps = ["Xcode and an installed iOS Simulator runtime", "Homebrew", "Node.js", "Appium with XCUITest"]
+            downloads = ["The setup script checks prerequisites and installs Homebrew packages. Xcode/runtime "
+                         "installation and license acceptance remain explicit user actions."]
+            privileges = "Runs as the current user; Xcode installation or license acceptance may need macOS authorization."
     else:
         deps = ["Ubuntu/Debian host or WSL2 distribution", "Docker or Podman and Compose",
                 "KVM for accelerated guests", "Python 3 for restore/report workflows"]
@@ -795,14 +818,23 @@ def plan(root: str, request: dict, host: dict | None = None) -> dict:
 
     if provider == "native-macos":
         if profile:
-            raise PlanError("Native simulator settings live in ios-lab/mac/config.env")
-        script, extra = {
-            "status": ("status-mac.sh", None), "doctor": ("doctor-mac.sh", None),
-            "setup": ("setup-mac.sh", "--install"), "start": ("run-simulator.sh", None),
-            "stop": ("stop-simulator.sh", None), "appium-install": ("appium.sh", "install"), "appium-start": ("appium.sh", "start"),
-            "appium-stop": ("appium.sh", "stop"), "idb-install": ("idb.sh", "install"), "idb-start": ("idb.sh", "start"),
-            "idb-stop": ("idb.sh", "stop"), "xcuitest-smoke": ("xcuitest.sh", "smoke"),
-        }[action]
+            raise PlanError("Native settings live in ios-lab/mac/config.env")
+        if lab == "macos":
+            # macOS Lab: applications on this Mac through Appium mac2 — the simulator stays in the iOS Lab.
+            script, extra = {
+                "status": ("macos-app.sh", "status"), "doctor": ("macos-app.sh", "doctor"),
+                "setup": ("appium.sh", "install"), "appium-install": ("appium.sh", "install"),
+                "appium-start": ("appium.sh", "start"), "appium-stop": ("appium.sh", "stop"),
+                "macos-smoke": ("macos-app.sh", "smoke"),
+            }[action]
+        else:
+            script, extra = {
+                "status": ("status-mac.sh", None), "doctor": ("doctor-mac.sh", None),
+                "setup": ("setup-mac.sh", "--install"), "start": ("run-simulator.sh", None),
+                "stop": ("stop-simulator.sh", None), "appium-install": ("appium.sh", "install"), "appium-start": ("appium.sh", "start"),
+                "appium-stop": ("appium.sh", "stop"), "idb-install": ("idb.sh", "install"), "idb-start": ("idb.sh", "start"),
+                "idb-stop": ("idb.sh", "stop"), "xcuitest-smoke": ("xcuitest.sh", "smoke"),
+            }[action]
         selected = []
         if action == "start" and device not in (None, ""):
             picked = _validated_ios_device(root, device)
@@ -813,8 +845,8 @@ def plan(root: str, request: dict, host: dict | None = None) -> dict:
             raise PlanError("Provider script is missing: ios-lab/mac/" + script)
         program, args = "bash", [path] + ([extra] if extra else []) + selected
         privileged = False
-        timeout = 3600 if action == "setup" else 1800 if action in ("appium-install", "idb-install") \
-            else 1500 if action == "xcuitest-smoke" else 300
+        timeout = 3600 if action == "setup" and lab != "macos" else 1800 if action in ("setup", "appium-install", "idb-install") \
+            else 1500 if action == "xcuitest-smoke" else 600 if action == "macos-smoke" else 300
     else:
         labctl = _scoped(root, "labctl")
         if not os.path.isfile(labctl):

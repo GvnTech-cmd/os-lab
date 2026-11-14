@@ -194,12 +194,15 @@ Run from the checkout root as `make -C ios-lab TARGET [VARIABLE=value ...]`.
 - `mac-profile` — macOS host: apply a device preset: make mac-profile PROFILE=iphone
 - `mac-sim` — macOS host: boot the configured Simulator and open Simulator.app
 - `mac-stop` — macOS host: shut down simulators and the Simulator app
-- `mac-appium` — macOS host: start Appium (XCUITest driver)
+- `mac-appium` — macOS host: start Appium (XCUITest and mac2 drivers)
 - `mac-appium-stop` — macOS host: stop Appium
 - `mac-idb-install` — macOS host: install idb companion (Homebrew) and client
 - `mac-idb` — macOS host: start an idb companion for the booted simulator
 - `mac-idb-stop` — macOS host: stop the idb companion
 - `mac-xcuitest` — macOS host: run one XCUITest session through Appium on the booted simulator
+- `mac-app-doctor` — macOS host: check the macOS Lab's app automation stack (Appium mac2)
+- `mac-app-smoke` — macOS host: run one mac2 session that activates Finder on this Mac
+- `mac-app-repl` — macOS host: interactive mac2 REPL for macOS apps (APP=<bundle-id>, default Finder)
 - `mac-status` — macOS host: show Xcode, booted simulators and Appium state
 
 ## Make targets: `android-lab/lab/Makefile`
