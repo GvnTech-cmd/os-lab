@@ -3,7 +3,7 @@ import { BroomIcon } from "@phosphor-icons/react";
 import { AppShell } from "../../shell/app-shell";
 import { TopBar } from "../../shell/top-bar";
 import { Badge, Empty, PageHead, Section, Status } from "../../components/ui";
-import { api, type CleanupEntry, type CleanupHistory, type CleanupJob, type CleanupPlan, type CleanupResult, type CleanupScan, type CleanupStatus } from "../../lib/api";
+import { api, type CleanupEntry, type CleanupHistory, type CleanupJob, type CleanupPermissions, type CleanupPermission, type CleanupPlan, type CleanupResult, type CleanupScan, type CleanupStatus } from "../../lib/api";
 import { localeFromPath, localePath } from "../../i18n/paths";
 import { keepModalFocus } from "../modal-focus";
 import { InfoPopover } from "./info-popover";
@@ -66,6 +66,52 @@ function ScanDetails({ item }: { item: CleanupScan["entries"][number] }) {
       {path.error && <p className="text-xs text-(--iux-danger)">{path.error}</p>}
     </div>)}
   </>;
+}
+
+/** CLNP-04: state chip wording and tone for one permission record. */
+function permissionTone(granted: boolean | null): { label: string; tone: "success" | "danger" | undefined } {
+  if (granted === true) return { label: "Granted", tone: "success" };
+  if (granted === false) return { label: "Not granted", tone: "danger" };
+  return { label: "No evidence yet", tone: undefined };
+}
+
+/**
+ * CLNP-04: the read-only permission card. Every record the engine reports as
+ * applicable shows its state, probe results and grant guidance; a macOS grant
+ * deep link is a plain client-side anchor — the engine never opens Settings.
+ */
+function PermissionsCard({ permissions }: { permissions: CleanupPermissions | null }) {
+  if (!permissions) return null;
+  const applicable = permissions.permissions.filter((record) => record.applicable);
+  if (!applicable.length) return null;
+  const classified = permissions.classification?.classified ?? [];
+  return <Section title="Permissions" description="What this computer lets the cleaner read, and how to grant more.">
+    <div className="divide-y divide-(--iux-border)">
+      {applicable.map((record) => <div key={record.id} className="py-3 first:pt-0 last:pb-0">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">{record.name}</span>
+          <Badge tone={permissionTone(record.granted).tone}>{permissionTone(record.granted).label}</Badge>
+          {record.grantUrl && <a className="iux-btn ms-auto text-xs" href={record.grantUrl}>Open System Settings</a>}
+        </div>
+        {record.results.length > 0 && <div className="mt-1 space-y-0.5">
+          {record.results.map((result, index) => <p key={index} className="break-all text-xs" translate="no">
+            {result.path} <span className="text-(--iux-muted-foreground)">· {result.readable === false ? result.reason || "unreadable" : result.readable ? "readable" : result.reason}</span>
+          </p>)}
+        </div>}
+        {record.guidance && <p className="mt-1 text-xs text-(--iux-muted-foreground)">{record.guidance}</p>}
+      </div>)}
+    </div>
+    {classified.length > 0 && <div className="mt-3 rounded-md border border-(--iux-warning)/40 bg-(--iux-warning)/5 p-3 text-sm">
+      <p className="font-medium">Items the latest scan could not read</p>
+      {classified.map((item, index) => <p key={index} className="mt-1 break-all text-xs" translate="no">
+        {item.path} <span className="text-(--iux-muted-foreground)">· needs {permissionName(item.permissionId, permissions)}</span>
+      </p>)}
+    </div>}
+  </Section>;
+}
+
+function permissionName(id: string, permissions: CleanupPermissions): string {
+  return permissions.permissions.find((record) => record.id === id)?.name ?? id;
 }
 
 /** Plan confirmation: a real dialog with focus containment, listing what will and will not be cleaned. */
@@ -144,6 +190,7 @@ export default function CleanupPage({ page = "" }: { page?: CleanupPageId }) {
   const [jobs, setJobs] = useState<CleanupJob[]>([]);
   const [active, setActive] = useState<CleanupJob | null>(null);
   const [history, setHistory] = useState<CleanupHistory | null>(null);
+  const [permissions, setPermissions] = useState<CleanupPermissions | null>(null);
   const [loading, setLoading] = useState(!PUBLIC);
   const [loadError, setLoadError] = useState("");
   const [actionError, setActionError] = useState("");
@@ -159,13 +206,14 @@ export default function CleanupPage({ page = "" }: { page?: CleanupPageId }) {
   useEffect(() => {
     if (PUBLIC) return;
     let alive = true;
-    Promise.all([api.cleanupStatus(), api.cleanupCatalog(), api.cleanupJobs()])
-      .then(([ready, catalog, recent]) => {
+    Promise.all([api.cleanupStatus(), api.cleanupCatalog(), api.cleanupJobs(), api.cleanupPermissions()])
+      .then(([ready, catalog, recent, grants]) => {
         if (!alive) return;
         setStatus(ready);
         setEntries(catalog.entries);
         setSelected(catalog.entries.filter((item) => item.defaultSelected && item.risk !== "credentials" && item.risk !== "privacy").map((item) => item.id));
         setJobs(recent.jobs);
+        setPermissions(grants);
       })
       .catch((error) => { if (alive) setLoadError(errorText(error)); })
       .finally(() => { if (alive) setLoading(false); });
@@ -272,6 +320,7 @@ export default function CleanupPage({ page = "" }: { page?: CleanupPageId }) {
             {status?.requirements.filter((item) => !item.found).map((item) => <p key={item.id}>{item.label}: {item.hint}</p>)}
             <button type="button" className="iux-btn mt-3" onClick={() => { setLoading(true); void api.cleanupStatus().then(setStatus).catch((error) => setLoadError(errorText(error))).finally(() => setLoading(false)); }}>Re-check</button>
           </Section>}
+          {page === "" && status?.state === "ready" && <PermissionsCard permissions={permissions} />}
           {page === "" && <>
             <Section title="Quick cleanup" description="Scan all available categories. Nothing is removed during a scan.">
               <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-(--iux-muted-foreground)">{status?.state === "ready" ? "Ready to scan" : "Scan unavailable until setup is complete"} · {entries.length} categories available</p><button type="button" className="iux-btn" data-variant="primary" disabled={!canWork || !entries.length} onClick={() => void start(() => api.cleanupScan(entries.map((item) => item.id)))}>{latestScan ? "Scan again" : "Scan now"}</button></div>
@@ -368,6 +417,10 @@ export default function CleanupPage({ page = "" }: { page?: CleanupPageId }) {
               </>}
               {latestScan.totals.files > 0 && <p className="mt-2 text-xs text-(--iux-muted-foreground)">{latestScan.totals.files} <span>files</span> · {latestScan.totals.folders} <span>folders</span></p>}
               {latestScan.totals.unreadable > 0 && <p className="text-xs text-(--iux-warning)">{latestScan.totals.unreadable} <span>unreadable paths</span></p>}
+              {(permissions?.classification?.classified ?? []).length > 0 && <p className="mt-1 text-xs text-(--iux-muted-foreground)">
+                {permissions!.classification!.classified.length} <span>need a grant:</span>{" "}
+                {[...new Set(permissions!.classification!.classified.map((item) => permissionName(item.permissionId, permissions!)))].join(", ")}
+              </p>}
             </Section>}
             <Section title="Plan & confirm" description="A plan checks every path again. Trash is the default; permanent deletion requires an explicit choice.">
               <label className="text-sm">Mode <select value={mode} disabled={busy} onChange={(event) => { setMode(event.target.value as "trash" | "delete"); setConfirm(false); }} className="iux-input ml-2"><option value="trash">Trash (default)</option><option value="delete">Delete permanently</option></select></label>

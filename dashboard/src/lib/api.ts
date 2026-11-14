@@ -222,6 +222,17 @@ export interface CleanupCrossLeftovers {
   items: { id: string; name: string; path: string; status: string; confidence: number; rule: string; sizeBytes: number; sizeOnDiskBytes: number | null; reportOnly: true }[];
   inventorySources?: string[]; inventoryErrors?: string[]; unreadable?: string[];
 }
+/** CLNP-01: one typed permission record from GET /api/cleanup/permissions. */
+export interface CleanupPermission {
+  id: string; name: string; applicable: boolean; granted: boolean | null;
+  probePaths: string[];
+  results: { path: string; readable: boolean | null; reason: string }[];
+  guidance: string; grantUrl: string | null;
+}
+export interface CleanupPermissions {
+  platform: string; permissions: CleanupPermission[];
+  classification?: { classified: { path: string; permissionId: string; state: string; reason: string }[]; unmatched: { path: string; permissionId: null; state: string; reason: string }[] };
+}
 
 export class ApiError extends Error {
   constructor(
@@ -290,6 +301,7 @@ export const api = {
   cleanupJob: (id: string) => call<CleanupJob>(`/api/cleanup/jobs/${encodeURIComponent(id)}`),
   cleanupCancel: (id: string) => post<CleanupJob>(`/api/cleanup/jobs/${encodeURIComponent(id)}/cancel`),
   cleanupContainers: () => call<CleanupContainerCapabilities>("/api/cleanup/containers"),
+  cleanupPermissions: () => call<CleanupPermissions>("/api/cleanup/permissions"),
   cleanupContainerPreview: (actionId: string) => post<CleanupContainerPreview>("/api/cleanup/containers/preview", { actionId }),
   cleanupContainerPrune: (previewId: string) => post<CleanupAuxJob<CleanupContainerResult>>("/api/cleanup/containers/prune", { previewId }),
   cleanupVMScan: () => post<CleanupAuxJob<CleanupVMInventory>>("/api/cleanup/vms/scan"),
