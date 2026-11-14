@@ -244,3 +244,141 @@ cross-page in-place navigation (cleanup → other labs) is wanted.
   adds code — default: skip, tab data is already local except History).
 - Should the Advanced scan ↔ Dashboard presets stay in sync when navigating
   in place (they already share one island, so yes — no action).
+
+---
+
+## Task 3 — Optional background runner: disk free-space warnings (CLNP-09 … CLNP-13)
+
+An optional, opt-in background runner that periodically checks disk free
+space and raises a visible warning when a volume crosses its configured
+free-space threshold. Built as a **trigger registry** so the maintainer's
+next prompts can add more triggers (they announced further trigger kinds)
+without touching the runner.
+
+### Current state (grounded in the code)
+
+- `cleanup_lab/volumes.py::inventory()` (CLN-28) already reports every local
+  volume's mount point, capacity, kind, the home volume and a static >90%
+  pressure note; it is read-only and typed (`GET /api/cleanup/volumes`,
+  `labctl cleanup volumes`).
+- The console process already owns long-lived work as daemon threads
+  (`console/cleanup_api.py:207` `_spawn`), with locks around shared state.
+- The engine's private state folder (`paths.state_dir`, overridable via
+  `OSLAB_CLEANUP_STATE`) already persists the audit history SQLite store;
+  config can persist there the same way.
+- The dashboard polls only while a job runs (`lat.md/ux-readiness.md`);
+  there is no periodic monitor today.
+
+### Design
+
+**Runner** — a daemon thread inside the local console process (same lifetime
+as the console: alive while the local app's console runs, gone with it —
+documented honestly). Off by default; the user activates it once from the
+dashboard and the console auto-starts it on every boot while enabled
+(persisted in the private state folder as atomic JSON, like history's store).
+
+**Trigger registry** — each trigger is a typed record:
+`{id, name, applicable(platform), configSchema, evaluate(context) -> [events]}`.
+The runner evaluates only enabled, applicable triggers on its interval and
+records events with timestamps. The first trigger:
+
+- **`disk-free-space`** — per-volume thresholds chosen from the live CLN-28
+  inventory (selection by mount point id, never a free-form path). Config per
+  volume: warn when free space falls below an absolute floor and/or a percent
+  floor. **Re-arm semantics** (hysteresis): a warning fires once on crossing
+  below the threshold and re-arms only after free space recovers above the
+  threshold plus a margin — no repeated alerts while space stays low; a
+  cooldown guards flapping volumes. Default config (prefilled, disabled
+  until activation): home volume, warn below 10 % free or 10 GiB free,
+  300 s interval (configurable 60–3600 s).
+- Evaluation is a **pure function** over `(volumes snapshot, config, previous
+  state, now)` — unit-testable with an injected clock and usage fn; the
+  runner thread only schedules and persists.
+
+**Warning surface** — the warning "shows up" as a banner at the top of the
+`/cleanup/` page (volume, free space, threshold, which cleanup tab helps,
+deep link) plus a recent-events list on the monitor card. The runner is
+read-only: it never cleans by itself — a warning links to the existing
+plan → confirm → clean flow.
+
+**Why console-thread, not a system daemon** — a launchd/systemd/Task
+Scheduler runner with OS notifications is a separate product layer (the
+desktop app owns process lifetime); recorded as deferred scope, not this
+task. Honest limitation: no monitoring while the console is closed.
+
+### Rules
+
+1. **Read-only probes only** — the runner calls the same engine volume
+   probes as CLN-28 (`shutil.disk_usage`-family, fixed `mount`/`diskutil`
+   argv); no scans, no shell strings, no writes outside the state folder.
+2. **Typed config, validated twice** — dashboard → console request is typed
+   and validated (`unknown keys → 400`, free-form paths refused; volume ids
+   validated against the live inventory); the engine re-validates the config
+   schema when loading it from disk. Corrupt config → monitor starts
+   disabled with the corruption reported, never a guess.
+3. **Optional and quiet** — disabled by default; no polling, no warnings,
+   no endpoints doing work while disabled beyond reporting its state.
+4. **One evaluation at a time** — the runner thread skips a tick if the
+   previous evaluation is still running (volumes probes can block on
+   `diskutil`); evaluation results and errors are recorded, an unreadable
+   volume yields a per-volume error event, not a runner failure.
+5. **Warnings are events with history** — every warning, recovery and error
+   is recorded with a timestamp in the monitor state (bounded, e.g. last
+   100), so the card can show what happened while the page was closed.
+
+### Sub-tasks
+
+#### CLNP-09 — Engine: `monitor.py` trigger registry + disk-free-space trigger
+- [ ] Typed trigger registry (id, name, applicable, config schema, pure
+      `evaluate`), first trigger `disk-free-space` with per-volume
+      absolute/percent thresholds, re-arm margin, cooldown.
+- [ ] Monitor config + event store in the private state folder (atomic
+      JSON, bounded event list); engine-side schema validation on load;
+      corrupt config → disabled + reported.
+- [ ] `unittest` with injected usage fn + clock: crossing, re-arm,
+      cooldown, flapping, unreadable volume, disabled/applicable-false
+      triggers, config validation.
+
+#### CLNP-10 — Console runner + API
+- [ ] Daemon runner thread in the console process: starts on boot when
+      enabled; `GET /api/cleanup/monitor` (enabled/running, interval, per
+      -trigger config, last evaluation, active warnings, recent events);
+      typed config endpoint to enable/disable, set interval and edit
+      trigger configs (400/501 contract; volume ids checked against the
+      live inventory); on-demand "evaluate now" action.
+- [ ] Thread skips ticks while an evaluation runs; errors recorded, never
+      crash the runner; console contract tests in
+      `android-lab/lab/tests/test_cleanup_console.py`.
+
+#### CLNP-11 — Dashboard monitor card + warning banner
+- [ ] `/cleanup/` gains a "Background monitor" card: activation toggle,
+      interval, per-volume threshold editor (volume picker from CLN-28
+      inventory, absolute/percent inputs), recent events list; a warning
+      banner above the page content when a trigger is active, with a deep
+      link to the relevant cleanup tab.
+- [ ] Poll cadence: only while the runner is enabled (light, e.g. 15 s on
+      the monitor card) — no polling when disabled or on Public Pages;
+      seven-locale translations; Public Pages renders the card as
+      documentation only.
+
+#### CLNP-12 — labctl
+- [ ] `labctl cleanup monitor [--json]` — engine-backed read-only status
+      (enabled, running per config, last evaluation, active warnings),
+      following the `labctl.md` exit-code contract (`0` ready, `1` check
+      failed, `2` usage error).
+
+#### CLNP-13 — Tests, docs, knowledge graph
+- [ ] `scripts/run-tests.sh` green; console contract cases added;
+      `cleanup-lab/README.md`, `STATUS.md`, `VERIFY.md` and
+      `lat.md/cleanup-lab.md` updated; `CLNP-09…13` joined to the
+      Contribute → Roadmap page with seven-locale translations;
+      `lat check` passes.
+
+### Open questions (decide at implementation start)
+- OS-level notifications (macOS/Windows/Linux notification center) via the
+  desktop app — deferred; needs the app layer's notification plumbing.
+- Whether activation should also live in `labctl` (`monitor enable/disable`)
+  or stay dashboard-only — default dashboard-only.
+- Trigger id namespace for the maintainer's upcoming triggers — registry
+  ids are open (`monitor.triggers` config keyed by id); record their ids in
+  this plan as they arrive.
