@@ -29,6 +29,50 @@ The script reads assets from `app/out/<version>` when present, otherwise downloa
 release with `gh`, verifies every SHA-256 through `app/scripts/build-update-manifest.mjs`, and
 uploads `latest.json` to the `app-updates` prerelease.
 
+## 0.3.6
+
+- **macOS Lab drives macOS applications, not the iOS simulator.** The lab gets
+  its own requirements (Homebrew, Node, Appium with the mac2 driver — no Xcode
+  or simulator rows), its own actions (`status`, `doctor`, Appium
+  install/start/stop, a `macos-smoke` run that creates a real mac2 session and
+  activates Finder) and `macos-app.sh` with status/doctor/smoke/repl/click.
+  Simulator start/stop and the idb and XCUITest actions stay on the iOS Lab;
+  `start` plans are rejected for this lab outright. One shared Appium install
+  carries both the XCUITest and mac2 drivers, and `appium.sh start` no longer
+  requires Xcode (the iOS Lab gates simulator actions on Xcode through its
+  state; mac2 needs only the driver and macOS Accessibility permission).
+- **Optional idb device automation on the iOS Lab.** `idb.sh` installs the idb
+  companion (Homebrew) and the fb-idb client into `~/.oslab/idb` for this user
+  only, starts/stops a companion for the booted simulator, and
+  `xcuitest.sh smoke` runs one real XCUITest session (Appium + WebDriverAgent)
+  against the booted simulator and closes it. The console exposes
+  `idb-install`, `idb-start`, `idb-stop` and `xcuitest-smoke` as previewed
+  actions, reports the idb tools on the host page, and offers install instead
+  of start/stop while a tool is missing. Make targets
+  `mac-idb-install` / `mac-idb` / `mac-idb-stop` / `mac-xcuitest`.
+- **App mirror panel on the macOS Lab.** A draggable, resizable floating
+  mirror of one real window on this Mac: the window list comes from
+  CoreGraphics through ctypes, captures from `screencapture -l` and the
+  window's accessibility tree as numbered hotspots from System Events. Mirror
+  and hotspot clicks preview a `macos-click` action; only while control mode
+  is armed — an explicit toggle that disarms itself after ten idle minutes —
+  do clicks land immediately, still localhost-only and through the same script
+  the previewed flow runs. Doctor reports the Accessibility probe and both
+  permissions the mirror needs. Eleven new strings translated across all
+  seven locales.
+- **Contribute gains a macOS Lab roadmap (MIR-01…MIR-06).** Detailed tasks for
+  the mirror's next steps: an element action menu (double/right/type/key with
+  confirm-gated typing), an accessibility diff overlay, Retina and
+  multi-display correctness, multipart MJPEG streaming, mac2 deep-inspect mode
+  through stable WebDriver element ids, and a local session audit log.
+- **Dashboard action cards get cleaner.** The Dependencies card hides once
+  every tracked requirement is found (the actions take the full row; anything
+  missing keeps the full status list), and start/stop pairs render as
+  segmented icon controls titled by what they drive — Stack, Appium, idb —
+  with accessible names, tooltips and 44 px coarse-pointer targets; new
+  strings are translated in all seven locales.
+- Regenerates the committed dashboard and the prompt command reference.
+
 ## 0.3.5
 
 - Redesign Cleanup Lab's dashboard views. The advanced `/cleanup/scan/` page
