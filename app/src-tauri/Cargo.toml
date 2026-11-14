@@ -1,6 +1,6 @@
 [package]
 name = "os-lab-app"
-version = "0.3.6"
+version = "0.3.7"
 description = "os-lab desktop app: the dashboard in a native window, backed by the os-lab console"
 authors = ["Keyvan Arasteh"]
 license = "Apache-2.0"
