@@ -65,7 +65,7 @@ export function MonitorCard({
     };
   }
 
-  if (!monitor) return null;
+  if (!monitor || !Array.isArray(monitor.volumes)) return null;
   const configuredMounts = new Set(monitor.volumes.map((entry) => entry.mountPoint).filter(Boolean));
   const addable = (volumes ?? []).filter((volume) => !configuredMounts.has(volume.mountPoint));
 

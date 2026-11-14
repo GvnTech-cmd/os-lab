@@ -12,6 +12,8 @@ import { bytes, itemStatusLabel, riskLabel, riskTone, sortEntries, totalsByRisk,
 import { CleanupExtraTools } from "./extra-tools";
 import { CrossPlatformLeftovers } from "./cross-leftovers";
 import { MonitorBanner, MonitorCard } from "./monitor-card";
+import { BookmarkToggle, BookmarksSection } from "./bookmarks-card";
+import type { BookmarksPayload } from "../../lib/api";
 
 export type CleanupPageId = "" | "scan" | "results" | "leftovers" | "history";
 export const CLEANUP_PAGES: CleanupPageId[] = ["", "scan", "results", "leftovers", "history"];
@@ -209,6 +211,7 @@ export default function CleanupPage({ page: initialPage = "" }: { page?: Cleanup
   const [active, setActive] = useState<CleanupJob | null>(null);
   const [history, setHistory] = useState<CleanupHistory | null>(null);
   const [permissions, setPermissions] = useState<CleanupPermissions | null>(null);
+  const [bookmarks, setBookmarks] = useState<BookmarksPayload | null>(null);
   const [loading, setLoading] = useState(!PUBLIC);
   const [loadError, setLoadError] = useState("");
   const [actionError, setActionError] = useState("");
@@ -216,6 +219,7 @@ export default function CleanupPage({ page: initialPage = "" }: { page?: Cleanup
   const [mode, setMode] = useState<"trash" | "delete">("trash");
   const [preset, setPreset] = useState<"recommended" | "extended">("recommended");
   const [confirm, setConfirm] = useState(false);
+  const [bookmarkConfirm, setBookmarkConfirm] = useState(false);
   const [order, setOrder] = useState<SortOrder>("size");
   const [now, setNow] = useState(Date.now() / 1000);
   const coreLoaded = useRef(false);
@@ -268,8 +272,23 @@ export default function CleanupPage({ page: initialPage = "" }: { page?: Cleanup
     void api.cleanupPermissions()
       .then((grants) => { if (alive) setPermissions(grants); })
       .catch(() => { if (alive) setPermissions(null); });
+    void api.cleanupBookmarks()
+      .then((payload) => { if (alive) setBookmarks(payload); })
+      .catch(() => { if (alive) setBookmarks(null); });
     return () => { alive = false; };
   }, []);
+
+  const reloadBookmarks = () => { void api.cleanupBookmarks().then(setBookmarks).catch(() => {}); };
+  const bookmarkedIds = new Set((bookmarks?.bookmarks ?? []).map((item) => item.entryId));
+
+  /** CLNP-18: bookmark or unbookmark one catalog entry from any row. */
+  function toggleBookmark(entryId: string) {
+    if (bookmarkedIds.has(entryId)) {
+      void api.cleanupBookmarkRemove(entryId).then(reloadBookmarks).catch((error) => setActionError(errorText(error)));
+    } else {
+      void api.cleanupBookmarkAdd(entryId).then(reloadBookmarks).catch((error) => setActionError(errorText(error)));
+    }
+  }
 
   // CLNP-07: live fetch per tab entry — jobs where results are shown, the
   // verified audit history on History. No idle polling; the job poller below
@@ -294,6 +313,7 @@ export default function CleanupPage({ page: initialPage = "" }: { page?: Cleanup
     if (pushUrl && next !== page) window.history.pushState({}, "", link(next ? `${next}/` : ""));
     setPage(next);
     setConfirm(false);
+    setBookmarkConfirm(false);
     window.scrollTo({ top: 0 });
   }
 
@@ -405,6 +425,12 @@ export default function CleanupPage({ page: initialPage = "" }: { page?: Cleanup
           </Section>}
           {page === "" && status?.state === "ready" && <PermissionsCard permissions={permissions} />}
           {page === "" && !PUBLIC && <MonitorCard monitor={monitor} reload={monitorReload} />}
+          {page === "" && !PUBLIC && <BookmarksSection bookmarks={bookmarks} reload={reloadBookmarks}
+            onQuickClean={(job) => { setActive(job); setJobs((old) => [job, ...old.filter((row) => row.id !== job.id)]); setBookmarkConfirm(true); }} />}
+          {page === "" && !PUBLIC && bookmarkConfirm && active && isPlan(active) &&
+            <ConfirmDialog plan={active.result} planUsed={planUsed} now={now} busy={!!busy} error={actionError}
+              onRun={() => void start(() => api.cleanupClean(active.result.planId))}
+              onClose={() => { setBookmarkConfirm(false); }} />}
           {page === "" && <>
             <Section title="Quick cleanup" description="Scan all available categories. Nothing is removed during a scan.">
               <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-(--iux-muted-foreground)">{status?.state === "ready" ? "Ready to scan" : "Scan unavailable until setup is complete"} · {entries.length} categories available</p><button type="button" className="iux-btn" data-variant="primary" disabled={!canWork || !entries.length} onClick={() => void start(() => api.cleanupScan(entries.map((item) => item.id)))}>{latestScan ? "Scan again" : "Scan now"}</button></div>
@@ -462,6 +488,7 @@ export default function CleanupPage({ page: initialPage = "" }: { page?: Cleanup
                       <CategoryIcon category={item.category} />
                       <span className="min-w-0 flex-1 truncate font-medium">{item.name}</span>
                       {item.needsPrivilege && <PrivilegeMarker />}
+                      {!PUBLIC && <BookmarkToggle entryId={item.id} bookmarked={bookmarkedIds.has(item.id)} busy={busy} onToggle={toggleBookmark} />}
                       <InfoPopover><EntryDetails entry={item} /></InfoPopover>
                     </span>
                     <span className="flex items-center gap-2">
@@ -535,6 +562,7 @@ export default function CleanupPage({ page: initialPage = "" }: { page?: Cleanup
                       <div className="flex items-center gap-2">
                         <span className="min-w-0 flex-1 truncate font-medium">{item.name}</span>
                         <span dir="ltr" className="tabular-nums">{bytes(item.sizeBytes)}</span>
+                        {!PUBLIC && <BookmarkToggle entryId={item.id} bookmarked={bookmarkedIds.has(item.id)} onToggle={toggleBookmark} />}
                         <InfoPopover><ScanDetails item={item} /></InfoPopover>
                       </div>
                       <SizeBar value={item.sizeBytes} max={maxSize} />
@@ -603,7 +631,10 @@ export default function CleanupPage({ page: initialPage = "" }: { page?: Cleanup
                 <details className="mt-1">
                   <summary className="cursor-pointer text-xs text-(--iux-muted-foreground)">Items</summary>
                   <div className="iux-scroll mt-1 max-h-56 overflow-auto">
-                    {entry.result.results.map((item, index) => <p key={index} className="break-all text-xs"><span translate="no">{item.path}</span> · {item.status} · {bytes(item.bytes)}</p>)}
+                    {entry.result.results.map((item, index) => <div key={index} className="flex items-start gap-1 py-0.5 text-xs">
+                      {!PUBLIC && <BookmarkToggle entryId={item.entryId} bookmarked={bookmarkedIds.has(item.entryId)} onToggle={toggleBookmark} title="Bookmark this item" />}
+                      <p className="min-w-0 flex-1 break-all"><span translate="no">{item.path}</span> · {item.status} · {bytes(item.bytes)}</p>
+                    </div>)}
                   </div>
                 </details>
               </div>)}

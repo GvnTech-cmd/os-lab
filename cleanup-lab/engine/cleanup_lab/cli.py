@@ -14,9 +14,27 @@ import sys
 
 from .catalog import CatalogError, report as catalog_report
 from .readiness import probe, repo_root
-from . import history, monitor, volumes
+from . import history, monitor, paths, volumes
 
 USAGE_EXIT = 2
+
+
+def _bookmarks_report():
+    """CLNP-19: the bookmark list joined with the catalog's names and risks."""
+    from . import bookmarks
+
+    loaded = bookmarks.load()
+    try:
+        entries = {entry["id"]: entry for entry in catalog_report(repo_root())["entries"]}
+    except CatalogError:
+        entries = {}
+    resolved = []
+    for item in loaded["bookmarks"]:
+        entry = entries.get(item["entryId"])
+        resolved.append(dict(item, entry=None if entry is None else {
+            "name": entry["name"], "risk": entry["risk"],
+        }))
+    return {"platform": paths.platform_id(), "bookmarks": resolved, "error": loaded["error"]}
 
 
 def _colour(text, code, stream):
@@ -213,12 +231,38 @@ def _monitor_lines(report, stream):
     return lines
 
 
+def _bookmarks_lines(report, stream):
+    """CLNP-19: the labctl bookmarks list (read-only, with resolved names)."""
+    items = report["bookmarks"]
+    lines = ["Cleanup Lab bookmarks · {0} · {1} {2}".format(
+        report.get("platform", "-"), len(items), "bookmark" if len(items) == 1 else "bookmarks")]
+    if report.get("error"):
+        lines.append("  {0}".format(_safe(report["error"])))
+    for item in items:
+        entry = item.get("entry") or {}
+        name = entry.get("name") or item["entryId"]
+        risk = entry.get("risk") or "?"
+        flags = []
+        if item["quickClean"]:
+            flags.append("quick")
+        if item["autoCleanHook"]["enabled"]:
+            flags.append("hook")
+        if item["sizeAlert"]["enabled"]:
+            flags.append("alert")
+        lines.append("  {0}. {1:<26} {2:<11} {3}".format(
+            item["priority"], _safe(name), risk, " ".join(flags) or "-"))
+        if item["autoCleanHook"]["lastRunAt"]:
+            lines.append("      last automated run {0}".format(
+                time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(item["autoCleanHook"]["lastRunAt"]))))
+    return lines
+
+
 def build_parser():
     parser = argparse.ArgumentParser(
         prog="labctl cleanup",
         description="Cleanup Lab: inspect readiness (read-only) and, from CLN-19, scan/plan/clean.",
     )
-    sub = parser.add_subparsers(dest="command", metavar="status|doctor|catalog|history|volumes|monitor")
+    sub = parser.add_subparsers(dest="command", metavar="status|doctor|catalog|history|volumes|monitor|bookmarks")
     for name, text in (
         ("status", "one-screen readiness summary"),
         ("doctor", "every check, path and hint"),
@@ -226,6 +270,7 @@ def build_parser():
         ("history", "recent cleanup runs from the private audit store"),
         ("volumes", "local volumes, capacity and disk-pressure warnings"),
         ("monitor", "the optional background monitor's state and events"),
+        ("bookmarks", "bookmarked cleanup items with their flags"),
     ):
         command = sub.add_parser(name, help=text, description=text)
         command.add_argument("--json", action="store_true", help="print the probe as JSON")
@@ -245,7 +290,8 @@ def main(argv=None, stream=None):
         report = (catalog_report(repo_root()) if args.command == "catalog" else
                   history.read(verify=args.verify) if args.command == "history" else
                   volumes.inventory() if args.command == "volumes" else
-                  monitor.status() if args.command == "monitor" else probe())
+                  monitor.status() if args.command == "monitor" else
+                  _bookmarks_report() if args.command == "bookmarks" else probe())
     except CatalogError as exc:
         sys.stderr.write("cleanup catalog: {0}\n".format(exc))
         return 1
@@ -271,12 +317,15 @@ def main(argv=None, stream=None):
             ],
             "volumes": _volumes_lines,
             "monitor": _monitor_lines,
+            "bookmarks": _bookmarks_lines,
         }[args.command](report, stream)
         stream.write("\n".join(lines) + "\n")
     if args.command == "volumes":
         return 1 if report.get("error") else 0
     if args.command == "monitor":
         return 1 if report.get("configError") else 0
+    if args.command == "bookmarks":
+        return 1 if report.get("error") else 0
     if args.command in ("catalog", "history"):
         return 0
     return 0 if report["state"] == "ready" else 1

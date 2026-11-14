@@ -193,8 +193,11 @@ def _clean_state(state):
             cleaned.append({
                 "at": event["at"], "kind": event["kind"],
                 "volume": event.get("volume") if isinstance(event.get("volume"), str) else None,
+                # CLNP-17: bookmark-size events carry the entry id instead of a volume.
+                "bookmark": event.get("bookmark") if isinstance(event.get("bookmark"), str) else None,
                 "freeBytes": event.get("freeBytes") if isinstance(event.get("freeBytes"), int) else None,
                 "thresholdBytes": event.get("thresholdBytes") if isinstance(event.get("thresholdBytes"), int) else None,
+                "sizeBytes": event.get("sizeBytes") if isinstance(event.get("sizeBytes"), int) else None,
                 "message": event.get("message") if isinstance(event.get("message"), str) else "",
             })
     return {
@@ -300,23 +303,43 @@ def active_warnings(state):
 
 
 def run_evaluation(*, env=None, platform=None, inventory=None, clock=time.time):
-    """Load, probe volumes, evaluate, persist — what one runner tick does."""
+    """Load, probe volumes, evaluate, persist — what one runner tick does.
+
+    Returns ``newEvents``: only the events this tick produced, so the console
+    runner can react to a fresh crossing (the auto-clean hook) instead of the
+    whole history.
+    """
     loaded = load(env, platform)
     if not loaded["config"]["enabled"]:
-        return dict(loaded, evaluated=False)
+        return dict(loaded, evaluated=False, newEvents=[])
     volumes = (inventory or _inventory)()["volumes"]
+    before = len(loaded["state"]["events"])
     state = evaluate(loaded["config"], loaded["state"], volumes, clock())
     _write_atomic(_store_path(env, platform), {
         "version": VERSION, "config": loaded["config"], "state": state,
     })
     return {"config": loaded["config"], "state": state,
-            "configError": loaded["configError"], "evaluated": True}
+            "configError": loaded["configError"], "evaluated": True,
+            "newEvents": state["events"][before:]}
 
 
 def _inventory():
     from . import volumes
 
     return volumes.inventory()
+
+
+def append_events(events, *, env=None, platform=None):
+    """Persist foreign events (e.g. CLNP-17's bookmark-size alerts) into the store."""
+    if not events:
+        return
+    loaded = load(env, platform)
+    state = loaded["state"]
+    for event in events:
+        state["events"] = _append_event(state["events"], event)
+    _write_atomic(_store_path(env, platform), {
+        "version": VERSION, "config": loaded["config"], "state": state,
+    })
 
 
 def status(*, env=None, platform=None, inventory=None, clock=time.time):
@@ -357,6 +380,6 @@ def status(*, env=None, platform=None, inventory=None, clock=time.time):
 
 
 __all__ = [
-    "MonitorConfigError", "active_warnings", "default_config", "evaluate",
+    "MonitorConfigError", "active_warnings", "append_events", "default_config", "evaluate",
     "load", "run_evaluation", "save_config", "status", "validate_config",
 ]

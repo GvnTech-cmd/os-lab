@@ -265,6 +265,19 @@ export interface CleanupVolumes {
   volumes: CleanupVolume[];
   homeVolume: string | null; warnings: string[]; error: string | null;
 }
+/** CLNP-14: one bookmark — a catalog-entry reference with its behaviours. */
+export interface BookmarkRecord {
+  entryId: string; createdAt: number; priority: number; quickClean: boolean;
+  autoCleanHook: { enabled: boolean; lastRunAt: number | null };
+  sizeAlert: { enabled: boolean; thresholdBytes: number; armed: boolean; lastAlertAt: number | null };
+  entry: { name: string; risk: string; category: string; needsPrivilege: boolean; paths: { template: string; path: string | null; reason: string }[] } | null;
+}
+export interface BookmarksPayload { bookmarks: BookmarkRecord[]; error: string | null }
+export interface BookmarkChanges {
+  priority?: number; quickClean?: boolean;
+  autoCleanHook?: { enabled: boolean; lastRunAt?: number | null };
+  sizeAlert?: { enabled?: boolean; thresholdBytes?: number; armed?: boolean; lastAlertAt?: number | null };
+}
 
 export class ApiError extends Error {
   constructor(
@@ -338,6 +351,11 @@ export const api = {
   cleanupMonitorConfig: (config: CleanupMonitorConfig) => post<CleanupMonitorStatus>("/api/cleanup/monitor/config", config),
   cleanupMonitorEvaluate: () => post<CleanupMonitorStatus>("/api/cleanup/monitor/evaluate"),
   cleanupVolumes: () => call<CleanupVolumes>("/api/cleanup/volumes"),
+  cleanupBookmarks: () => call<BookmarksPayload>("/api/cleanup/bookmarks"),
+  cleanupBookmarkAdd: (entryId: string) => post<BookmarksPayload>("/api/cleanup/bookmarks", { entryId }),
+  cleanupBookmarkUpdate: (entryId: string, changes: BookmarkChanges) => post<BookmarksPayload>("/api/cleanup/bookmarks/update", { entryId, ...changes }),
+  cleanupBookmarkRemove: (entryId: string) => post<BookmarksPayload>("/api/cleanup/bookmarks/remove", { entryId }),
+  cleanupBookmarkQuickClean: () => post<{ job: CleanupJob; refusals: { entryId: string; reason: string }[] }>("/api/cleanup/bookmarks/quick-clean"),
   cleanupContainerPreview: (actionId: string) => post<CleanupContainerPreview>("/api/cleanup/containers/preview", { actionId }),
   cleanupContainerPrune: (previewId: string) => post<CleanupAuxJob<CleanupContainerResult>>("/api/cleanup/containers/prune", { previewId }),
   cleanupVMScan: () => post<CleanupAuxJob<CleanupVMInventory>>("/api/cleanup/vms/scan"),

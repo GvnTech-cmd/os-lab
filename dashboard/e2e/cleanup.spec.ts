@@ -12,6 +12,9 @@ test("quick cleanup dashboard: scan all, suggested plan, confirm, report and his
     if (route.request().method() === "POST") calls.push({ path, body });
     let data: unknown = {};
     if (path === "/api/cleanup/status") data = { state: "ready", reasons: [], requirements: [], capabilities: [] };
+    else if (path === "/api/cleanup/monitor") data = { enabled: false, running: false, intervalSeconds: 300, cooldownSeconds: 3600, volumes: [], state: { volumes: {}, events: [], lastEvaluationAt: null, lastError: null }, activeWarnings: [], configError: null, checkedAt: 1 };
+    else if (path === "/api/cleanup/volumes") data = { platform: "macos", threshold: 0.9, volumes: [], homeVolume: null, warnings: [], error: null };
+    else if (path === "/api/cleanup/bookmarks") data = { bookmarks: [], error: null };
     else if (path === "/api/cleanup/permissions") data = { platform: "macos", permissions: [] };
     else if (path === "/api/cleanup/catalog") data = { platform: "macos", entries: [{ id: "system.caches", name: "Caches", category: "system", risk: "low", hint: "Safe cache", impact: "", defaultSelected: true, needsPrivilege: false, paths: [{ template: "~/Caches", path: "/tmp/caches", reason: "" }] }, { id: "browser.private", name: "Private data", category: "browser", risk: "privacy", hint: "Sensitive", impact: "", defaultSelected: false, needsPrivilege: false, paths: [{ template: "~/Private", path: "/tmp/private", reason: "" }] }] };
     else if (path === "/api/cleanup/jobs") data = { jobs };
@@ -67,6 +70,9 @@ test("advanced scan sorts by size, reviews a plan and cleans typed", async ({ pa
     if (route.request().method() === "POST") calls.push({ path, body });
     let data: unknown = {};
     if (path === "/api/cleanup/status") data = { state: "ready", reasons: [], requirements: [], capabilities: [] };
+    else if (path === "/api/cleanup/monitor") data = { enabled: false, running: false, intervalSeconds: 300, cooldownSeconds: 3600, volumes: [], state: { volumes: {}, events: [], lastEvaluationAt: null, lastError: null }, activeWarnings: [], configError: null, checkedAt: 1 };
+    else if (path === "/api/cleanup/volumes") data = { platform: "macos", threshold: 0.9, volumes: [], homeVolume: null, warnings: [], error: null };
+    else if (path === "/api/cleanup/bookmarks") data = { bookmarks: [], error: null };
     else if (path === "/api/cleanup/permissions") data = { platform: "macos", permissions: [] };
     else if (path === "/api/cleanup/catalog") data = { platform: "macos", entries: [{ id: "system.caches", name: "Caches", category: "system", risk: "low", hint: "Safe cache", impact: "", defaultSelected: true, needsPrivilege: false, paths: [{ template: "~/Caches", path: "/tmp/caches", reason: "" }] }] };
     else if (path === "/api/cleanup/jobs") data = { jobs };
@@ -106,6 +112,9 @@ test("container pruning needs a preview and VM inventory stays report only", asy
     if (route.request().method() === "POST") posts.push({ path, body });
     let data: unknown = {};
     if (path === "/api/cleanup/status") data = { state: "ready", reasons: [], requirements: [], capabilities: [] };
+    else if (path === "/api/cleanup/monitor") data = { enabled: false, running: false, intervalSeconds: 300, cooldownSeconds: 3600, volumes: [], state: { volumes: {}, events: [], lastEvaluationAt: null, lastError: null }, activeWarnings: [], configError: null, checkedAt: 1 };
+    else if (path === "/api/cleanup/volumes") data = { platform: "macos", threshold: 0.9, volumes: [], homeVolume: null, warnings: [], error: null };
+    else if (path === "/api/cleanup/bookmarks") data = { bookmarks: [], error: null };
     else if (path === "/api/cleanup/permissions") data = { platform: "macos", permissions: [] };
     else if (path === "/api/cleanup/catalog") data = { platform: "linux", entries: [] };
     else if (path === "/api/cleanup/jobs") data = { jobs: [] };
@@ -144,6 +153,9 @@ test("Linux app leftovers show inventory uncertainty without a delete action", a
     if (route.request().method() === "POST") posts.push({ path, body });
     let data: unknown = {};
     if (path === "/api/cleanup/status") data = { state: "ready", platform: { id: "linux", label: "Linux", supported: true }, reasons: [], requirements: [], capabilities: [] };
+    else if (path === "/api/cleanup/monitor") data = { enabled: false, running: false, intervalSeconds: 300, cooldownSeconds: 3600, volumes: [], state: { volumes: {}, events: [], lastEvaluationAt: null, lastError: null }, activeWarnings: [], configError: null, checkedAt: 1 };
+    else if (path === "/api/cleanup/volumes") data = { platform: "macos", threshold: 0.9, volumes: [], homeVolume: null, warnings: [], error: null };
+    else if (path === "/api/cleanup/bookmarks") data = { bookmarks: [], error: null };
     else if (path === "/api/cleanup/permissions") data = { platform: "macos", permissions: [] };
     else if (path === "/api/cleanup/catalog") data = { platform: "linux", entries: [] };
     else if (path === "/api/cleanup/jobs") data = { jobs: [] };
