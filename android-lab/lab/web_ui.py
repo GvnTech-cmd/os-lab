@@ -190,7 +190,7 @@ class LabHttpHandler(BaseHTTPRequestHandler):
         if path.startswith("/api/app/update"):
             self._app_get(path)
             return
-        if path.startswith(("/api/host", "/api/labs", "/api/jobs", "/api/capabilities")):
+        if path.startswith(("/api/host", "/api/labs", "/api/jobs", "/api/capabilities", "/api/scope")):
             if not oslab:
                 self._json(501, {"error": "The console module (console/oslab.py) is not installed"})
                 return
@@ -331,6 +331,8 @@ class LabHttpHandler(BaseHTTPRequestHandler):
             self._json(200, {"host": host, "labs": oslab.lab_catalog(REPO_ROOT, host)["labs"]})
         elif path == "/api/capabilities":
             self._json(200, oslab.capability_catalog())
+        elif path == "/api/scope":
+            self._json(200, oslab.scope_status(REPO_ROOT))
         elif len(parts) == 4 and parts[:2] == ["api", "labs"] and parts[2] in oslab.LABS and parts[3] == "config":
             self._json(200, oslab.lab_config(REPO_ROOT, parts[2]))
         elif len(parts) == 4 and parts[:2] == ["api", "labs"] and parts[2] in oslab.LABS and parts[3] == "monitor":
@@ -339,6 +341,14 @@ class LabHttpHandler(BaseHTTPRequestHandler):
             self._json(200, oslab.ios_simulator(REPO_ROOT))
         elif len(parts) == 4 and parts[:2] == ["api", "labs"] and parts[2] == "ios" and parts[3] == "screenshot":
             self._send_bytes(200, oslab.ios_screenshot(), "image/png", cache="no-store")
+        elif len(parts) == 4 and parts[:2] == ["api", "labs"] and parts[2] == "macos" and parts[3] == "apps":
+            self._json(200, oslab.macos_windows())
+        elif len(parts) == 4 and parts[:2] == ["api", "labs"] and parts[2] == "macos" and parts[3] == "control":
+            self._json(200, oslab.macos_control_state())
+        elif len(parts) == 6 and parts[:4] == ["api", "labs", "macos", "apps"] and parts[5] == "screenshot":
+            self._send_bytes(200, oslab.macos_window_screenshot(parts[4]), "image/png", cache="no-store")
+        elif len(parts) == 6 and parts[:4] == ["api", "labs", "macos", "apps"] and parts[5] == "elements":
+            self._json(200, oslab.macos_window_elements(REPO_ROOT, parts[4]))
         elif path == "/api/jobs":
             self._json(200, {"jobs": JOBS.list()})
         elif len(parts) == 3 and parts[:2] == ["api", "jobs"]:
@@ -449,7 +459,13 @@ class LabHttpHandler(BaseHTTPRequestHandler):
 
     def _lab_post(self, path: str):
         parts = [p for p in path.split("/") if p]
-        if path == "/api/labs/plan":
+        if path == "/api/labs/macos/control":
+            data = self._read_json()
+            self._json(200, oslab.macos_control_arm(data.get("armed") is True))
+        elif path == "/api/labs/macos/click":
+            # Armed control mode only: a previewed click goes through /api/labs/plan + /api/labs/start.
+            self._json(200, oslab.macos_control_click(REPO_ROOT, self._read_json()))
+        elif path == "/api/labs/plan":
             request = self._read_json().get("request") or {}
             plan = oslab.plan(REPO_ROOT, request, cached_host())
             self._json(200, {"plan": plan, "token": SIGNER.sign({"request": request, "plan": plan} if request.get("lab") == "source" else request)})

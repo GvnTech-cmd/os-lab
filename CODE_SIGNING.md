@@ -1,11 +1,16 @@
 # Code signing policy
 
-os-lab desktop releases are built from this public repository. Windows installer signing through
-SignPath Foundation is planned; **the current Windows installers (0.3.0) are unsigned**. Check the
-Authenticode signature of a downloaded installer before relying on a claim that it is signed.
+os-lab desktop releases are built from this public repository. **The current Windows installers
+(0.3.6) are unsigned** — they carry verified updater signatures and per-release build provenance
+attestations instead. Verify a download with its `.sha256` file and
+`gh attestation verify <file> -R keyvanarasteh/os-lab`; check the Authenticode signature before
+relying on any claim that an installer is signed.
 
-Free code signing provided by [SignPath.io](https://signpath.io), certificate by
-[SignPath Foundation](https://signpath.org), if the project is accepted and a release is approved.
+Free code signing from [SignPath.io](https://signpath.io), certificate by
+[SignPath Foundation](https://signpath.org), was applied for; the Foundation declined the first
+application pending broader public visibility and invited a reapplication. The project will
+reapply once that evidence exists; until then, Windows installers publish unsigned after an
+explicit maintainer approval, with build attestations.
 
 ## Roles and approval
 

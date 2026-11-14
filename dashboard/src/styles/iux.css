@@ -357,3 +357,88 @@
   border-color: var(--iux-ring);
   box-shadow: 0 0 0 3px color-mix(in oklch, var(--iux-ring) 40%, transparent);
 }
+
+/* Modal dialog opened by an icon action (Advanced settings, Host tools, Providers). */
+.iux-modal {
+  position: relative;
+  width: min(44rem, calc(100vw - 2rem));
+  max-height: min(85vh, 56rem);
+  overflow-y: auto;
+  padding: 1.75rem;
+  border: 1px solid var(--iux-border);
+  border-radius: 1.25rem;
+  background: var(--iux-card);
+  color: var(--iux-foreground);
+  box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.55);
+  outline: none;
+}
+dialog.iux-modal {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+}
+dialog.iux-modal::backdrop {
+  background: rgba(10, 10, 12, 0.55);
+  backdrop-filter: blur(6px);
+}
+.iux-modal-x {
+  position: absolute;
+  top: 0.9rem;
+  right: 0.9rem;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--iux-border);
+  border-radius: 999px;
+  background: var(--iux-card);
+  color: var(--iux-muted-foreground);
+  cursor: pointer;
+  transition: transform 0.2s, border-color 0.2s, color 0.2s;
+}
+.iux-modal-x:hover {
+  transform: rotate(90deg);
+  border-color: #f36c21;
+  color: #f36c21;
+}
+.iux-modal-x:focus-visible {
+  outline: 3px solid #f36c21;
+  outline-offset: 3px;
+}
+.iux-modal-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-right: 2.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.iux-modal-head p {
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--iux-muted-foreground);
+}
+@media (pointer: coarse) {
+  .iux-modal-x {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+/* Right-side panel toggled from the lab header (iOS Simulator), like a docked inspector. */
+.iux-sidepanel {
+  animation: iux-sidepanel-in 0.25s ease both;
+}
+@keyframes iux-sidepanel-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .iux-sidepanel {
+    animation: none;
+  }
+}

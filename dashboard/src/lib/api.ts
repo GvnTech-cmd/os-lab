@@ -75,6 +75,9 @@ export interface LabRequest {
   disk?: string;
   device?: string;
   wslDistro?: string;
+  clickPid?: number;
+  clickX?: number;
+  clickY?: number;
 }
 export interface SetupDetails {
   dependencies: string[];
@@ -149,6 +152,40 @@ export interface IosSimulatorInfo {
   runtimes: string[];
   booted: IosSimulatorDevice[];
   configuredDevice: string | null;
+}
+export interface MacWindow {
+  windowId: number;
+  pid: number;
+  app: string;
+  title: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+export interface MacAppsInfo {
+  available: boolean;
+  reason: string | null;
+  screenRecording: boolean;
+  windows: MacWindow[];
+}
+export interface MacElement {
+  role: string;
+  label: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+export interface MacElementsInfo {
+  windowId: number;
+  app: string;
+  bounds: { x: number; y: number; width: number; height: number };
+  elements: MacElement[];
+}
+export interface MacControlState {
+  armed: boolean;
+  expiresInSec: number;
 }
 export interface Report {
   name: string;
@@ -393,6 +430,13 @@ export const api = {
   monitor: (lab: LabId) => call<LabMonitor>(`/api/labs/${lab}/monitor`),
   iosSimulator: () => call<IosSimulatorInfo>(`/api/labs/ios/simulator`),
   iosScreenshotUrl: "/api/labs/ios/screenshot",
+  macosApps: () => call<MacAppsInfo>("/api/labs/macos/apps"),
+  macosAppScreenshotUrl: (windowId: number) => `/api/labs/macos/apps/${windowId}/screenshot`,
+  macosElements: (windowId: number) => call<MacElementsInfo>(`/api/labs/macos/apps/${windowId}/elements`),
+  macosControl: () => call<MacControlState>("/api/labs/macos/control"),
+  macosControlArm: (armed: boolean) => post<MacControlState>("/api/labs/macos/control", { armed }),
+  macosClick: (pid: number, x: number, y: number) =>
+    post<{ ok: boolean; pid: number; x: number; y: number }>("/api/labs/macos/click", { pid, x, y }),
   plan: (request: LabRequest) => post<{ plan: LabPlan; token: string }>("/api/labs/plan", { request }),
   start: (request: LabRequest, token: string) => post<LabJob>("/api/labs/start", { request, token }),
   jobs: () => call<{ jobs: LabJob[] }>("/api/jobs"),

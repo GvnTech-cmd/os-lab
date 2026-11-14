@@ -15,7 +15,7 @@ The proposed extension and its tracked acceptance work are in the [UX guideline 
 
 - Derive setup actions from the current host report. Show **Install dependencies** only when a required prerequisite is missing and the lab exposes a `setup` action. The backend decides the `ready`, `needs-setup`, and `unavailable` states; do not infer readiness from the mere presence of an action.
 - Keep optional tooling separate. For example, a missing Appium installation can offer **Install Appium** without making an otherwise ready simulator appear blocked.
-- Preview lab actions before running them. A preview must state the command, effects, privileges, and downloads; execution starts only after confirmation.
+- Preview lab actions before running them. A preview must state the command, effects, privileges, and downloads; execution starts only after confirmation. The macOS app mirror follows this for every click; clicks skip the preview only while control mode is explicitly armed, and arming expires by itself after ten minutes.
 - Disable an action while its request is being submitted or a conflicting job is running. Put a failed request's error next to the action that failed.
 - Treat cancellation, log clearing, polling, and other follow-up requests the same way: show pending state, report failure beside the control or job, allow a safe retry, and trust the server for the final state. A failed cancellation must leave the running job and its output visible.
 - If no setup action exists, direct users to the relevant manual requirement or platform guidance instead of promising an unavailable install flow.

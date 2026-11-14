@@ -43,7 +43,9 @@ case "$ACTION" in
     if command -v idb_companion >/dev/null 2>&1; then
       say "idb companion already installed"
     else
-      brew install idb-companion
+      # Homebrew core dropped the formula; idb-companion lives in Meta's facebook/fb tap now.
+      # Auto-update is skipped so a stale tap cannot block the install.
+      HOMEBREW_NO_AUTO_UPDATE=1 brew install facebook/fb/idb-companion
       hash -r
       command -v idb_companion >/dev/null 2>&1 || die "idb companion is still missing after the Homebrew install"
     fi

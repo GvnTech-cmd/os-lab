@@ -129,8 +129,19 @@ test("a lab that is missing requirements hides its runtime sections until they a
   await expect(page.getByText("Start, stop and the other actions appear once the missing dependencies are installed.")).toHaveCount(0);
   await expect(page.getByText("Live monitor")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Endpoints" })).not.toBeVisible();
-  await page.getByText("Advanced settings").click();
+  // Advanced settings opens from the header icon as a modal and closes on Escape.
+  await page.getByRole("button", { name: "Advanced settings" }).click();
   await expect(page.getByRole("heading", { name: "Endpoints" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("heading", { name: "Endpoints" })).toHaveCount(0);
+  // The simulator mirror lives in a side panel behind its own header icon.
+  await page.route("**/api/labs/ios/simulator", (route) => route.fulfill({ json: {
+    available: true, configuredDevice: "", runtimes: ["iOS 27.2"],
+    devices: [{ udid: "UDID-1", name: "iPhone 17", runtime: "iOS 27.2", state: "Shutdown" }], booted: []
+  } }));
+  await expect(page.getByRole("button", { name: "Attach simulator" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Simulator", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Attach simulator" })).toBeVisible();
 });
 
 test("setup is offered only when a required dependency is missing", async ({ page }) => {
@@ -149,6 +160,18 @@ test("a missing required dependency offers setup", async ({ page }) => {
   const missing = { id: "runtime", label: "Container runtime", found: false, required: true, hint: "Install it" };
   await mockApi(page, "macos", { ios: { state: "needs-setup", actions: [setup], requirements: [missing] } });
   await page.goto("/labs/ios/");
+  await expect(page.getByRole("button", { name: "Install dependencies" })).toBeVisible();
+});
+
+test("dependencies that are already found stay out of the card", async ({ page }) => {
+  const setup = { id: "setup", label: "Setup", description: "Install prerequisites", privileged: false };
+  const found = { id: "runtime", label: "Container runtime", found: true, required: true, hint: "" };
+  const missing = { id: "python", label: "Python 3.11+", found: false, required: true, hint: "Install it" };
+  await mockApi(page, "macos", { ios: { state: "needs-setup", actions: [setup], requirements: [found, missing] } });
+  await page.goto("/labs/ios/");
+  await expect(page.getByText("Container runtime")).toHaveCount(0);
+  await expect(page.getByText("Python 3.11+")).toBeVisible();
+  await expect(page.getByText("1 of 2 found")).toBeVisible();
   await expect(page.getByRole("button", { name: "Install dependencies" })).toBeVisible();
 });
 
@@ -219,7 +242,9 @@ test("Source readiness keeps optional browser tooling separate from core setup",
   await mockApi(page, "linux");
   await page.goto("/labs/source/");
   await expect(page.getByRole("main").getByRole("heading", { name: "Source Lab", exact: true })).toBeVisible();
-  await expect(page.getByText("Python 3.11+", { exact: true })).toBeVisible();
+  // Found requirements stay out of the card: the summary badge reports them, Playwright is still listed.
+  await expect(page.getByText("Python 3.11+", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("1 of 2 found")).toBeVisible();
   await expect(page.locator("li").filter({ hasText: "Playwright" }).getByText("optional", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Install dependencies" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Doctor", exact: true })).toBeVisible();
@@ -392,4 +417,56 @@ test("shared CopyButton reports clipboard failure without a success icon", async
   await button.click();
   await expect(page.getByRole("status").filter({ hasText: "Clipboard unavailable" })).toBeVisible();
   await expect(page.getByText("Copied", { exact: true })).toHaveCount(0);
+});
+
+const MIRROR_PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
+
+test("the app mirror previews mirror clicks and runs them directly while armed", async ({ page }) => {
+  const action = { id: "macos-click", label: "Click in app", description: "Preview macos-click", privileged: false };
+  await mockApi(page, "macos", { macos: { state: "ready", provider: "native-macos", actions: [action] } });
+  let armed = false;
+  let clicks = 0;
+  await page.route("**/api/labs/macos/apps", (route) => route.fulfill({ json: {
+    available: true, reason: null, screenRecording: true,
+    windows: [{ windowId: 42, pid: 100, app: "Finder", title: "Demo", x: 0, y: 0, width: 800, height: 600 }]
+  } }));
+  await page.route("**/api/labs/macos/apps/42/screenshot", (route) => route.fulfill({ body: MIRROR_PNG, headers: { "Content-Type": "image/png" } }));
+  await page.route("**/api/labs/macos/apps/42/elements", (route) => route.fulfill({ json: {
+    windowId: 42, app: "Finder", bounds: { x: 0, y: 0, width: 800, height: 600 },
+    elements: [{ role: "Button", label: "OK", x: 100, y: 100, w: 80, h: 24 }]
+  } }));
+  await page.route("**/api/labs/macos/control", (route) => {
+    if (route.request().method() === "POST") {
+      armed = (route.request().postDataJSON() as { armed?: boolean }).armed === true;
+    }
+    return route.fulfill({ json: { armed, expiresInSec: armed ? 600 : 0 } });
+  });
+  await page.route("**/api/labs/macos/click", (route) => {
+    clicks++;
+    return route.fulfill({ json: { ok: true, pid: 100, x: 140, y: 112 } });
+  });
+  await page.route("**/api/labs/plan", (route) => route.fulfill({ json: {
+    plan: { lab: "macos", action: "macos-click", provider: "native-macos", workspace: "", program: "bash",
+            args: [], effects: ["One click on this Mac."], timeoutSec: 120, privileged: false, runnable: true,
+            manualCommand: null, setup: null, display: "bash mac/macos-app.sh click 100 140 112" },
+    token: "test-token"
+  } }));
+
+  await page.goto("/labs/macos/");
+  await expect(page.getByLabel("Window")).toBeVisible();
+  await page.getByRole("button", { name: "Elements" }).click();
+  const hotspot = page.getByRole("button", { name: "1: OK" });
+  await expect(hotspot).toBeVisible();
+
+  // Without control mode the hotspot only previews the click action.
+  await hotspot.click();
+  await expect(page.getByRole("heading", { name: /Click in app/ })).toBeVisible();
+  await expect.poll(() => clicks).toBe(0);
+  await expect(page.getByText("Clicks on the mirror preview a macos-click action first.")).toBeVisible();
+
+  // Armed, the same click lands immediately and never opens a preview.
+  await page.getByRole("button", { name: "Arm control" }).click();
+  await expect(page.getByText("Armed — mirror clicks run immediately on this Mac.")).toBeVisible();
+  await hotspot.click();
+  await expect.poll(() => clicks).toBe(1);
 });

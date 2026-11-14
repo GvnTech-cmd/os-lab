@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "name": "os-lab local lab",
+  "authorization": "Replace this: who owns these targets, or who gave you written permission to test them.",
+  "expires": "2027-01-31",
+  "hosts": [
+    "127.0.0.0/8",
+    "::1",
+    "localhost",
+    "172.16.0.0/12",
+    "*.lab.internal"
+  ],
+  "packages": [
+    "com.testlab.vulnerable",
+    "com.testlab.*"
+  ],
+  "devices": [
+    "emulator-*",
+    "127.0.0.1:5555"
+  ],
+  "paths": [
+    "android-lab/lab/artifacts",
+    "android-lab/lab/apks"
+  ]
+}

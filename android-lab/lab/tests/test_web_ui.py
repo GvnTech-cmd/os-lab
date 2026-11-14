@@ -124,6 +124,18 @@ def test_health_capabilities_are_served_by_console(web_server):
     assert any(item.get("lab") == "ios" for group in data["groups"] for item in group["items"])
 
 
+def test_scope_endpoint_reports_the_declared_scope(web_server, tmp_path, monkeypatch):
+    path = tmp_path / "scope.json"
+    monkeypatch.setenv("OSLAB_SCOPE_FILE", str(path))
+    data = json.loads(urllib.request.urlopen(f"{web_server}/api/scope").read().decode("utf-8"))
+    assert data["valid"] is False and data["declared"] is False and "No lab scope is declared" in data["error"]
+    path.write_text(json.dumps({"version": 1, "name": "web test lab", "authorization": "Owned fixtures",
+                                "hosts": ["127.0.0.1"], "devices": ["emulator-*"]}), encoding="utf-8")
+    data = json.loads(urllib.request.urlopen(f"{web_server}/api/scope").read().decode("utf-8"))
+    assert data["valid"] is True and data["name"] == "web test lab"
+    assert data["counts"] == {"hosts": 1, "packages": 0, "devices": 1, "paths": 0}
+
+
 def test_lab_start_requires_a_previewed_plan(web_server):
     status, data = _post(f"{web_server}/api/labs/start",
                          {"request": {"lab": "android", "action": "status"}, "token": "forged"},

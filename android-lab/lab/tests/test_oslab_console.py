@@ -36,6 +36,17 @@ def test_linux_kvm_host_runs_container_labs_but_not_native_mac():
     }
 
 
+def test_scope_status_comes_from_the_scope_guard(tmp_path, monkeypatch):
+    monkeypatch.delenv("OSLAB_SCOPE_FILE", raising=False)
+    status = oslab.scope_status(str(tmp_path))
+    assert status["valid"] is False and status["source"] == str(tmp_path / "scope.json")
+    (tmp_path / "scope.json").write_text(
+        '{"version": 1, "name": "console lab", "authorization": "Owned fixtures", "packages": ["com.testlab.*"]}',
+        encoding="utf-8")
+    status = oslab.scope_status(str(tmp_path))
+    assert status["valid"] is True and status["name"] == "console lab" and status["counts"]["packages"] == 1
+
+
 def test_missing_kvm_needs_setup_except_android_static():
     s = states(make_host(kvm=False))
     assert s["android"] == "ready"

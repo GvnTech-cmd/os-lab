@@ -27,7 +27,9 @@ on:
 
 permissions:
   actions: read
+  attestations: write
   contents: write
+  id-token: write
 
 jobs:
   windows:
@@ -113,6 +115,17 @@ jobs:
         with:
           name: os-lab-windows
           path: ship/*
+
+      # Build provenance for the shipped installers: verifiable without any code-signing
+      # certificate (gh attestation verify <file> -R keyvanarasteh/os-lab). Pull request runs
+      # have no OIDC token, so only tag and manual builds attest.
+      - name: Attest the shipped installers
+        if: github.event_name != 'pull_request'
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            ship/*.exe
+            ship/*.msi
 
       - name: Install, launch and uninstall MSI
         shell: pwsh

@@ -11,12 +11,14 @@ A standard-library port of the OS Lab desktop runtime in qLar PR #174
 - ``JobService``       runs a confirmed plan in the background with captured, secret-redacted
                        output, a timeout and cancellation.
 - ``monitor()``        container state and resource use for a lab.
+- ``scope_status()``   the declared lab scope; scope_guard.py refuses targets outside it.
 
 The web console in android-lab/lab/web_ui.py exposes these over a localhost JSON API.
 """
 
 from __future__ import annotations
 
+import ctypes
 import hashlib
 import hmac
 import json
@@ -75,7 +77,7 @@ LABS = {
         "dir": "ios-lab/mac",
         "labctl": None,
         "containers": [],
-        "summary": "Manage this Mac's Xcode simulators and optional Appium/XCUITest automation.",
+        "summary": "Automate this Mac's applications with Appium and the mac2 driver.",
     },
 }
 
@@ -115,8 +117,13 @@ def tools_for_host(os_name: str) -> list[tuple[str, str]]:
 
 LABCTL_ACTIONS = ["status", "doctor", "urls", "logs", "monitor", "start", "stop", "restart",
                   "profile", "resize", "setup", "backup", "service-install", "service-uninstall"]
+# The iOS Lab's native path: simulator lifecycle plus optional Appium/idb device automation.
 MAC_ACTIONS = ["status", "doctor", "setup", "start", "stop", "appium-install", "appium-start", "appium-stop",
                "idb-install", "idb-start", "idb-stop", "xcuitest-smoke"]
+# The macOS Lab automates installed macOS applications through Appium mac2 — no simulator.
+# macos-click drives the app mirror panel (never rendered as a plain button).
+MACOS_APP_ACTIONS = ["status", "doctor", "setup", "appium-install", "appium-start", "appium-stop", "macos-smoke",
+                     "macos-click"]
 
 ACTION_INFO = {
     "csv-merge": ("Join catalogs", "Join operator catalogs into private storage."),
@@ -138,16 +145,18 @@ ACTION_INFO = {
     "backup": ("Backup", "Write a guest backup archive into the lab's backups/ folder."),
     "service-install": ("Install boot service", "Start this lab automatically at boot (systemd)."),
     "service-uninstall": ("Remove boot service", "Remove the systemd boot unit."),
-    "appium-install": ("Install Appium", "Install Node (Homebrew if needed), Appium and the XCUITest driver for this user only. No administrator rights."),
-    "appium-start": ("Start Appium", "Start the Appium server with XCUITest."),
+    "appium-install": ("Install Appium", "Install Node (Homebrew if needed), Appium and the XCUITest/mac2 drivers for this user only. No administrator rights."),
+    "appium-start": ("Start Appium", "Start the Appium server for the installed automation drivers."),
     "appium-stop": ("Stop Appium", "Stop the Appium server."),
     "idb-install": ("Install idb", "Install idb companion (Homebrew) and the idb client for this user only. No administrator rights."),
     "idb-start": ("Start idb", "Start an idb companion for the booted simulator."),
     "idb-stop": ("Stop idb", "Stop the idb companion."),
     "xcuitest-smoke": ("XCUITest smoke test", "Run one real XCUITest session through Appium and WebDriverAgent on the booted simulator."),
+    "macos-smoke": ("macOS app smoke test", "Run one real Appium mac2 session that activates Finder on this Mac."),
+    "macos-click": ("Click in app", "Bring the mirrored app to the front and click once at the chosen point."),
 }
 
-# On the native Mac path "start" and "stop" drive the iOS Simulator, not a container stack.
+# On the iOS Lab's native path "start" and "stop" drive the iOS Simulator, not a container stack.
 NATIVE_SIMULATOR_INFO = {
     "start": ("Start iOS Simulator", "Boot an installed iOS Simulator device on this Mac."),
     "stop": ("Stop iOS Simulator", "Shut every booted iOS Simulator down."),
@@ -360,6 +369,220 @@ def ios_screenshot() -> bytes:
             pass
 
 
+# ── macOS app mirror ─────────────────────────────────────────────────────────
+# Read-only host inspection for the app mirror panel: the window list comes from CoreGraphics
+# through ctypes (the osascript ObjC bridge segfaults on current macOS), a window's pixels come
+# from `screencapture -l` and its accessibility tree from System Events. Control mode posts real
+# clicks through the same macos-app.sh click action the previewed flow uses.
+
+_MACOS_CONTROL = {"armed": False, "armedAt": 0.0}
+_MACOS_CONTROL_LOCK = threading.Lock()
+_MACOS_CONTROL_TIMEOUT = 600  # control mode disarms itself after ten idle minutes
+
+
+class _MacosWindows:
+    """Minimal ctypes bindings for the CG window list. Listing needs no permission; window
+    titles are only populated when the console holds Screen Recording."""
+
+    UTF8 = 0x08000100
+
+    def __init__(self) -> None:
+        self.cg = ctypes.CDLL("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics")
+        self.cf = ctypes.CDLL("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation")
+        cg, cf = self.cg, self.cf
+        cg.CGWindowListCopyWindowInfo.restype = ctypes.c_void_p
+        cg.CGWindowListCopyWindowInfo.argtypes = [ctypes.c_uint32, ctypes.c_int32]
+        cf.CFArrayGetCount.restype = ctypes.c_long
+        cf.CFArrayGetCount.argtypes = [ctypes.c_void_p]
+        cf.CFArrayGetValueAtIndex.restype = ctypes.c_void_p
+        cf.CFArrayGetValueAtIndex.argtypes = [ctypes.c_void_p, ctypes.c_long]
+        cf.CFDictionaryGetValue.restype = ctypes.c_void_p
+        cf.CFDictionaryGetValue.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        cf.CFStringCreateWithCString.restype = ctypes.c_void_p
+        cf.CFStringCreateWithCString.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_uint32]
+        cf.CFStringGetCString.restype = ctypes.c_bool
+        cf.CFStringGetCString.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_long, ctypes.c_uint32]
+        cf.CFNumberGetValue.restype = ctypes.c_bool
+        cf.CFNumberGetValue.argtypes = [ctypes.c_void_p, ctypes.c_long, ctypes.POINTER(ctypes.c_int64)]
+        cf.CFGetTypeID.restype = ctypes.c_ulong
+        cf.CFGetTypeID.argtypes = [ctypes.c_void_p]
+        cf.CFStringGetTypeID.restype = ctypes.c_ulong
+        cf.CFNumberGetTypeID.restype = ctypes.c_ulong
+
+    def _cfstr(self, text: str) -> int:
+        return self.cf.CFStringCreateWithCString(None, text.encode(), self.UTF8)
+
+    def _string(self, ref: int) -> str:
+        buf = ctypes.create_string_buffer(1024)
+        return buf.value.decode() if ref and self.cf.CFStringGetCString(ref, buf, 1024, self.UTF8) else ""
+
+    def _number(self, ref: int) -> int:
+        value = ctypes.c_int64()
+        return value.value if ref and self.cf.CFNumberGetValue(ref, 4, ctypes.byref(value)) else 0  # 4 = SInt64
+
+    def value(self, dictionary: int, key: str):
+        ref = self.cf.CFDictionaryGetValue(dictionary, self._cfstr(key))
+        if not ref:
+            return None
+        return self._string(ref) if self.cf.CFGetTypeID(ref) == self.cf.CFStringGetTypeID() else self._number(ref)
+
+    def windows(self) -> list[dict]:
+        arr = self.cg.CGWindowListCopyWindowInfo(1, 0)  # on-screen only
+        out = []
+        for i in range(self.cf.CFArrayGetCount(arr)):
+            d = self.cf.CFArrayGetValueAtIndex(arr, i)
+            if self.value(d, "kCGWindowLayer") != 0:
+                continue
+            owner = self.value(d, "kCGWindowOwnerName") or ""
+            width = self.value(self.cf.CFDictionaryGetValue(d, self._cfstr("kCGWindowBounds")), "Width")
+            height = self.value(self.cf.CFDictionaryGetValue(d, self._cfstr("kCGWindowBounds")), "Height")
+            if not owner or not width or not height or width < 40 or height < 40:
+                continue  # desktop-stage and helper windows are not app windows
+            out.append({"windowId": self.value(d, "kCGWindowNumber"), "pid": self.value(d, "kCGWindowOwnerPID"),
+                        "app": owner, "title": self.value(d, "kCGWindowName") or "",
+                        "x": self.value(self.cf.CFDictionaryGetValue(d, self._cfstr("kCGWindowBounds")), "X"),
+                        "y": self.value(self.cf.CFDictionaryGetValue(d, self._cfstr("kCGWindowBounds")), "Y"),
+                        "width": width, "height": height})
+        return out
+
+
+_MACOS_CG: _MacosWindows | None = None
+
+
+def _macos_cg() -> _MacosWindows:
+    global _MACOS_CG
+    if _MACOS_CG is None:
+        _MACOS_CG = _MacosWindows()
+    return _MACOS_CG
+
+
+def macos_windows() -> dict:
+    """Visible ordinary windows for the app mirror panel. Listing needs no permission; the
+    screenRecording flag is a hint: titles only appear when the console holds Screen Recording."""
+    if host_os() != "macos":
+        return {"available": False, "reason": "The app mirror needs a Mac.", "screenRecording": False, "windows": []}
+    try:
+        windows = _macos_cg().windows()
+    except OSError as e:
+        return {"available": False, "reason": f"CoreGraphics is unavailable: {e}", "screenRecording": False, "windows": []}
+    return {"available": True, "reason": None, "screenRecording": any(w["title"] for w in windows), "windows": windows}
+
+
+def macos_window_screenshot(window_id: int) -> bytes:
+    """A PNG of one on-screen window. Raises PlanError when the id is stale or Screen Recording is missing."""
+    if host_os() != "macos":
+        raise PlanError("The app mirror needs a Mac")
+    try:
+        window_id = int(window_id)
+    except (TypeError, ValueError):
+        raise PlanError("Invalid window id") from None
+    fd, path = tempfile.mkstemp(suffix=".png")
+    try:
+        os.close(fd)
+        code, output = _capture(["screencapture", "-x", "-o", f"-l{window_id}", path], timeout=15)
+        with open(path, "rb") as f:
+            png = f.read()
+        if code != 0 or not png.startswith(b"\x89PNG"):
+            raise PlanError("Could not capture that window. If this keeps failing, grant Screen Recording "
+                            "to the console (System Settings > Privacy & Security) and retry.")
+        return png
+    finally:
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+
+
+def macos_window_elements(root: str, window_id: int) -> dict:
+    """The accessibility tree of one window as window-relative hotspots, from System Events."""
+    if host_os() != "macos":
+        raise PlanError("The app mirror needs a Mac")
+    try:
+        window_id = int(window_id)
+    except (TypeError, ValueError):
+        raise PlanError("Invalid window id") from None
+    window = next((w for w in macos_windows()["windows"] if w["windowId"] == window_id), None)
+    if window is None:
+        raise PlanError("That window is not on screen anymore; refresh the mirror")
+    pid = window["pid"]
+    # A property read is the honest probe: counting windows works without permission, reads do not.
+    code, output = _capture(["osascript", "-e",
+                             f'tell application "System Events" to get position of window 1 of '
+                             f'(first application process whose unix id is {int(pid)})'], timeout=10)
+    if code != 0:
+        raise PlanError("Reading UI elements needs Accessibility permission for the console "
+                        "(System Settings > Privacy & Security > Accessibility), and the app needs a visible window.")
+    script = os.path.join(root, "ios-lab", "mac", "ax-elements.applescript")
+    if not os.path.isfile(script):
+        raise PlanError("ax-elements.applescript is missing from ios-lab/mac")
+    code, output = _capture(["osascript", script, str(pid), str(window["x"]), str(window["y"])], timeout=60)
+    if code != 0:
+        raise PlanError("Could not read UI elements: " + output.strip()[:200])
+    elements = []
+    for line in output.splitlines():
+        parts = line.split("\t")
+        if len(parts) < 6:
+            continue
+        role, label, x, y, w, h = parts[0], "\t".join(parts[1:-4]), parts[-4], parts[-3], parts[-2], parts[-1]
+        try:
+            element = {"role": role.replace("AX", ""), "label": label[:120],
+                       "x": int(float(x)) - window["x"], "y": int(float(y)) - window["y"],
+                       "w": int(float(w)), "h": int(float(h))}
+        except ValueError:
+            continue
+        if element["w"] <= 0 or element["h"] <= 0:
+            continue
+        if element["x"] >= window["width"] or element["y"] >= window["height"] \
+                or element["x"] + element["w"] <= 0 or element["y"] + element["h"] <= 0:
+            continue
+        elements.append(element)
+    return {"windowId": window_id, "app": window["app"], "bounds": {"x": window["x"], "y": window["y"],
+            "width": window["width"], "height": window["height"]}, "elements": elements}
+
+
+def macos_control_state() -> dict:
+    """Whether armed control mode is active; it disarms itself after ten idle minutes."""
+    with _MACOS_CONTROL_LOCK:
+        armed = _MACOS_CONTROL["armed"] and time.time() - _MACOS_CONTROL["armedAt"] < _MACOS_CONTROL_TIMEOUT
+        if not armed:
+            _MACOS_CONTROL["armed"] = False
+        return {"armed": armed, "expiresInSec": int(_MACOS_CONTROL_TIMEOUT - (time.time() - _MACOS_CONTROL["armedAt"])) if armed else 0}
+
+
+def macos_control_arm(armed: bool) -> dict:
+    if not isinstance(armed, bool):
+        raise PlanError("armed must be true or false")
+    with _MACOS_CONTROL_LOCK:
+        _MACOS_CONTROL["armed"] = armed
+        _MACOS_CONTROL["armedAt"] = time.time()
+    return macos_control_state()
+
+
+def macos_control_click(root: str, data: dict) -> dict:
+    """One immediate click while control mode is armed: bring the owning app forward, then post
+    the event through macos-app.sh click — the same script the previewed flow runs."""
+    with _MACOS_CONTROL_LOCK:
+        armed = _MACOS_CONTROL["armed"] and time.time() - _MACOS_CONTROL["armedAt"] < _MACOS_CONTROL_TIMEOUT
+    if not armed:
+        raise PlanError("Control mode is not armed; arm the app mirror first")
+    values = {}
+    for key in ("pid", "x", "y"):
+        try:
+            value = int(data.get(key))
+        except (TypeError, ValueError):
+            raise PlanError(f"{key} must be an integer") from None
+        if not 0 <= value <= 100000:
+            raise PlanError(f"{key} is out of range")
+        values[key] = value
+    script = _scoped(root, "ios-lab", "mac", "macos-app.sh")
+    code, output = _capture(["bash", script, "click", str(values["pid"]), str(values["x"]), str(values["y"])], timeout=30)
+    with _MACOS_CONTROL_LOCK:
+        _MACOS_CONTROL["armedAt"] = time.time()  # each click slides the disarm timer
+    if code != 0:
+        raise PlanError(output.strip()[:200] or "The click did not run")
+    return {"ok": True, **values}
+
+
 def _validated_ios_device(root: str, device: str) -> dict:
     """A device record from the simulator panel: exact UDID, or a name that names exactly one device."""
     info = ios_simulator(root)
@@ -467,7 +690,7 @@ def lab_status(lab: str, host: dict) -> dict:
 
     if provider is None:
         if lab == "macos":
-            reasons.append("Native Simulator and Appium need a Mac. On Linux use the iOS Lab's macOS VM.")
+            reasons.append("macOS application automation needs a Mac.")
         else:
             reasons.append("This lab needs a Linux/KVM host (or Windows with WSL2). Use a remote Linux machine.")
         return {"id": lab, "label": meta["label"], "summary": meta["summary"], "state": "unavailable",
@@ -475,23 +698,33 @@ def lab_status(lab: str, host: dict) -> dict:
                 "actions": [], "installed": os.path.isdir(os.path.join(host["root"], meta["dir"]))}
 
     if provider == "native-macos":
-        if lab == "ios":
+        if lab == "macos":
+            # The macOS Lab drives installed applications through Appium mac2 — no Xcode or simulator needed.
+            reqs += [
+                _req("brew", "Homebrew", tools.get("brew"), required=False, hint="https://brew.sh (needed for automated Appium setup)"),
+                _req("node", "Node.js", tools.get("node"), required=False, hint="brew install node"),
+                _req("appium", "Appium (mac2)", tools.get("appium"), required=False, hint="Install Appium (no administrator rights)"),
+            ]
+            if not tools.get("appium"):
+                notes.append("macOS app automation needs Appium with its mac2 driver; status and doctor work without it.")
+            notes.append("mac2 sessions need Accessibility permission (System Settings > Privacy & Security) to control applications.")
+        else:
             notes.append("Uses the same native Xcode installation as macOS Lab on this Mac.")
-        xcode = host.get("xcode") or {}
-        idb_ready = bool(tools.get("idb")) and bool(tools.get("idb-companion"))
-        reqs += [
-            _req("xcode", "Full Xcode", xcode.get("installed"), hint="Install and open Xcode, then accept its license"),
-            _req("ios-runtime", "iOS Simulator runtime", xcode.get("iosRuntime"), hint="Xcode > Settings > Components"),
-            _req("ios-device", "Available iOS Simulator device", xcode.get("iosDevice"), hint="Add a simulator in Xcode"),
-            _req("brew", "Homebrew", tools.get("brew"), required=False, hint="https://brew.sh (needed for automated Appium and idb setup)"),
-            _req("node", "Node.js", tools.get("node"), required=False, hint="brew install node"),
-            _req("appium", "Appium (XCUITest)", tools.get("appium"), required=False, hint="Install Appium (no administrator rights)"),
-            _req("idb", "idb (companion + client)", idb_ready, required=False, hint="Install idb (companion via Homebrew, client for this user)"),
-        ]
-        if not tools.get("appium"):
-            notes.append("Appium automation needs Appium and its XCUITest driver; the simulator can run without them.")
-        if not idb_ready:
-            notes.append("idb device automation needs the idb companion and client; the simulator can run without them.")
+            xcode = host.get("xcode") or {}
+            idb_ready = bool(tools.get("idb")) and bool(tools.get("idb-companion"))
+            reqs += [
+                _req("xcode", "Full Xcode", xcode.get("installed"), hint="Install and open Xcode, then accept its license"),
+                _req("ios-runtime", "iOS Simulator runtime", xcode.get("iosRuntime"), hint="Xcode > Settings > Components"),
+                _req("ios-device", "Available iOS Simulator device", xcode.get("iosDevice"), hint="Add a simulator in Xcode"),
+                _req("brew", "Homebrew", tools.get("brew"), required=False, hint="https://brew.sh (needed for automated Appium and idb setup)"),
+                _req("node", "Node.js", tools.get("node"), required=False, hint="brew install node"),
+                _req("appium", "Appium (XCUITest)", tools.get("appium"), required=False, hint="Install Appium (no administrator rights)"),
+                _req("idb", "idb (companion + client)", idb_ready, required=False, hint="Install idb (companion via Homebrew, client for this user)"),
+            ]
+            if not tools.get("appium"):
+                notes.append("Appium automation needs Appium and its XCUITest driver; the simulator can run without them.")
+            if not idb_ready:
+                notes.append("idb device automation needs the idb companion and client; the simulator can run without them.")
     elif provider == "wsl2":
         distros = host["wsl"]["distributions"]
         reqs += [
@@ -528,11 +761,14 @@ def lab_status(lab: str, host: dict) -> dict:
         actions = [x for x in actions if x["id"] in SETUP_STATE_ACTIONS]
     if provider == "native-macos":
         # Installed tooling: offer start/stop, not install. Missing tooling: offer install, not start/stop.
-        # The XCUITest smoke test additionally needs Appium with its XCUITest driver.
-        drop = {"appium-install"} if tools.get("appium") else {"appium-start", "appium-stop"}
-        drop |= {"idb-install"} if tools.get("idb") and tools.get("idb-companion") else {"idb-start", "idb-stop"}
-        if not tools.get("appium"):
-            drop.add("xcuitest-smoke")
+        # The XCUITest/mac2 smoke runs additionally need Appium with their driver.
+        if lab == "macos":
+            drop = {"appium-install"} if tools.get("appium") else {"appium-start", "appium-stop", "macos-smoke"}
+        else:
+            drop = {"appium-install"} if tools.get("appium") else {"appium-start", "appium-stop"}
+            drop |= {"idb-install"} if tools.get("idb") and tools.get("idb-companion") else {"idb-start", "idb-stop"}
+            if not tools.get("appium"):
+                drop.add("xcuitest-smoke")
         actions = [a for a in actions if a["id"] not in drop]
         for a in actions:
             if a["id"] in NATIVE_SIMULATOR_INFO:
@@ -546,7 +782,7 @@ def lab_status(lab: str, host: dict) -> dict:
 
 def actions_for(lab: str, provider: str | None) -> list[dict]:
     if provider == "native-macos":
-        names = MAC_ACTIONS
+        names = MACOS_APP_ACTIONS if lab == "macos" else MAC_ACTIONS
     elif provider:
         names = [a for a in LABCTL_ACTIONS if not (a == "backup" and lab == "android")]
         if provider == "macos-containers":
@@ -582,6 +818,12 @@ def capability_catalog() -> dict:
                     level = "full"
                 item["support"][platform]["level"] = level
     return catalog
+
+
+def scope_status(root: str) -> dict:
+    """The declared lab scope that console/scope_guard.py enforces: scope.json or $OSLAB_SCOPE_FILE."""
+    import scope_guard
+    return scope_guard.scope_status(root)
 
 
 # ── Configuration ────────────────────────────────────────────────────────────
@@ -705,10 +947,16 @@ def setup_details(root: str, lab: str, provider: str) -> dict:
         values.update(env_entries(_read(os.path.join(root, meta["dir"], ".env"))))
     disk = values.get("DISK_SIZE") if SIZE.match(values.get("DISK_SIZE", "")) else meta.get("disk_default")
     if provider == "native-macos":
-        deps = ["Xcode and an installed iOS Simulator runtime", "Homebrew", "Node.js", "Appium with XCUITest"]
-        downloads = ["The setup script checks prerequisites and installs Homebrew packages. Xcode/runtime "
-                     "installation and license acceptance remain explicit user actions."]
-        privileges = "Runs as the current user; Xcode installation or license acceptance may need macOS authorization."
+        if lab == "macos":
+            deps = ["Homebrew (optional)", "Node.js", "Appium with the mac2 driver"]
+            downloads = ["The setup installs Appium and the mac2 driver into your user folder. macOS may ask to "
+                         "grant Accessibility permission before mac2 can control applications."]
+            privileges = "Runs as the current user; no administrator rights."
+        else:
+            deps = ["Xcode and an installed iOS Simulator runtime", "Homebrew", "Node.js", "Appium with XCUITest"]
+            downloads = ["The setup script checks prerequisites and installs Homebrew packages. Xcode/runtime "
+                         "installation and license acceptance remain explicit user actions."]
+            privileges = "Runs as the current user; Xcode installation or license acceptance may need macOS authorization."
     else:
         deps = ["Ubuntu/Debian host or WSL2 distribution", "Docker or Podman and Compose",
                 "KVM for accelerated guests", "Python 3 for restore/report workflows"]
@@ -743,7 +991,8 @@ def plan(root: str, request: dict, host: dict | None = None) -> dict:
     if request.get("lab") == "source":
         import source_control
         return source_control.plan(root, request)
-    allowed = {"lab", "action", "profile", "cpus", "ram", "disk", "device", "wslDistro", "backup"}
+    allowed = {"lab", "action", "profile", "cpus", "ram", "disk", "device", "wslDistro", "backup",
+               "clickPid", "clickX", "clickY"}
     unknown = set(request) - allowed
     if unknown:
         raise PlanError("Unknown request fields: " + ", ".join(sorted(unknown)))
@@ -777,6 +1026,17 @@ def plan(root: str, request: dict, host: dict | None = None) -> dict:
     for key in ("cpus", "ram", "disk"):
         if request.get(key) not in (None, "") and action != "resize":
             raise PlanError("Resource parameters are only accepted by resize")
+    click = {"pid": request.get("clickPid"), "x": request.get("clickX"), "y": request.get("clickY")}
+    if any(v not in (None, "") for v in click.values()) and action != "macos-click":
+        raise PlanError("Click parameters are only accepted by the app mirror click")
+    if action == "macos-click":
+        for name, value in click.items():
+            try:
+                if not 0 <= int(value) <= 100000:
+                    raise ValueError
+            except (TypeError, ValueError):
+                raise PlanError(f"click{name.capitalize()} must be a screen coordinate") from None
+            click[name] = int(value)
     if request.get("backup"):
         raise PlanError("Restore is not available from the web console; use the lab's scripts/restore.sh")
 
@@ -788,26 +1048,39 @@ def plan(root: str, request: dict, host: dict | None = None) -> dict:
 
     if provider == "native-macos":
         if profile:
-            raise PlanError("Native simulator settings live in ios-lab/mac/config.env")
-        script, extra = {
-            "status": ("status-mac.sh", None), "doctor": ("doctor-mac.sh", None),
-            "setup": ("setup-mac.sh", "--install"), "start": ("run-simulator.sh", None),
-            "stop": ("stop-simulator.sh", None), "appium-install": ("appium.sh", "install"), "appium-start": ("appium.sh", "start"),
-            "appium-stop": ("appium.sh", "stop"), "idb-install": ("idb.sh", "install"), "idb-start": ("idb.sh", "start"),
-            "idb-stop": ("idb.sh", "stop"), "xcuitest-smoke": ("xcuitest.sh", "smoke"),
-        }[action]
+            raise PlanError("Native settings live in ios-lab/mac/config.env")
+        if lab == "macos":
+            # macOS Lab: applications on this Mac through Appium mac2 — the simulator stays in the iOS Lab.
+            script, extra = {
+                "status": ("macos-app.sh", "status"), "doctor": ("macos-app.sh", "doctor"),
+                "setup": ("appium.sh", "install"), "appium-install": ("appium.sh", "install"),
+                "appium-start": ("appium.sh", "start"), "appium-stop": ("appium.sh", "stop"),
+                "macos-smoke": ("macos-app.sh", "smoke"), "macos-click": ("macos-app.sh", "click"),
+            }[action]
+        else:
+            script, extra = {
+                "status": ("status-mac.sh", None), "doctor": ("doctor-mac.sh", None),
+                "setup": ("setup-mac.sh", "--install"), "start": ("run-simulator.sh", None),
+                "stop": ("stop-simulator.sh", None), "appium-install": ("appium.sh", "install"), "appium-start": ("appium.sh", "start"),
+                "appium-stop": ("appium.sh", "stop"), "idb-install": ("idb.sh", "install"), "idb-start": ("idb.sh", "start"),
+                "idb-stop": ("idb.sh", "stop"), "xcuitest-smoke": ("xcuitest.sh", "smoke"),
+            }[action]
         selected = []
         if action == "start" and device not in (None, ""):
             picked = _validated_ios_device(root, device)
             selected = ["--device", picked["udid"]]
             effects.append(f"Boots the iOS Simulator device {picked['name']} ({picked['runtime']}) on this Mac.")
+        if action == "macos-click":
+            selected = [str(click["pid"]), str(click["x"]), str(click["y"])]
+            effects.append(f"Brings the app (pid {click['pid']}) to the front and clicks once at "
+                           f"({click['x']}, {click['y']}) on this Mac.")
         path = _scoped(root, "ios-lab", "mac", script)
         if not os.path.isfile(path):
             raise PlanError("Provider script is missing: ios-lab/mac/" + script)
         program, args = "bash", [path] + ([extra] if extra else []) + selected
         privileged = False
-        timeout = 3600 if action == "setup" else 1800 if action in ("appium-install", "idb-install") \
-            else 1500 if action == "xcuitest-smoke" else 300
+        timeout = 3600 if action == "setup" and lab != "macos" else 1800 if action in ("setup", "appium-install", "idb-install") \
+            else 1500 if action == "xcuitest-smoke" else 600 if action == "macos-smoke" else 300
     else:
         labctl = _scoped(root, "labctl")
         if not os.path.isfile(labctl):

@@ -15,7 +15,9 @@ app\scripts\release-win.ps1 -Publish
 ```
 
 Publishes `os-lab_<v>_windows_x64-setup.exe` and `.msi` with `.sha256` files to the release `app-v<v>`.
-Users click **More info → Run anyway**. Verify a download with the `.sha256` file.
+Users click **More info → Run anyway**. Verify a download with the `.sha256` file, and on GitHub
+Actions builds also with `gh attestation verify <file> -R keyvanarasteh/os-lab` — the workflow
+attests the shipped installers (build provenance), which works without any code-signing certificate.
 
 ## Option 2: signed, GitHub Actions + SignPath Foundation
 
@@ -57,8 +59,10 @@ builds the installers, submits them to SignPath, checks that each signature is `
    the privacy notice. The repository README and future release notes link it; the qrofessor.com
    product download page also needs a link before applying.
 
-Until both `SIGNPATH_ORGANIZATION_ID` and `SIGNPATH_API_TOKEN` are set the workflow builds
-**unsigned artifacts for review** but does not publish them from a tag. A manual workflow run
+The first Foundation application (November 2026) was declined pending broader public visibility;
+the project will reapply once that evidence exists. Until both `SIGNPATH_ORGANIZATION_ID` and
+`SIGNPATH_API_TOKEN` are set the workflow builds **unsigned artifacts for review** but does not
+publish them from a tag. A manual workflow run
 can publish unsigned installers only when
 both *publish* and *allow_unsigned* are selected. No certificate or key is ever stored in the
 repository.

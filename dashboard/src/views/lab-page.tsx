@@ -9,6 +9,7 @@ import {
   ArrowClockwiseIcon,
   CheckCircleIcon,
   CircleNotchIcon,
+  DeviceMobileIcon,
   GearSixIcon,
   InfoIcon,
   PlayIcon,
@@ -22,8 +23,9 @@ import {
 import { AppShell, LAB_ICON } from "../shell/app-shell";
 import { TopBar } from "../shell/top-bar";
 import { ShellSnippet } from "../apk-lab/components";
-import { Badge, Empty, EndpointList, Field, PageHead, Section, Skeleton, Status } from "../components/ui";
-import { SimulatorPanel } from "./ios-simulator";
+import { Badge, Empty, EndpointList, Field, IconButton, Modal, PageHead, Section, Skeleton, Status } from "../components/ui";
+import { SimulatorDrawer } from "./ios-simulator";
+import { MacAppMirrorTeaser, MacAppPanel } from "./macos-app-mirror";
 import { stateBadge } from "./host-page";
 import {
   ago,
@@ -46,7 +48,7 @@ const REFERENCE: Record<LabId, { check: string; setup: string; where: string }> 
   linux: { check: "./labctl linux status", setup: "./labctl linux profile use development\n./labctl linux start --wait", where: "linux-lab" },
   ios: { check: "./labctl ios status", setup: "./labctl ios profile use development\n./labctl ios start --wait", where: "ios-lab" },
   source: { check: "./labctl source doctor", setup: "./labctl source setup", where: "source-lab" },
-  macos: { check: "make -C ios-lab mac-doctor", setup: "make -C ios-lab mac-setup mac-sim mac-appium", where: "ios-lab/mac" }
+  macos: { check: "make -C ios-lab mac-app-doctor", setup: "make -C ios-lab mac-appium mac-app-smoke", where: "ios-lab/mac" }
 };
 
 const ACTION_GROUPS: { title: string; ids: string[] }[] = [
@@ -90,10 +92,13 @@ export function readProgress(lines: string[]): { step: number; total: number; la
 }
 
 function Requirements({ lab, onInstall }: { lab: LabStatus; onInstall?: (action: string) => void }) {
-  if (!lab.requirements.length) return <Empty>No host prerequisites are tracked for this lab.</Empty>;
+  // Requirements that are already found stay out of the list — the header badge reports them,
+  // the card itself lists only what is still missing so install actions are visible at once.
+  const missing = lab.requirements.filter((r) => !r.found);
+  if (!missing.length) return <Empty>No host prerequisites are tracked for this lab.</Empty>;
   return (
     <ul className="divide-y divide-(--iux-border)">
-      {lab.requirements.map((r) => (
+      {missing.map((r) => (
         <li key={r.id} className="flex flex-wrap items-center gap-2.5 py-2.5 text-sm">
           {r.found ? (
             <CheckCircleIcon size={16} weight="fill" className="shrink-0 text-(--iux-success)" />
@@ -349,16 +354,12 @@ function Monitor({ lab }: { lab: LabId }) {
   );
 }
 
-function Configuration({ lab, ready, onProfile }: { lab: LabId; ready: boolean; onProfile: (profile: string) => void }) {
+/** Endpoints and the masked configuration file, opened from the header's Advanced settings icon. */
+function ConfigurationModal({ lab, ready, onProfile, onClose }: { lab: LabId; ready: boolean; onProfile: (profile: string) => void; onClose: () => void }) {
   const { data, error } = usePoll(() => api.config(lab), 0, [lab]);
   return (
-    <details className="iux-card group p-5">
-      <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-semibold [&::-webkit-details-marker]:hidden">
-        <GearSixIcon size={16} className="text-[#f36c21]" />
-        Advanced settings
-        <span aria-hidden="true" className="ml-auto text-(--iux-muted-foreground) transition-transform group-open:rotate-90">›</span>
-      </summary>
-      <div className="mt-4 flex flex-col gap-4">
+    <Modal title="Advanced settings" icon={<GearSixIcon size={16} />} onClose={onClose}>
+      <div className="flex flex-col gap-4">
         {error ? <Status value={{ ok: false, text: error }} /> : null}
         {!data && !error ? <Skeleton rows={2} /> : null}
         {data && ready && data.endpoints.length ? (
@@ -403,7 +404,7 @@ function Configuration({ lab, ready, onProfile }: { lab: LabId; ready: boolean; 
           </Section>
         ) : null}
       </div>
-    </details>
+    </Modal>
   );
 }
 
@@ -431,6 +432,10 @@ function LiveLabPage({ lab: labId }: { lab: LabId }) {
   const [selectedJob, setSelectedJob] = useState<string | null>(null);
   const [distro, setDistro] = useState("");
   const [resize, setResize] = useState({ cpus: "", ram: "", disk: "", device: "" });
+  const [mirrorHidden, setMirrorHidden] = useState(false);
+  // On-demand panels: the iOS simulator mirror and every lab's endpoints/configuration.
+  const [simOpen, setSimOpen] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const preview = async (action: string, extra: Partial<LabRequest> = {}) => {
     const req: LabRequest = { lab: labId, action, ...extra };
@@ -484,6 +489,8 @@ function LiveLabPage({ lab: labId }: { lab: LabId }) {
   const ref = REFERENCE[labId];
   // The ready iOS Simulator gets a device frame panel instead of plain start/stop buttons.
   const simulator = labId === "ios" && lab?.provider === "native-macos" && lab.state === "ready";
+  // The ready macOS Lab gets the floating app mirror for the windows on this Mac.
+  const appMirror = labId === "macos" && lab?.provider === "native-macos" && lab.state === "ready";
   // Every tracked prerequisite is found: the card would only repeat success badges, so it yields
   // its half of the row to the actions. Anything missing keeps the full status list visible.
   const requirements = lab?.requirements ?? [];
@@ -506,6 +513,14 @@ function LiveLabPage({ lab: labId }: { lab: LabId }) {
                   <>
                     {stateBadge(lab.state)}
                     {lab.provider ? <Badge>{lab.provider}</Badge> : null}
+                    {simulator ? (
+                      <IconButton label="Simulator" onClick={() => setSimOpen((open) => !open)}>
+                        <DeviceMobileIcon size={14} />
+                      </IconButton>
+                    ) : null}
+                    <IconButton label="Advanced settings" onClick={() => setAdvancedOpen(true)}>
+                      <GearSixIcon size={14} />
+                    </IconButton>
                   </>
                 }
               />
@@ -540,7 +555,14 @@ function LiveLabPage({ lab: labId }: { lab: LabId }) {
                 />
               ) : null}
 
-              {simulator ? <SimulatorPanel onPreview={(action, extra) => void preview(action, extra)} /> : null}
+              {simulator ? <SimulatorDrawer open={simOpen} onClose={() => setSimOpen(false)} onPreview={(action, extra) => void preview(action, extra)} /> : null}
+              {advancedOpen && lab ? (
+                <ConfigurationModal lab={labId} ready={lab.state === "ready"} onProfile={(p) => void preview("profile", { profile: p })} onClose={() => setAdvancedOpen(false)} />
+              ) : null}
+              {appMirror && !mirrorHidden ? (
+                <MacAppPanel onPreview={(action, extra) => void preview(action, extra)} onHide={() => setMirrorHidden(true)} />
+              ) : null}
+              {appMirror && mirrorHidden ? <MacAppMirrorTeaser onOpen={() => setMirrorHidden(false)} /> : null}
 
               {lab.state === "unavailable" ? (
                 <Section title="Run it elsewhere" description={`On a supported host, these commands run from the os-lab checkout (${ref.where}).`}>
@@ -557,16 +579,21 @@ function LiveLabPage({ lab: labId }: { lab: LabId }) {
                         title="Dependencies"
                         description="What this lab needs on this computer."
                         action={
-                          lab.requirements.some((r) => r.required && !r.found) && actions.has("setup") ? (
-                            <button
-                              type="button"
-                              className={lab.state === "needs-setup" ? "iux-btn bg-[#f36c21] text-white hover:bg-[#fa7b32]" : "iux-btn"}
-                              data-variant={lab.state === "needs-setup" ? undefined : "outline"}
-                              onClick={() => void preview("setup")}
-                            >
-                              Install dependencies
-                            </button>
-                          ) : null
+                          <>
+                            {requirements.length ? (
+                              <Badge tone="success">{`${requirements.filter((r) => r.found).length} of ${requirements.length} found`}</Badge>
+                            ) : null}
+                            {lab.requirements.some((r) => r.required && !r.found) && actions.has("setup") ? (
+                              <button
+                                type="button"
+                                className={lab.state === "needs-setup" ? "iux-btn bg-[#f36c21] text-white hover:bg-[#fa7b32]" : "iux-btn"}
+                                data-variant={lab.state === "needs-setup" ? undefined : "outline"}
+                                onClick={() => void preview("setup")}
+                              >
+                                Install dependencies
+                              </button>
+                            ) : null}
+                          </>
                         }
                       >
                         <Requirements lab={lab} onInstall={(action) => void preview(action)} />
@@ -706,7 +733,6 @@ function LiveLabPage({ lab: labId }: { lab: LabId }) {
                   </section>
 
                   {lab.state === "ready" ? <Monitor lab={labId} /> : null}
-                  <Configuration lab={labId} ready={lab.state === "ready"} onProfile={(p) => void preview("profile", { profile: p })} />
                 </>
               )}
             </>
