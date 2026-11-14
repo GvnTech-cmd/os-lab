@@ -2370,5 +2370,16 @@
   "Automation": "الأتمتة",
   "Install idb": "تثبيت idb",
   "Stack": "المكدس",
-  "idb": "idb"
+  "idb": "idb",
+  "App mirror": "مرآة التطبيق",
+  "Armed": "مفعّل",
+  "Armed — mirror clicks run immediately on this Mac. Control disarms itself after ten minutes.": "مفعّل — النقرات في المرآة تُنفَّذ فورًا على هذا الـ Mac. يُعطّل وضع التحكم نفسه بعد عشر دقائق.",
+  "Clicks on the mirror preview a macos-click action first.": "النقرات على المرآة تعرض معاينة لإجراء macos-click أولاً.",
+  "Elements": "العناصر",
+  "Hide the app mirror": "إخفاء مرآة التطبيق",
+  "No UI elements found for this window yet.": "لم يُعثر على عناصر واجهة لهذه النافذة بعد.",
+  "No visible app windows right now.": "لا توجد نوافذ تطبيقات مرئية حاليًا.",
+  "Show the app mirror": "إظهار مرآة التطبيق",
+  "Window": "النافذة",
+  "Window titles and captures need Screen Recording permission for the console (System Settings › Privacy & Security).": "عناوين النوافذ والالتقاطات تحتاج إذن تسجيل الشاشة للكونسول (إعدادات النظام › الخصوصية والأمان)."
 }

@@ -61,6 +61,15 @@ frame, and read-only `/api/labs/ios/simulator` and
 `/api/labs/ios/screenshot` endpoints feed the panel's device list and live
 screen.
 
+The macOS Lab page mirrors real application windows instead. The window
+list comes from CoreGraphics through ctypes (the osascript ObjC bridge is
+unstable on current macOS), captures from `screencapture -l` (Screen
+Recording permission) and element hotspots from
+[[ios-lab/mac/ax-elements.applescript]] over System Events (Accessibility
+permission). `macos-app.sh click` brings the owning app forward and posts
+one CGEvent click; the mirror previews it like any action, and clicks land
+without a preview only while control mode is armed.
+
 ## Research
 
 The top iOS-in-Docker options, networking and operational limits.

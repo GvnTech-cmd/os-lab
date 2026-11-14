@@ -89,7 +89,13 @@ case "$ACTION" in
     appium_state
 
     say "permissions"
-    warn "mac2 sessions need Accessibility permission: System Settings > Privacy & Security > Accessibility"
+    AX_PROBE="$(osascript -e 'tell application "System Events" to get position of window 1 of (first application process whose frontmost is true)' 2>&1 || true)"
+    if [ -n "$AX_PROBE" ] && [ "${AX_PROBE#*assistive}" = "$AX_PROBE" ]; then
+      ok "Accessibility: granted (element reads work)"
+    else
+      warn "Accessibility: not granted for the console — mac2 sessions, the REPL and the app mirror cannot read or click (System Settings > Privacy & Security > Accessibility)"
+    fi
+    warn "Screen Recording: grant it to the console if the app mirror stays empty or captures fail (System Settings > Privacy & Security > Screen Recording)"
     ok "config file: $CONFIG"
 
     echo
@@ -137,7 +143,27 @@ case "$ACTION" in
     mkdir -p "$LAB_DIR/artifacts"
     exec node "$MAC_DIR/macos-repl.mjs" "http://${APPIUM_HOST}:${APPIUM_PORT}" "${MACOS_APP:-com.apple.finder}" "$LAB_DIR/artifacts"
     ;;
+  click)
+    # One real click on this Mac: bring the owning app forward, then post the event at the
+    # point. Runs as a previewed lab action (macos-click) and, while control mode is armed,
+    # directly from the app mirror. Needs Accessibility permission for the console.
+    PID="${1:-}"; X="${2:-}"; Y="${3:-}"
+    case "$PID$X$Y" in ''|*[!0-9]*) die "usage: $0 click <pid> <x> <y> (integers)" ;; esac
+    osascript -e "tell application \"System Events\" to set frontmost of (first application process whose unix id is $PID) to true" >/dev/null 2>&1 \
+      || warn "could not bring pid $PID forward; the click may land elsewhere"
+    sleep 0.4
+    osascript -l JavaScript -e '
+      ObjC.import("CoreGraphics");
+      function run(argv) {
+        const p = $.CGPointMake(parseFloat(argv[0]), parseFloat(argv[1]));
+        $.CGEventPost($.kCGHIDEventTap, $.CGEventCreateMouseEvent($(), $.kCGEventMouseMoved, p, $.kCGMouseButtonLeft));
+        $.CGEventPost($.kCGHIDEventTap, $.CGEventCreateMouseEvent($(), $.kCGEventLeftMouseDown, p, $.kCGMouseButtonLeft));
+        $.CGEventPost($.kCGHIDEventTap, $.CGEventCreateMouseEvent($(), $.kCGEventLeftMouseUp, p, $.kCGMouseButtonLeft));
+        return "clicked " + argv[0] + "," + argv[1];
+      }
+    ' "$X" "$Y" || die "the click could not be posted; grant Accessibility permission to the console"
+    ;;
   *)
-    die "usage: $0 status|doctor|smoke|repl"
+    die "usage: $0 status|doctor|smoke|repl|click"
     ;;
 esac

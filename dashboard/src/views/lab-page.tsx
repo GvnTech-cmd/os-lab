@@ -24,6 +24,7 @@ import { TopBar } from "../shell/top-bar";
 import { ShellSnippet } from "../apk-lab/components";
 import { Badge, Empty, EndpointList, Field, PageHead, Section, Skeleton, Status } from "../components/ui";
 import { SimulatorPanel } from "./ios-simulator";
+import { MacAppMirrorTeaser, MacAppPanel } from "./macos-app-mirror";
 import { stateBadge } from "./host-page";
 import {
   ago,
@@ -431,6 +432,7 @@ function LiveLabPage({ lab: labId }: { lab: LabId }) {
   const [selectedJob, setSelectedJob] = useState<string | null>(null);
   const [distro, setDistro] = useState("");
   const [resize, setResize] = useState({ cpus: "", ram: "", disk: "", device: "" });
+  const [mirrorHidden, setMirrorHidden] = useState(false);
 
   const preview = async (action: string, extra: Partial<LabRequest> = {}) => {
     const req: LabRequest = { lab: labId, action, ...extra };
@@ -484,6 +486,8 @@ function LiveLabPage({ lab: labId }: { lab: LabId }) {
   const ref = REFERENCE[labId];
   // The ready iOS Simulator gets a device frame panel instead of plain start/stop buttons.
   const simulator = labId === "ios" && lab?.provider === "native-macos" && lab.state === "ready";
+  // The ready macOS Lab gets the floating app mirror for the windows on this Mac.
+  const appMirror = labId === "macos" && lab?.provider === "native-macos" && lab.state === "ready";
   // Every tracked prerequisite is found: the card would only repeat success badges, so it yields
   // its half of the row to the actions. Anything missing keeps the full status list visible.
   const requirements = lab?.requirements ?? [];
@@ -541,6 +545,10 @@ function LiveLabPage({ lab: labId }: { lab: LabId }) {
               ) : null}
 
               {simulator ? <SimulatorPanel onPreview={(action, extra) => void preview(action, extra)} /> : null}
+              {appMirror && !mirrorHidden ? (
+                <MacAppPanel onPreview={(action, extra) => void preview(action, extra)} onHide={() => setMirrorHidden(true)} />
+              ) : null}
+              {appMirror && mirrorHidden ? <MacAppMirrorTeaser onOpen={() => setMirrorHidden(false)} /> : null}
 
               {lab.state === "unavailable" ? (
                 <Section title="Run it elsewhere" description={`On a supported host, these commands run from the os-lab checkout (${ref.where}).`}>

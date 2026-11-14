@@ -2370,5 +2370,16 @@
   "Automation": "Otomasyon",
   "Install idb": "idb kur",
   "Stack": "Yığın",
-  "idb": "idb"
+  "idb": "idb",
+  "App mirror": "Uygulama aynası",
+  "Armed": "Etkin",
+  "Armed — mirror clicks run immediately on this Mac. Control disarms itself after ten minutes.": "Etkin — aynadaki tıklamalar bu Mac'te hemen uygulanır. Kontrol on dakika sonra kendiliğinden kapanır.",
+  "Clicks on the mirror preview a macos-click action first.": "Aynadaki tıklamalar önce bir macos-click eylemini önizler.",
+  "Elements": "Öğeler",
+  "Hide the app mirror": "Uygulama aynasını gizle",
+  "No UI elements found for this window yet.": "Bu pencere için henüz arayüz öğesi bulunamadı.",
+  "No visible app windows right now.": "Şu anda görünür uygulama penceresi yok.",
+  "Show the app mirror": "Uygulama aynasını göster",
+  "Window": "Pencere",
+  "Window titles and captures need Screen Recording permission for the console (System Settings › Privacy & Security).": "Pencere başlıkları ve ekran görüntüleri için konsola Ekran Kaydı izni gerekir (System Settings › Privacy & Security)."
 }

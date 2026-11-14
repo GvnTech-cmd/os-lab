@@ -2370,5 +2370,16 @@
   "Automation": "اتوماسیون",
   "Install idb": "نصب idb",
   "Stack": "استک",
-  "idb": "idb"
+  "idb": "idb",
+  "App mirror": "آینه برنامه",
+  "Armed": "فعال",
+  "Armed — mirror clicks run immediately on this Mac. Control disarms itself after ten minutes.": "فعال — کلیک‌های آینه بلافاصله روی این مک اجرا می‌شوند. حالت کنترل پس از ده دقیقه خودبه‌خود غیرفعال می‌شود.",
+  "Clicks on the mirror preview a macos-click action first.": "کلیک‌های روی آینه ابتدا یک اقدام macos-click را پیش‌نمایش می‌دهند.",
+  "Elements": "عناصر",
+  "Hide the app mirror": "پنهان‌کردن آینه برنامه",
+  "No UI elements found for this window yet.": "هنوز هیچ عنصر رابط کاربری برای این پنجره پیدا نشد.",
+  "No visible app windows right now.": "در حال حاضر هیچ پنجره برنامه‌ای دیده نمی‌شود.",
+  "Show the app mirror": "نمایش آینه برنامه",
+  "Window": "پنجره",
+  "Window titles and captures need Screen Recording permission for the console (System Settings › Privacy & Security).": "عنوان پنجره‌ها و ضبط‌ها به مجوز ضبط صفحه برای کنسول نیاز دارند (System Settings › Privacy & Security)."
 }

@@ -2370,5 +2370,16 @@
   "Automation": "Automatisierung",
   "Install idb": "idb installieren",
   "Stack": "Stack",
-  "idb": "idb"
+  "idb": "idb",
+  "App mirror": "App-Spiegel",
+  "Armed": "Aktiv",
+  "Armed — mirror clicks run immediately on this Mac. Control disarms itself after ten minutes.": "Aktiv — Klicks im Spiegel werden sofort auf diesem Mac ausgeführt. Die Steuerung deaktiviert sich nach zehn Minuten selbst.",
+  "Clicks on the mirror preview a macos-click action first.": "Klicks auf dem Spiegel zeigen zuerst eine macos-click-Aktion als Vorschau.",
+  "Elements": "Elemente",
+  "Hide the app mirror": "App-Spiegel ausblenden",
+  "No UI elements found for this window yet.": "Für dieses Fenster wurden noch keine Oberflächenelemente gefunden.",
+  "No visible app windows right now.": "Zurzeit keine sichtbaren App-Fenster.",
+  "Show the app mirror": "App-Spiegel anzeigen",
+  "Window": "Fenster",
+  "Window titles and captures need Screen Recording permission for the console (System Settings › Privacy & Security).": "Fenstertitel und Aufnahmen brauchen die Bildschirmaufnahme-Berechtigung für die Konsole (System Settings › Privacy & Security)."
 }
