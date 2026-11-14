@@ -259,6 +259,80 @@ export interface CleanupCrossLeftovers {
   items: { id: string; name: string; path: string; status: string; confidence: number; rule: string; sizeBytes: number; sizeOnDiskBytes: number | null; reportOnly: true }[];
   inventorySources?: string[]; inventoryErrors?: string[]; unreadable?: string[];
 }
+/** CLNP-01: one typed permission record from GET /api/cleanup/permissions. */
+export interface CleanupPermission {
+  id: string; name: string; applicable: boolean; granted: boolean | null;
+  probePaths: string[];
+  results: { path: string; readable: boolean | null; reason: string }[];
+  guidance: string; grantUrl: string | null;
+}
+export interface CleanupPermissions {
+  platform: string; permissions: CleanupPermission[];
+  classification?: { classified: { path: string; permissionId: string; state: string; reason: string }[]; unmatched: { path: string; permissionId: null; state: string; reason: string }[] };
+}
+/** CLNP-09/10: one configured volume of the background monitor. */
+export interface CleanupMonitorVolumeConfig {
+  mountPoint: string; minFreeBytes: number; minFreePercent: number; enabled: boolean;
+  volume: { freeBytes: number | null; totalBytes: number | null; usage: number | null; kind: string | null } | null;
+}
+export interface CleanupMonitorStatus {
+  enabled: boolean; running: boolean; intervalSeconds: number; cooldownSeconds: number;
+  volumes: CleanupMonitorVolumeConfig[];
+  state: {
+    volumes: Record<string, { armed: boolean; lastWarningAt: number | null; state: string }>;
+    events: { at: number; kind: string; volume: string | null; freeBytes: number | null; thresholdBytes: number | null; message: string }[];
+    lastEvaluationAt: number | null; lastError: string | null;
+  };
+  activeWarnings: { volume: string; lastWarningAt: number | null }[];
+  configError: string | null;
+  checkedAt: number;
+}
+export interface CleanupMonitorConfig {
+  enabled: boolean; intervalSeconds: number; cooldownSeconds: number;
+  volumes: { mountPoint: string; minFreeBytes: number; minFreePercent: number; enabled: boolean }[];
+}
+/** CLNP-23: one registered Space Explorer root. */
+export interface CleanupExplorerRoot {
+  id: string; name: string; source: string; path: string | null; available: boolean; reason: string;
+}
+export interface CleanupExplorerNode {
+  name: string; path: string; sizeBytes: number; files: number; folders: number;
+  children: CleanupExplorerNode[]; truncated: boolean; unreadable: number;
+}
+export interface CleanupExplorerResult {
+  rootId: string; path: string; relative: string | null;
+  tree: CleanupExplorerNode; nodes: number; truncated: boolean; cancelled: boolean; checkedAt: number;
+}
+export interface CleanupExplorerJob {
+  id: string; kind: "explorer"; state: "running" | "done" | "cancelled" | "failed";
+  progress: Record<string, string | number> | null;
+  result: CleanupExplorerResult | null; error: string | null;
+}
+/** CLN-28: one local volume from GET /api/cleanup/volumes. */
+export interface CleanupVolume {
+  mountPoint: string; name: string; device: string; filesystem: string | null; kind: string;
+  totalBytes: number | null; freeBytes: number | null; usedBytes: number | null; usage: number | null;
+  purgeableBytes: number | null;
+  isHome: boolean; pressure: string; error: string | null;
+}
+export interface CleanupVolumes {
+  platform: string; threshold: number;
+  volumes: CleanupVolume[];
+  homeVolume: string | null; warnings: string[]; error: string | null;
+}
+/** CLNP-14: one bookmark — a catalog-entry reference with its behaviours. */
+export interface BookmarkRecord {
+  entryId: string; createdAt: number; priority: number; quickClean: boolean;
+  autoCleanHook: { enabled: boolean; lastRunAt: number | null };
+  sizeAlert: { enabled: boolean; thresholdBytes: number; armed: boolean; lastAlertAt: number | null };
+  entry: { name: string; risk: string; category: string; needsPrivilege: boolean; paths: { template: string; path: string | null; reason: string }[] } | null;
+}
+export interface BookmarksPayload { bookmarks: BookmarkRecord[]; error: string | null }
+export interface BookmarkChanges {
+  priority?: number; quickClean?: boolean;
+  autoCleanHook?: { enabled: boolean; lastRunAt?: number | null };
+  sizeAlert?: { enabled?: boolean; thresholdBytes?: number; armed?: boolean; lastAlertAt?: number | null };
+}
 
 export class ApiError extends Error {
   constructor(
@@ -327,6 +401,23 @@ export const api = {
   cleanupJob: (id: string) => call<CleanupJob>(`/api/cleanup/jobs/${encodeURIComponent(id)}`),
   cleanupCancel: (id: string) => post<CleanupJob>(`/api/cleanup/jobs/${encodeURIComponent(id)}/cancel`),
   cleanupContainers: () => call<CleanupContainerCapabilities>("/api/cleanup/containers"),
+  cleanupPermissions: () => call<CleanupPermissions>("/api/cleanup/permissions"),
+  cleanupMonitor: () => call<CleanupMonitorStatus>("/api/cleanup/monitor"),
+  cleanupMonitorConfig: (config: CleanupMonitorConfig) => post<CleanupMonitorStatus>("/api/cleanup/monitor/config", config),
+  cleanupMonitorEvaluate: () => post<CleanupMonitorStatus>("/api/cleanup/monitor/evaluate"),
+  cleanupVolumes: () => call<CleanupVolumes>("/api/cleanup/volumes"),
+  cleanupBookmarks: () => call<BookmarksPayload>("/api/cleanup/bookmarks"),
+  cleanupBookmarkAdd: (entryId: string) => post<BookmarksPayload>("/api/cleanup/bookmarks", { entryId }),
+  cleanupBookmarkUpdate: (entryId: string, changes: BookmarkChanges) => post<BookmarksPayload>("/api/cleanup/bookmarks/update", { entryId, ...changes }),
+  cleanupBookmarkRemove: (entryId: string) => post<BookmarksPayload>("/api/cleanup/bookmarks/remove", { entryId }),
+  cleanupBookmarkQuickClean: () => post<{ job: CleanupJob; refusals: { entryId: string; reason: string }[] }>("/api/cleanup/bookmarks/quick-clean"),
+  /** CLNP-20: the raw path appears exactly once, here; afterwards ids only. */
+  cleanupCustomAdd: (name: string, path: string) => post<{ entries: { id: string; name: string; risk: string; paths: Record<string, string[]> }[]; error: string | null }>("/api/cleanup/custom-entries", { name, path }),
+  cleanupCustomRemove: (entryId: string) => post<{ entries: unknown[]; bookmarks?: BookmarkRecord[]; error: string | null }>("/api/cleanup/custom-entries/remove", { entryId }),
+  /** CLNP-23: the Space Explorer (read-only size trees over registered roots). */
+  cleanupExplorerRoots: () => call<{ roots: CleanupExplorerRoot[] }>("/api/cleanup/explorer/roots"),
+  cleanupExplorerScan: (rootId: string) => post<CleanupExplorerJob>("/api/cleanup/explorer/scan", { rootId }),
+  cleanupExplorerSubtree: (rootId: string, relative: string) => post<CleanupExplorerJob>("/api/cleanup/explorer/subtree", { rootId, relative }),
   cleanupContainerPreview: (actionId: string) => post<CleanupContainerPreview>("/api/cleanup/containers/preview", { actionId }),
   cleanupContainerPrune: (previewId: string) => post<CleanupAuxJob<CleanupContainerResult>>("/api/cleanup/containers/prune", { previewId }),
   cleanupVMScan: () => post<CleanupAuxJob<CleanupVMInventory>>("/api/cleanup/vms/scan"),

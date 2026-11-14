@@ -360,13 +360,34 @@ def _capacity(mount_point):
     return usage.total, usage.free
 
 
-def inventory(platform=None, env=None, *, rows=None, usage_fn=None, home=None,
+#: `diskutil info -plist` keys that report purgeable space, tried in order.
+#: Where none answers, the volume reports ``purgeableBytes: None`` and the
+#: dashboard omits the purgeable segment — purgeable is never guessed.
+PURGEABLE_KEYS = ("PurgeableSpace", "VolumePurgeableSpace")
+
+
+def _purgeable(device, runner=subprocess.run):
+    """macOS purgeable space from the fixed ``diskutil info -plist`` probe."""
+    if not device or device.startswith("map "):
+        return None
+    data = _diskutil_info(device, runner=runner)
+    if not data:
+        return None
+    for key in PURGEABLE_KEYS:
+        value = data.get(key)
+        if isinstance(value, int) and value >= 0:
+            return value
+    return None
+
+
+def inventory(platform=None, env=None, *, rows=None, usage_fn=None, purgeable_fn=None, home=None,
               clock=time.time):
     """The typed payload behind ``GET /api/cleanup/volumes`` and ``labctl cleanup volumes``.
 
     Read-only: rows come from the platform's mount table and every capacity
-    number from :func:`shutil.disk_usage`. ``rows`` and ``usage_fn`` are the
-    test seams — fake mount tables, fake disks, never a real volume.
+    number from :func:`shutil.disk_usage`. ``rows``, ``usage_fn`` and
+    ``purgeable_fn`` are the test seams — fake mount tables, fake disks, never
+    a real volume.
     """
     platform = platform or paths.platform_id()
     env = os.environ if env is None else env
@@ -392,6 +413,10 @@ def inventory(platform=None, env=None, *, rows=None, usage_fn=None, home=None,
             pressure = "warning"
             warnings.append("Volume {0} is {1:.0f}% full ({2} free).".format(
                 mount_point, usage * 100, _format_bytes(free)))
+        purgeable = None
+        if platform == "macos":
+            purgeable = purgeable_fn(mount_point, row.get("device") or "") \
+                if purgeable_fn is not None else _purgeable(row.get("device") or "")
         volumes.append({
             "mountPoint": mount_point,
             "name": row.get("name") or "",
@@ -402,6 +427,7 @@ def inventory(platform=None, env=None, *, rows=None, usage_fn=None, home=None,
             "freeBytes": free,
             "usedBytes": used,
             "usage": usage,
+            "purgeableBytes": purgeable,
             "isHome": False,
             "pressure": pressure,
             "error": measure_error,

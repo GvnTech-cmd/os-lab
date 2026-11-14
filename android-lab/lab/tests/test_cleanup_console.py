@@ -13,6 +13,8 @@ import time
 import urllib.request
 from http.server import HTTPServer
 
+from pathlib import Path
+
 import pytest
 
 REPO_ROOT = os.path.realpath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
@@ -658,3 +660,290 @@ def test_privileged_preview_and_run_are_typed_single_use_and_audited(tmp_path, m
     with pytest.raises(cleanup_api.CleanupError) as raised:
         api.post("/api/cleanup/privileged/run", {"previewId": preview["previewId"]})
     assert raised.value.status == 409
+
+
+def test_the_permissions_endpoint_reports_typed_records():
+    import cleanup_lab.permissions as permissions_module
+
+    api = cleanup_api.CleanupAPI(REPO_ROOT)
+    report = api.get("/api/cleanup/permissions", {})
+    assert report["platform"] == paths_module.platform_id()
+    ids = [record["id"] for record in report["permissions"]]
+    assert ids == [
+        "macos-full-disk-access", "macos-desktop-folder", "macos-documents-folder",
+        "macos-downloads-folder", "hidden-roots",
+    ]
+    for record in report["permissions"]:
+        assert set(record) >= {
+            "id", "name", "applicable", "granted", "probePaths", "results", "guidance", "grantUrl",
+        }
+        assert record["granted"] in (True, False, None)
+    macos = report["platform"] == "macos"
+    if macos:
+        # the two FDA probes ran against the real (read-only) folders
+        fda = report["permissions"][0]
+        assert len(fda["probePaths"]) == 2
+    else:
+        assert all(not record["applicable"] for record in report["permissions"][:-1])
+
+
+def test_the_permissions_endpoint_takes_no_query_parameters():
+    api = cleanup_api.CleanupAPI(REPO_ROOT)
+    with pytest.raises(cleanup_api.CleanupError) as caught:
+        api.get("/api/cleanup/permissions", {"x": "1"})
+    assert caught.value.status == 400
+
+
+def test_the_permissions_endpoint_classifies_the_latest_scan_unreadable(tmp_path, monkeypatch):
+    import cleanup_lab.permissions as permissions_module
+
+    unreadable = str(tmp_path / ".config" / "locked-app")
+    os.makedirs(unreadable, exist_ok=True)
+    monkeypatch.setattr(
+        permissions_module, "_listdir_check",
+        lambda path, prober: (False, "Permission denied") if path == unreadable else (True, ""),
+    )
+    api = cleanup_api.CleanupAPI(REPO_ROOT)
+    job = cleanup_api.CleanupJob("scan", {"entryIds": ["system.user-caches"]})
+    job.state = "done"
+    job.result = {"entries": [{"id": "system.user-caches", "unreadable": [unreadable, unreadable]}],
+                  "totals": {}, "progress": {}, "cancelled": False}
+    cleanup_api.JOBS._register(job)
+    report = api.get("/api/cleanup/permissions", {})
+    hidden = next(record for record in report["permissions"] if record["id"] == "hidden-roots")
+    assert hidden["granted"] is False
+    assert hidden["results"][0]["path"] == unreadable
+    assert report["classification"]["classified"] == [
+        {"path": unreadable, "permissionId": "hidden-roots", "state": "permission-denied",
+         "reason": "Permission denied"},
+    ]
+
+
+def test_the_monitor_endpoint_reports_disabled_state_without_probing(monkeypatch):
+    import cleanup_lab.monitor as monitor_module
+
+    calls = []
+    monkeypatch.setattr(monitor_module, "_inventory", lambda: calls.append(1) or {"volumes": []})
+    api = cleanup_api.CleanupAPI(REPO_ROOT)
+    report = api.get("/api/cleanup/monitor", {})
+    assert report["enabled"] is False
+    assert report["running"] is False
+    assert report["configError"] is None
+    assert report["volumes"][0]["mountPoint"] == ""
+    assert calls == []
+
+
+def test_monitor_config_is_typed_and_persists(monkeypatch, tmp_path):
+    import cleanup_lab.monitor as monitor_module
+
+    monkeypatch.setattr(monitor_module, "_inventory", lambda: {"volumes": []})
+    api = cleanup_api.CleanupAPI(REPO_ROOT)
+    with pytest.raises(cleanup_api.CleanupError) as caught:
+        api.post("/api/cleanup/monitor/config", {"enabled": True, "nope": 1})
+    assert caught.value.status == 400
+    with pytest.raises(cleanup_api.CleanupError) as caught:
+        api.post("/api/cleanup/monitor/config", {"enabled": True, "intervalSeconds": 5, "volumes": [{"mountPoint": ""}]})
+    assert caught.value.status == 400
+    report = api.post("/api/cleanup/monitor/config", {
+        "enabled": True, "intervalSeconds": 120, "cooldownSeconds": 600,
+        "volumes": [{"mountPoint": "", "minFreeBytes": 1000, "minFreePercent": 5.0, "enabled": True}],
+    })
+    assert report["enabled"] is True
+    assert report["intervalSeconds"] == 120
+    assert report["volumes"][0]["minFreeBytes"] == 1000
+    # The saved config survives a fresh load from the private store.
+    loaded = monitor_module.load()
+    assert loaded["config"]["enabled"] is True
+
+
+def test_monitor_evaluate_runs_one_evaluation(monkeypatch):
+    import cleanup_lab.monitor as monitor_module
+
+    api = cleanup_api.CleanupAPI(REPO_ROOT)
+    api.post("/api/cleanup/monitor/config", {
+        "enabled": True, "intervalSeconds": 120, "cooldownSeconds": 600,
+        "volumes": [{"mountPoint": "/Volumes/Fake", "minFreeBytes": 1000, "minFreePercent": 50.0, "enabled": True}],
+    })
+    snapshot = {"volumes": [{"mountPoint": "/Volumes/Fake", "name": "Fake", "device": "disk1",
+                             "filesystem": "apfs", "kind": "internal", "totalBytes": 1000,
+                             "freeBytes": 100, "usedBytes": 900, "usage": 0.9,
+                             "isHome": False, "pressure": "warning", "error": None}]}
+    monkeypatch.setattr(monitor_module, "_inventory", lambda: snapshot)
+    report = api.post("/api/cleanup/monitor/evaluate", {})
+    assert report["enabled"] is True
+    assert len(report["state"]["events"]) == 1
+    assert report["state"]["events"][0]["kind"] == "warning"
+    assert report["state"]["events"][0]["volume"] == "/Volumes/Fake"
+    assert report["activeWarnings"] == [{"volume": "/Volumes/Fake", "lastWarningAt": report["state"]["events"][0]["at"]}]
+
+
+def test_the_monitor_endpoints_take_no_query_parameters():
+    api = cleanup_api.CleanupAPI(REPO_ROOT)
+    with pytest.raises(cleanup_api.CleanupError) as caught:
+        api.get("/api/cleanup/monitor", {"x": "1"})
+    assert caught.value.status == 400
+    with pytest.raises(cleanup_api.CleanupError) as caught:
+        api.post("/api/cleanup/monitor/evaluate", {"extra": 1})
+    assert caught.value.status == 400
+
+
+def _bookmark_env(monkeypatch, tmp_path):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    monkeypatch.setenv("OSLAB_CLEANUP_STATE", str(tmp_path / "state"))
+
+
+def test_bookmark_endpoints_are_typed_and_catalog_bound(monkeypatch, tmp_path):
+    _bookmark_env(monkeypatch, tmp_path)
+    api = cleanup_api.CleanupAPI(REPO_ROOT)
+    with pytest.raises(cleanup_api.CleanupError) as caught:
+        api.post("/api/cleanup/bookmarks", {"entryId": "ghost"})
+    assert caught.value.status == 400
+    with pytest.raises(cleanup_api.CleanupError) as caught:
+        api.post("/api/cleanup/bookmarks", {"entryId": "system.user-caches", "nope": 1})
+    assert caught.value.status == 400
+    report = api.post("/api/cleanup/bookmarks", {"entryId": "system.user-caches"})
+    assert report["error"] is None
+    assert report["bookmarks"][0]["entryId"] == "system.user-caches"
+    assert report["bookmarks"][0]["entry"]["name"]
+    with pytest.raises(cleanup_api.CleanupError) as caught:
+        api.post("/api/cleanup/bookmarks", {"entryId": "system.user-caches"})
+    assert caught.value.status == 409
+    report = api.post("/api/cleanup/bookmarks/update", {"entryId": "system.user-caches", "quickClean": True, "priority": 3})
+    assert report["bookmarks"][0]["priority"] == 3
+    assert report["bookmarks"][0]["quickClean"] is True
+    report = api.post("/api/cleanup/bookmarks/remove", {"entryId": "system.user-caches"})
+    assert report["bookmarks"] == []
+    with pytest.raises(cleanup_api.CleanupError) as caught:
+        api.post("/api/cleanup/bookmarks/remove", {"entryId": "system.user-caches"})
+    assert caught.value.status == 404
+
+
+def test_quick_clean_builds_a_trash_plan_from_flagged_bookmarks(monkeypatch, tmp_path):
+    _bookmark_env(monkeypatch, tmp_path)
+    api = cleanup_api.CleanupAPI(REPO_ROOT)
+    with pytest.raises(cleanup_api.CleanupError) as caught:
+        api.post("/api/cleanup/bookmarks/quick-clean", {})
+    assert caught.value.status == 400
+    api.post("/api/cleanup/bookmarks", {"entryId": "system.user-caches"})
+    api.post("/api/cleanup/bookmarks/update", {"entryId": "system.user-caches", "quickClean": True})
+    response = api.post("/api/cleanup/bookmarks/quick-clean", {})
+    assert response["refusals"] == []
+    job = wait_for(response["job"], state="done")
+    assert job.kind == "plan"
+    assert job.request["entryIds"] == ["system.user-caches"]
+    assert job.request["mode"] == "trash"
+
+
+def test_quick_clean_refuses_risky_bookmarks_with_reasons(monkeypatch, tmp_path):
+    _bookmark_env(monkeypatch, tmp_path)
+    api = cleanup_api.CleanupAPI(REPO_ROOT)
+    catalog = cleanup_api._module(REPO_ROOT, "catalog").load(REPO_ROOT)
+    risky = next(entry["id"] for entry in catalog if entry["risk"] in ("high", "privacy", "credentials"))
+    api.post("/api/cleanup/bookmarks", {"entryId": risky})
+    api.post("/api/cleanup/bookmarks/update", {"entryId": risky, "quickClean": True})
+    with pytest.raises(cleanup_api.CleanupError) as caught:
+        api.post("/api/cleanup/bookmarks/quick-clean", {})
+    assert caught.value.status == 400
+    assert "never cleaned by quick cleanup" in str(caught.value)
+
+
+def test_the_hook_clean_is_a_guarded_trash_only_automated_run(monkeypatch, tmp_path):
+    _bookmark_env(monkeypatch, tmp_path)
+    api = cleanup_api.CleanupAPI(REPO_ROOT)
+    target = catalog_cache_target(tmp_path, monkeypatch)
+    (Path(target) / "junk.bin").write_bytes(b"x" * 128)
+    api.post("/api/cleanup/bookmarks", {"entryId": "system.user-caches"})
+    api.post("/api/cleanup/bookmarks/update", {"entryId": "system.user-caches", "autoCleanHook": {"enabled": True}})
+    job = cleanup_api.run_hook_clean(REPO_ROOT)
+    assert job is not None
+    wait_for(job, "done")
+    assert job.error is None
+    assert job.result["automated"] is True
+    assert job.result["mode"] == "trash"
+    assert job.result["totals"]["trashed"] >= 1
+    assert not (Path(target) / "junk.bin").exists()
+    # The bookmark records the automated run.
+    import cleanup_lab.bookmarks as bookmarks_module
+    loaded = bookmarks_module.load()
+    assert loaded["bookmarks"][0]["autoCleanHook"]["lastRunAt"] is not None
+    # The history store holds the automated record.
+    history = cleanup_api._module(REPO_ROOT, "history").read()
+    assert any(entry["result"].get("automated") is True for entry in history["entries"])
+
+
+def test_the_hook_clean_refuses_to_run_while_a_clean_job_is_active(monkeypatch, tmp_path):
+    _bookmark_env(monkeypatch, tmp_path)
+    api = cleanup_api.CleanupAPI(REPO_ROOT)
+    catalog_cache_target(tmp_path, monkeypatch)
+    api.post("/api/cleanup/bookmarks", {"entryId": "system.user-caches"})
+    api.post("/api/cleanup/bookmarks/update", {"entryId": "system.user-caches", "autoCleanHook": {"enabled": True}})
+    busy = cleanup_api.CleanupJob("clean", {"planId": "plan-1"})
+    cleanup_api.JOBS._register(busy)
+    assert cleanup_api.run_hook_clean(REPO_ROOT) is None
+
+
+def test_size_alert_events_flow_through_the_monitor_store(monkeypatch, tmp_path):
+    _bookmark_env(monkeypatch, tmp_path)
+    import cleanup_lab.bookmarks as bookmarks_module
+    import cleanup_lab.monitor as monitor_module
+
+    api = cleanup_api.CleanupAPI(REPO_ROOT)
+    api.post("/api/cleanup/bookmarks", {"entryId": "system.user-caches"})
+    api.post("/api/cleanup/bookmarks/update", {
+        "entryId": "system.user-caches",
+        "sizeAlert": {"enabled": True, "thresholdBytes": 10, "armed": True, "lastAlertAt": None},
+    })
+    monkeypatch.setattr(cleanup_api, "measure_bookmark_sizes", lambda root, ids: {"system.user-caches": 500})
+    loaded = bookmarks_module.load()
+    updated, events = bookmarks_module.evaluate_size_alerts(loaded["bookmarks"], {"system.user-caches": 500}, 1234.0)
+    bookmarks_module.save(updated)
+    monitor_module.append_events(events)
+    report = api.get("/api/cleanup/monitor", {})
+    kinds = [event["kind"] for event in report["state"]["events"]]
+    assert "warning" in kinds
+    event = next(event for event in report["state"]["events"] if event["kind"] == "warning")
+    assert event["bookmark"] == "system.user-caches"
+    assert event["sizeBytes"] == 500
+
+
+def test_custom_entries_are_validated_once_then_addressed_by_id(monkeypatch, tmp_path):
+    _bookmark_env(monkeypatch, tmp_path)
+    api = cleanup_api.CleanupAPI(REPO_ROOT)
+    with pytest.raises(cleanup_api.CleanupError) as caught:
+        api.post("/api/cleanup/custom-entries", {"name": "X", "path": "relative/path"})
+    assert caught.value.status == 400
+    with pytest.raises(cleanup_api.CleanupError) as caught:
+        api.post("/api/cleanup/custom-entries", {"name": "X", "path": str(tmp_path), "extra": 1})
+    assert caught.value.status == 400
+    # The home folder itself is a protected root.
+    with pytest.raises(cleanup_api.CleanupError) as caught:
+        api.post("/api/cleanup/custom-entries", {"name": "Home", "path": str(tmp_path)})
+    assert caught.value.status == 400
+    folder = tmp_path / "MyCache"
+    folder.mkdir()
+    report = api.post("/api/cleanup/custom-entries", {"name": "My Cache", "path": str(folder)})
+    assert report["error"] is None
+    assert len(report["entries"]) == 1
+    entry = report["entries"][0]
+    assert entry["id"].startswith("custom.")
+    assert entry["defaultSelected"] is False
+    assert entry["risk"] == "low"
+    with pytest.raises(cleanup_api.CleanupError) as caught:
+        api.post("/api/cleanup/custom-entries", {"name": "Again", "path": str(folder)})
+    assert caught.value.status == 400
+    # The merged catalog serves the custom entry to the scan.
+    catalog_report = api.get("/api/cleanup/catalog", {})
+    assert any(e["id"] == entry["id"] for e in catalog_report["entries"])
+    # Bookmark it, remove the entry, and the bookmark disappears with it.
+    api.post("/api/cleanup/bookmarks", {"entryId": entry["id"]})
+    api.post("/api/cleanup/bookmarks/update", {"entryId": entry["id"], "quickClean": True})
+    report = api.post("/api/cleanup/custom-entries/remove", {"entryId": entry["id"]})
+    assert report["entries"] == []
+    assert report["bookmarks"] == []
+    with pytest.raises(cleanup_api.CleanupError) as caught:
+        api.post("/api/cleanup/custom-entries/remove", {"entryId": "custom.ghost"})
+    assert caught.value.status == 404
+    with pytest.raises(cleanup_api.CleanupError) as caught:
+        api.post("/api/cleanup/custom-entries/remove", {"entryId": "system.user-caches"})
+    assert caught.value.status == 400

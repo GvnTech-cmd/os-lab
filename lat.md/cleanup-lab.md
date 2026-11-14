@@ -168,8 +168,8 @@ original is gone.
 [[cleanup-lab/engine/cleanup_lab/readiness.py]] checks the operating system, the
 interpreter, the home folder, the Trash target and the private state folder; those
 decide `ready`, `needs-setup` or `unavailable`. The detector catalog, the native
-scan backend and the tools on `PATH` are optional capabilities, so a missing one
-never blocks a scan.
+scan backend, the tools on `PATH` and the permission probes are optional
+capabilities, so a missing one never blocks a scan.
 
 The desktop launcher selects Python 3.11 or newer to satisfy Cleanup Lab. If the
 host has only an older interpreter, its Get Python action installs an app-managed
@@ -234,11 +234,106 @@ re-verifies the store copy before touching the aside. `POST
 typed preview → single-use job pattern and are audited. The `/cleanup/`
 relocation card is the dashboard layer's part.
 
+## Cleaner Pro (CLNP)
+
+The cleaner-pro workstream (PR #214) adds five layers on top of the roadmap.
+Task ids are `CLNP-01…23`; the plan and its honest deviations live in
+[[cleanup-lab/PLAN-cleaner-pro.md]].
+
+### Permissions (CLNP-01…05)
+
+The read-only permission surface lives in
+[[cleanup-lab/engine/cleanup_lab/permissions.py]].
+
+The CLN-20 FDA probe moved here —
+`privilege.disk_access()` delegates with a byte-compatible payload. Only the
+two silent-failure FDA folders are probed proactively; Desktop/Documents/
+Downloads grants are decided reactively, because probing them would raise
+the macOS consent dialog. `classify_unreadable()` re-probes each unreadable
+scan path read-only and classifies only what still fails with
+PermissionError, by demonstrable scope (TCC-protected Library folders →
+FDA; the user-folder grants; dot components → hidden roots); a recovered
+path makes no claim. Readiness gains the optional `permissions` capability,
+`labctl cleanup doctor` prints the probes, and
+`GET /api/cleanup/permissions` merges the probes with the latest scan's
+classification. The dashboard renders a Permissions card whose grant deep
+link is a plain client-side anchor — the engine never opens Settings.
+
+### Background monitor (CLNP-09…13)
+
+The trigger registry, config schema and evaluation are pure functions in
+[[cleanup-lab/engine/cleanup_lab/monitor.py]].
+
+The first trigger, `disk-free-space`, warns per volume (absolute and percent
+floors from the CLN-28 inventory) with re-arm hysteresis and a cooldown. Config and
+bounded events persist as atomic JSON in the private state folder; a corrupt
+store disables the monitor and reports why. The console runs one daemon
+`MonitorRunner` thread — silent while disabled, re-reading the store every
+tick so a saved config applies without a restart. Typed endpoints:
+`GET /api/cleanup/monitor`, `POST /api/cleanup/monitor/config` and
+`POST /api/cleanup/monitor/evaluate`; `labctl cleanup monitor` prints the
+read-only status. The dashboard's monitor card and page-top warning banner
+share one poller that only runs while the runner is enabled.
+
+### Bookmarks (CLNP-14…19)
+
+One typed bookmark per catalog entry — never a raw path — lives in
+[[cleanup-lab/engine/cleanup_lab/bookmarks.py]], with priority ordering, a
+quick-clean flag, a Trash-only `autoCleanHook` and a `sizeAlert` threshold.
+
+`plan_entry_ids()` filters by flag in priority order and refuses the
+catalog's never-preselect risk classes with per-entry reasons. Quick clean
+(`POST /api/cleanup/bookmarks/quick-clean`) runs the existing plan →
+confirm → run flow. `run_hook_clean()` in the console executes the
+automated clean inside the monitor thread when a free-space crossing fires:
+engine-ready and no-overlap guards, Trash-only, audited with
+`automated: true`, announced by a post-run banner. The `bookmark-size`
+trigger measures alerted bookmarks with a read-only entry-scoped scan and
+folds its events into the monitor store. `labctl cleanup bookmarks` lists
+them read-only.
+
+### Custom entries (CLNP-20)
+
+User folders join as `custom.<slug>` entries through
+[[cleanup-lab/engine/cleanup_lab/custom_catalog.py]], validated by the
+shipped catalog's own `_check_entry`.
+
+They are merged by `catalog.load` after the shipped entries (shipped ids
+win; a broken overlay is reported through `catalog.report`'s
+`overlayError`). The raw path is validated exactly once
+at creation — absolute, an existing folder, never a symlink, never a
+protected or system directory — then only ids travel through the API.
+Removing a custom entry clears its bookmark and flags.
+
+### Overview and Space Explorer (CLNP-21…23)
+
+The dashboard gains an overview page and a new `space` tab; the walker
+behind it is [[cleanup-lab/engine/cleanup_lab/explorer.py]].
+
+`volumes.inventory()` reports `purgeableBytes` from the fixed macOS
+`diskutil info -plist` probe; where the system does not answer, the field
+is `null` and the dashboard omits the purgeable segment — purgeable is
+never guessed. The `/cleanup/` dashboard renders the overview: a readiness
+chip and last-scan note in the page head, the storage hero (segmented
+used/available bar), the Review-cleanup CTA and grouped capability card
+grids tied to live readiness. The five cleanup tabs plus the new
+`space` tab navigate in place (island-internal `pushState`/`popstate`
+router; static routes and Public Pages URLs unchanged; core data fetched
+once per session, per-tab data live).
+
+[[cleanup-lab/engine/cleanup_lab/explorer.py]] walks a parent-summed size
+tree read-only (lstat only, symlinks never followed, hard links counted
+once, one filesystem, node/depth budgets that report `truncated`) over
+registered roots only — `deep-roots.json` ids plus custom overlay entries.
+A drill-down walks a relative path that must stay inside the same root, so
+no request steers the walker. Console: `GET /api/cleanup/explorer/roots`
+and typed `explorer`/`explorer-subtree` jobs. The Space Explorer tab never
+deletes; it links cleaning back to the plan flow.
+
 ## Dashboard pages
 
-[[dashboard/src/views/cleanup/pages.tsx]] renders the compact default dashboard at
-`/cleanup/`: one read-only catalog scan, measured suggestions, plan review,
-confirmation, progress and a result summary.
+[[dashboard/src/views/cleanup/pages.tsx]] renders the dashboard at `/cleanup/`:
+scan, suggestions, plan review, confirmation, progress and a result summary.
 
 Its confirmation opens the shared native dialog (focus containment,
 Escape/backdrop close, focus return) that lists ready items with sizes and
@@ -276,6 +371,12 @@ the seven translated locales.
 before the static dashboard fallthrough.
 
 `GET /api/cleanup/status`, `GET /api/cleanup/catalog` and `GET /api/cleanup/volumes` are read-only.
+The cleaner-pro layers add `GET /api/cleanup/permissions`, `GET /api/cleanup/monitor`
+(with typed `monitor/config` and `monitor/evaluate` POSTs), the bookmark
+endpoints (`bookmarks`, `bookmarks/add|update|remove|quick-clean`), the
+custom-entry endpoints (`custom-entries`, `custom-entries/remove`) and the
+explorer (`explorer/roots`, typed `explorer` and `explorer-subtree` jobs) —
+each typed and validated again by the engine.
 `POST /api/cleanup/scan`, `POST /api/cleanup/plan` and `POST /api/cleanup/clean
 {planId}` start jobs whose requests carry catalog ids, an optional worker count or
 mode, and a plan id only. `GET /api/cleanup/jobs/<id>` returns progress and result;
@@ -317,7 +418,9 @@ The engine tests run under `unittest` from the engine folder.
 `cd cleanup-lab/engine && python3 -m unittest discover -s tests -p 'test_*.py'`
 covers the probe, the catalog, the scan, plan → clean (guard, fingerprints,
 Trash by default, honest failures), the path rules, the CLI exit codes, the
-volume inventory, the privileged actions and the relocation executor.
+volume inventory, the privileged actions, the relocation executor, the
+permission probes and classification, the monitor triggers and store, the
+bookmarks, the custom overlay and the explorer walker.
 Tests live in [[cleanup-lab/engine/tests]]; the console's typed job contract is
 covered by [[android-lab/lab/tests/test_cleanup_console.py]]. [[scripts/run-tests.sh]]
 runs the same suites next to the reference code tests, the Android suite, `bash -n`,

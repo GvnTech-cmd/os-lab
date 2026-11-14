@@ -119,6 +119,15 @@ def _privileged_capability(platform, env):
     )
 
 
+def _permissions_capability(platform):
+    """The optional CLNP-01 permission surface (built in; probes are read-only)."""
+    if platform == "macos":
+        detail = "Read-only probes: Full Disk Access, folder grants (reactive)"
+    else:
+        detail = "Read-only hidden-folder classification"
+    return _capability("permissions", "Permission checks", True, detail)
+
+
 def _tool_capabilities(platform, env):
     items = []
     for id_, label, names in CHECKED_TOOLS:
@@ -141,6 +150,7 @@ def _tool_capabilities(platform, env):
         )
     )
     items.append(_privileged_capability(platform, env))
+    items.append(_permissions_capability(platform))
     return items
 
 

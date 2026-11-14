@@ -308,46 +308,14 @@ def execute(root, plan, *, env=None, which=shutil.which, runner=subprocess.run,
 
 
 def disk_access(platform=None, env=None, *, prober=None):
-    """The read-only macOS Full Disk Access probe; ``applicable: False`` elsewhere."""
-    platform = platform or paths.platform_id()
-    if platform != "macos":
-        return {
-            "applicable": False, "granted": None, "paths": [], "guidance": "",
-            "reason": "Full Disk Access is a macOS privacy setting.",
-        }
-    env = os.environ if env is None else env
-    home = paths.home_dir(env)
-    probes = [
-        os.path.join(home, "Library", "Safari"),
-        os.path.join(home, "Library", "Mail"),
-    ]
-    check = prober or os.listdir
-    results = []
-    granted = None
-    for path in probes:
-        try:
-            check(path)
-        except PermissionError:
-            results.append({"path": path, "readable": False, "reason": "Permission denied"})
-            granted = False
-            continue
-        except FileNotFoundError:
-            results.append({"path": path, "readable": None, "reason": "not present"})
-            continue
-        except OSError as exc:
-            results.append({"path": path, "readable": None, "reason": str(exc)})
-            continue
-        results.append({"path": path, "readable": True, "reason": ""})
-        granted = True
-    return {
-        "applicable": True,
-        "granted": granted,
-        "paths": results,
-        "guidance": (
-            "Grant the app running the console Full Disk Access under System Settings → Privacy & Security → Full Disk Access, then re-check."
-            if granted is False else ""
-        ),
-    }
+    """The read-only macOS Full Disk Access probe; ``applicable: False`` elsewhere.
+
+    CLNP-01 moved the probe itself into :mod:`cleanup_lab.permissions`; this
+    wrapper keeps the CLN-20 payload shape stable for existing consumers.
+    """
+    from .permissions import fda
+
+    return fda(platform, env, prober=prober)
 
 
 def capabilities(root, *, platform=None, env=None, which=shutil.which,

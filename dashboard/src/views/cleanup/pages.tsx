@@ -3,7 +3,7 @@ import { BroomIcon } from "@phosphor-icons/react";
 import { AppShell } from "../../shell/app-shell";
 import { TopBar } from "../../shell/top-bar";
 import { Badge, Empty, PageHead, Section, Status } from "../../components/ui";
-import { api, type CleanupEntry, type CleanupHistory, type CleanupJob, type CleanupPlan, type CleanupResult, type CleanupScan, type CleanupStatus } from "../../lib/api";
+import { api, usePoll, type CleanupEntry, type CleanupHistory, type CleanupJob, type CleanupMonitorStatus, type CleanupPermissions, type CleanupPermission, type CleanupPlan, type CleanupResult, type CleanupScan, type CleanupStatus } from "../../lib/api";
 import { localeFromPath, localePath } from "../../i18n/paths";
 import { keepModalFocus } from "../modal-focus";
 import { InfoPopover } from "./info-popover";
@@ -11,9 +11,28 @@ import { CategoryIcon, PrivilegeMarker, StatusIcon } from "./icons";
 import { bytes, itemStatusLabel, riskLabel, riskTone, sortEntries, totalsByRisk, type SortOrder } from "./format";
 import { CleanupExtraTools } from "./extra-tools";
 import { CrossPlatformLeftovers } from "./cross-leftovers";
+import { MonitorBanner, MonitorCard } from "./monitor-card";
+import { BookmarkToggle, BookmarksSection } from "./bookmarks-card";
+import { OverviewCards, StorageHero, type OverviewCard } from "./overview";
+import { SpaceExplorer } from "./space-explorer";
+import type { BookmarksPayload, CleanupVolume } from "../../lib/api";
 
-export type CleanupPageId = "" | "scan" | "results" | "leftovers" | "history";
-export const CLEANUP_PAGES: CleanupPageId[] = ["", "scan", "results", "leftovers", "history"];
+export type CleanupPageId = "" | "scan" | "results" | "leftovers" | "history" | "space";
+export const CLEANUP_PAGES: CleanupPageId[] = ["", "scan", "results", "leftovers", "history", "space"];
+/** Any `/cleanup` route for any locale or base path, at the end of a pathname. */
+const CLEANUP_ROUTE = /\/cleanup(?:\/(scan|results|leftovers|history|space))?\/?$/;
+
+/**
+ * CLNP-06: the cleanup route a pathname names, or null when it is not one.
+ * Works for `/cleanup/scan/`, `/fa/cleanup/results/` and Public Pages base
+ * paths alike — only the tail decides.
+ */
+export function parseCleanupPath(pathname: string): CleanupPageId | null {
+  const match = CLEANUP_ROUTE.exec(pathname.replace(/\/+$/, "") + "/");
+  if (!match) return null;
+  const suffix = (match[1] ?? "") as CleanupPageId;
+  return (CLEANUP_PAGES as string[]).includes(suffix) ? suffix : null;
+}
 const PUBLIC = import.meta.env.PUBLIC_SITE_MODE === "pages";
 const errorText = (error: unknown) => error instanceof Error ? error.message : String(error);
 const isScan = (job: CleanupJob): job is CleanupJob & { result: CleanupScan } => job.kind === "scan" && !!job.result;
@@ -66,6 +85,52 @@ function ScanDetails({ item }: { item: CleanupScan["entries"][number] }) {
       {path.error && <p className="text-xs text-(--iux-danger)">{path.error}</p>}
     </div>)}
   </>;
+}
+
+/** CLNP-04: state chip wording and tone for one permission record. */
+function permissionTone(granted: boolean | null): { label: string; tone: "success" | "danger" | undefined } {
+  if (granted === true) return { label: "Granted", tone: "success" };
+  if (granted === false) return { label: "Not granted", tone: "danger" };
+  return { label: "No evidence yet", tone: undefined };
+}
+
+/**
+ * CLNP-04: the read-only permission card. Every record the engine reports as
+ * applicable shows its state, probe results and grant guidance; a macOS grant
+ * deep link is a plain client-side anchor — the engine never opens Settings.
+ */
+function PermissionsCard({ permissions }: { permissions: CleanupPermissions | null }) {
+  if (!permissions || !Array.isArray(permissions.permissions)) return null;
+  const applicable = permissions.permissions.filter((record) => record && record.applicable);
+  if (!applicable.length) return null;
+  const classified = permissions.classification?.classified ?? [];
+  return <Section id="cleanup-permissions" title="Permissions" description="What this computer lets the cleaner read, and how to grant more.">
+    <div className="divide-y divide-(--iux-border)">
+      {applicable.map((record) => <div key={record.id} className="py-3 first:pt-0 last:pb-0">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">{record.name}</span>
+          <Badge tone={permissionTone(record.granted).tone}>{permissionTone(record.granted).label}</Badge>
+          {record.grantUrl && <a className="iux-btn ms-auto text-xs" href={record.grantUrl}>Open System Settings</a>}
+        </div>
+        {record.results.length > 0 && <div className="mt-1 space-y-0.5">
+          {record.results.map((result, index) => <p key={index} className="break-all text-xs" translate="no">
+            {result.path} <span className="text-(--iux-muted-foreground)">· {result.readable === false ? result.reason || "unreadable" : result.readable ? "readable" : result.reason}</span>
+          </p>)}
+        </div>}
+        {record.guidance && <p className="mt-1 text-xs text-(--iux-muted-foreground)">{record.guidance}</p>}
+      </div>)}
+    </div>
+    {classified.length > 0 && <div className="mt-3 rounded-md border border-(--iux-warning)/40 bg-(--iux-warning)/5 p-3 text-sm">
+      <p className="font-medium">Items the latest scan could not read</p>
+      {classified.map((item, index) => <p key={index} className="mt-1 break-all text-xs" translate="no">
+        {item.path} <span className="text-(--iux-muted-foreground)">· needs {permissionName(item.permissionId, permissions)}</span>
+      </p>)}
+    </div>}
+  </Section>;
+}
+
+function permissionName(id: string, permissions: CleanupPermissions): string {
+  return permissions.permissions.find((record) => record.id === id)?.name ?? id;
 }
 
 /** Plan confirmation: a real dialog with focus containment, listing what will and will not be cleaned. */
@@ -137,13 +202,18 @@ function ConfirmDialog({
   </dialog>;
 }
 
-export default function CleanupPage({ page = "" }: { page?: CleanupPageId }) {
+export default function CleanupPage({ page: initialPage = "" }: { page?: CleanupPageId }) {
+  // CLNP-06: the active page is live state, derived from the URL. The prop
+  // stays as the SSR/deep-link seed; navigation updates the state in place.
+  const [page, setPage] = useState<CleanupPageId>(initialPage);
   const [status, setStatus] = useState<CleanupStatus | null>(null);
   const [entries, setEntries] = useState<CleanupEntry[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const [jobs, setJobs] = useState<CleanupJob[]>([]);
   const [active, setActive] = useState<CleanupJob | null>(null);
   const [history, setHistory] = useState<CleanupHistory | null>(null);
+  const [permissions, setPermissions] = useState<CleanupPermissions | null>(null);
+  const [bookmarks, setBookmarks] = useState<BookmarksPayload | null>(null);
   const [loading, setLoading] = useState(!PUBLIC);
   const [loadError, setLoadError] = useState("");
   const [actionError, setActionError] = useState("");
@@ -151,13 +221,50 @@ export default function CleanupPage({ page = "" }: { page?: CleanupPageId }) {
   const [mode, setMode] = useState<"trash" | "delete">("trash");
   const [preset, setPreset] = useState<"recommended" | "extended">("recommended");
   const [confirm, setConfirm] = useState(false);
+  const [bookmarkConfirm, setBookmarkConfirm] = useState(false);
   const [order, setOrder] = useState<SortOrder>("size");
   const [now, setNow] = useState(Date.now() / 1000);
+  const coreLoaded = useRef(false);
   const locale = typeof window === "undefined" ? "en" : localeFromPath(window.location.pathname);
   const link = (suffix: string) => localePath(`/cleanup/${suffix}`, locale);
 
+  // CLNP-11: the monitor state is shared by the banner and the card. One
+  // fetch on mount (PUBLIC resolves to null without any request), then a
+  // light 15 s poll only while the runner is enabled — intervalMs 0 means
+  // "fetch on mount and on reload", never a timer.
+  const { data: monitorOnce, reload: reloadMonitorOnce } = usePoll<CleanupMonitorStatus | null>(
+    () => PUBLIC ? Promise.resolve(null) : api.cleanupMonitor(), 0
+  );
+  const monitorEnabled = monitorOnce?.enabled === true;
+  const { data: monitorLive, reload: reloadMonitorLive } = usePoll<CleanupMonitorStatus | null>(
+    () => PUBLIC ? Promise.resolve(null) : api.cleanupMonitor(), monitorEnabled ? 15000 : 0
+  );
+  const monitor = monitorLive ?? monitorOnce ?? null;
+  const monitorReload = () => { reloadMonitorOnce(); reloadMonitorLive(); };
+  // CLNP-21/22: the storage hero and the monitor card share one volumes fetch.
+  const { data: volumeReport, reload: reloadVolumes } = usePoll(
+    () => PUBLIC ? Promise.resolve(null) : api.cleanupVolumes(), 0
+  );
+  const volumes: CleanupVolume[] | null = volumeReport?.volumes ?? null;
+
   useEffect(() => {
-    if (PUBLIC) return;
+    if (typeof window !== "undefined") setPage(parseCleanupPath(window.location.pathname) ?? initialPage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // CLNP-06: back/forward re-derives the page from the URL the browser shows.
+  useEffect(() => {
+    const onPop = () => setPage(parseCleanupPath(window.location.pathname) ?? "");
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  // CLNP-07: the core fetch runs once per island session, not per tab. The
+  // permission probe is an optional capability: its failure degrades to a
+  // hidden card instead of failing the whole load.
+  useEffect(() => {
+    if (PUBLIC || coreLoaded.current) return;
+    coreLoaded.current = true;
     let alive = true;
     Promise.all([api.cleanupStatus(), api.cleanupCatalog(), api.cleanupJobs()])
       .then(([ready, catalog, recent]) => {
@@ -169,16 +276,75 @@ export default function CleanupPage({ page = "" }: { page?: CleanupPageId }) {
       })
       .catch((error) => { if (alive) setLoadError(errorText(error)); })
       .finally(() => { if (alive) setLoading(false); });
+    void api.cleanupPermissions()
+      .then((grants) => { if (alive) setPermissions(grants); })
+      .catch(() => { if (alive) setPermissions(null); });
+    void api.cleanupBookmarks()
+      .then((payload) => { if (alive) setBookmarks(payload); })
+      .catch(() => { if (alive) setBookmarks(null); });
+    return () => { alive = false; };
+  }, []);
+
+  const reloadBookmarks = () => { void api.cleanupBookmarks().then(setBookmarks).catch(() => {}); };
+  const bookmarkedIds = new Set((bookmarks?.bookmarks ?? []).map((item) => item.entryId));
+
+  /** CLNP-21: a capability card either navigates a tab or scrolls to its section. */
+  function goCard(card: OverviewCard) {
+    if (card.onTab) {
+      navigateTo(card.target.replace("/", "") as CleanupPageId);
+    } else {
+      document.getElementById(card.target)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
+  /** CLNP-18: bookmark or unbookmark one catalog entry from any row. */
+  function toggleBookmark(entryId: string) {
+    if (bookmarkedIds.has(entryId)) {
+      void api.cleanupBookmarkRemove(entryId).then(reloadBookmarks).catch((error) => setActionError(errorText(error)));
+    } else {
+      void api.cleanupBookmarkAdd(entryId).then(reloadBookmarks).catch((error) => setActionError(errorText(error)));
+    }
+  }
+
+  // CLNP-07: live fetch per tab entry — jobs where results are shown, the
+  // verified audit history on History. No idle polling; the job poller below
+  // stays tied to a running job.
+  useEffect(() => {
+    if (PUBLIC) return;
+    let alive = true;
+    if (page === "history") {
+      void api.cleanupHistory().then((value) => { if (alive) setHistory(value); })
+        .catch((error) => { if (alive) setLoadError(errorText(error)); });
+      return () => { alive = false; };
+    }
+    if (page === "" || page === "results" || page === "leftovers") {
+      void api.cleanupJobs().then((recent) => { if (alive) setJobs(recent.jobs); })
+        .catch(() => { if (alive) { /* keep the session's jobs */ } });
+    }
     return () => { alive = false; };
   }, [page]);
 
-  useEffect(() => {
-    if (PUBLIC || page !== "history") return;
-    let alive = true;
-    void api.cleanupHistory().then((value) => { if (alive) setHistory(value); })
-      .catch((error) => { if (alive) setLoadError(errorText(error)); });
-    return () => { alive = false; };
-  }, [page]);
+  /** CLNP-06: one in-place navigation: URL, page state, scroll, dialog. */
+  function navigateTo(next: CleanupPageId, pushUrl = true) {
+    if (pushUrl && next !== page) window.history.pushState({}, "", link(next ? `${next}/` : ""));
+    setPage(next);
+    setConfirm(false);
+    setBookmarkConfirm(false);
+    window.scrollTo({ top: 0 });
+  }
+
+  /** CLNP-06: intercept plain left-clicks on cleanup anchors; others pass through. */
+  function onNavClick(event: React.MouseEvent<HTMLElement>) {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const anchor = (event.target as HTMLElement).closest("a");
+    if (!anchor || !anchor.href || anchor.getAttribute("href")?.startsWith("#")) return;
+    const url = new URL(anchor.href, window.location.href);
+    if (url.origin !== window.location.origin) return;
+    const next = parseCleanupPath(url.pathname);
+    if (next === null) return;
+    event.preventDefault();
+    navigateTo(next, url.pathname !== window.location.pathname);
+  }
 
   useEffect(() => {
     if (!active || active.state !== "running") return;
@@ -256,13 +422,22 @@ export default function CleanupPage({ page = "" }: { page?: CleanupPageId }) {
   }
 
   const tabs: { id: CleanupPageId; label: string; path: string }[] = [
-    { id: "", label: "Dashboard", path: "" }, { id: "scan", label: "Advanced scan", path: "scan/" }, { id: "results", label: "Results", path: "results/" },
+    { id: "", label: "Dashboard", path: "" }, { id: "space", label: "Space Explorer", path: "space/" }, { id: "scan", label: "Advanced scan", path: "scan/" }, { id: "results", label: "Results", path: "results/" },
     { id: "leftovers", label: "Leftovers", path: "leftovers/" }, { id: "history", label: "History", path: "history/" }
   ];
   return <AppShell activeId={`cleanup-${page || "scan"}`}>
     <TopBar title="Cleanup Lab" icon={<BroomIcon size={20} />} />
-    <main className="mx-auto flex w-full max-w-5xl flex-col gap-5 p-4 sm:p-6">
-      <PageHead icon={<BroomIcon size={22} />} title="Cleanup Lab" description="Measure reclaimable space, review a plan, then confirm each clean." />
+    <main className="mx-auto flex w-full max-w-5xl flex-col gap-5 p-4 sm:p-6" onClick={onNavClick}>
+      <PageHead icon={<BroomIcon size={22} />} title="Cleanup Lab" description="Measure reclaimable space, review a plan, then confirm each clean."
+        actions={<>
+          {!PUBLIC && status && <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${status.state === "ready" ? "bg-(--iux-success)/10 text-(--iux-success)" : "bg-(--iux-warning)/10 text-(--iux-warning)"}`}>
+            {status.state === "ready" ? "Ready" : status.state === "needs-setup" ? "Setup needed" : "Unavailable"}
+          </span>}
+          {!PUBLIC && <span className="text-xs text-(--iux-muted-foreground)">
+            {latestScan ? `Last scan measured ${bytes(latestScan.totals.sizeBytes)}` : "No scan run yet"}
+          </span>}
+        </>} />
+      {!PUBLIC && <MonitorBanner monitor={monitor} scanHref={link("scan/")} />}
       <nav aria-label="Cleanup pages" className="flex flex-wrap gap-2">{tabs.map((tab) =>
         <a key={tab.id} href={link(tab.path)} aria-current={page === tab.id ? "page" : undefined} className="iux-btn" data-variant={page === tab.id ? "primary" : "outline"}>{tab.label}</a>)}</nav>
       {PUBLIC ? <Section title="Local app required"><p>The Cleanup Lab runs in the local app. Install and open os-lab on your computer to scan and clean.</p></Section> :
@@ -272,8 +447,18 @@ export default function CleanupPage({ page = "" }: { page?: CleanupPageId }) {
             {status?.requirements.filter((item) => !item.found).map((item) => <p key={item.id}>{item.label}: {item.hint}</p>)}
             <button type="button" className="iux-btn mt-3" onClick={() => { setLoading(true); void api.cleanupStatus().then(setStatus).catch((error) => setLoadError(errorText(error))).finally(() => setLoading(false)); }}>Re-check</button>
           </Section>}
+          {page === "" && status?.state === "ready" && <PermissionsCard permissions={permissions} />}
+          {page === "" && !PUBLIC && <MonitorCard monitor={monitor} volumes={volumes} reload={monitorReload} />}
+          {page === "" && !PUBLIC && <BookmarksSection bookmarks={bookmarks} reload={reloadBookmarks}
+            onQuickClean={(job) => { setActive(job); setJobs((old) => [job, ...old.filter((row) => row.id !== job.id)]); setBookmarkConfirm(true); }}
+            onCatalogChanged={() => { void api.cleanupCatalog().then((catalog) => setEntries(catalog.entries)).catch(() => {}); }} />}
+          {page === "" && !PUBLIC && bookmarkConfirm && active && isPlan(active) &&
+            <ConfirmDialog plan={active.result} planUsed={planUsed} now={now} busy={!!busy} error={actionError}
+              onRun={() => void start(() => api.cleanupClean(active.result.planId))}
+              onClose={() => { setBookmarkConfirm(false); }} />}
           {page === "" && <>
-            <Section title="Quick cleanup" description="Scan all available categories. Nothing is removed during a scan.">
+            {!PUBLIC && status?.state === "ready" && <StorageHero volumes={volumes} onRefresh={reloadVolumes} />}
+            <Section id="overview-review" title="Review cleanup" description="Check the available categories for caches, logs and other removable files. Nothing is removed during a scan.">
               <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-(--iux-muted-foreground)">{status?.state === "ready" ? "Ready to scan" : "Scan unavailable until setup is complete"} · {entries.length} categories available</p><button type="button" className="iux-btn" data-variant="primary" disabled={!canWork || !entries.length} onClick={() => void start(() => api.cleanupScan(entries.map((item) => item.id)))}>{latestScan ? "Scan again" : "Scan now"}</button></div>
               {active?.state === "running" && <div className="mt-4" role="status"><p>{active.kind} in progress · <span dir="ltr">{String(active.progress?.pathsDone ?? active.progress?.itemsDone ?? 0)} / {String(active.progress?.pathsTotal ?? active.progress?.itemsTotal ?? "…")}</span></p><progress className="mt-2 w-full" max={Number(active.progress?.pathsTotal ?? active.progress?.itemsTotal ?? 1)} value={Number(active.progress?.pathsDone ?? active.progress?.itemsDone ?? 0)} /><p className="break-all text-xs text-(--iux-muted-foreground)" translate="no">{active.progress?.currentPath}</p><button type="button" className="iux-btn mt-2" onClick={() => void cancel()}>Cancel</button></div>}
               {active?.state === "failed" && <Status value={{ ok: false, text: active.error || "The cleanup job failed." }} />}{actionError && <Status value={{ ok: false, text: actionError }} />}
@@ -297,6 +482,7 @@ export default function CleanupPage({ page = "" }: { page?: CleanupPageId }) {
               <p className="mt-3 text-sm"><span dir="ltr" className="tabular-nums">{bytes(latestClean.totals.bytes)}</span> moved to Trash, not yet freed.</p>
               <div className="mt-3 flex gap-2"><a className="iux-btn" href={link("results/")}>View report</a><a className="iux-btn" href={link("leftovers/")}>View leftovers</a><a className="iux-btn" href={link("history/")}>History</a></div>
             </Section>}
+            {!PUBLIC && <OverviewCards go={goCard} />}
           </>}
           {page === "scan" && <>
             <Section title="Scan" description="Choose catalog entries. Scanning only measures files; it does not remove them.">
@@ -329,6 +515,7 @@ export default function CleanupPage({ page = "" }: { page?: CleanupPageId }) {
                       <CategoryIcon category={item.category} />
                       <span className="min-w-0 flex-1 truncate font-medium">{item.name}</span>
                       {item.needsPrivilege && <PrivilegeMarker />}
+                      {!PUBLIC && <BookmarkToggle entryId={item.id} bookmarked={bookmarkedIds.has(item.id)} busy={busy} onToggle={toggleBookmark} />}
                       <InfoPopover><EntryDetails entry={item} /></InfoPopover>
                     </span>
                     <span className="flex items-center gap-2">
@@ -368,6 +555,10 @@ export default function CleanupPage({ page = "" }: { page?: CleanupPageId }) {
               </>}
               {latestScan.totals.files > 0 && <p className="mt-2 text-xs text-(--iux-muted-foreground)">{latestScan.totals.files} <span>files</span> · {latestScan.totals.folders} <span>folders</span></p>}
               {latestScan.totals.unreadable > 0 && <p className="text-xs text-(--iux-warning)">{latestScan.totals.unreadable} <span>unreadable paths</span></p>}
+              {(permissions?.classification?.classified ?? []).length > 0 && <p className="mt-1 text-xs text-(--iux-muted-foreground)">
+                {permissions!.classification!.classified.length} <span>need a grant:</span>{" "}
+                {[...new Set(permissions!.classification!.classified.map((item) => permissionName(item.permissionId, permissions!)))].join(", ")}
+              </p>}
             </Section>}
             <Section title="Plan & confirm" description="A plan checks every path again. Trash is the default; permanent deletion requires an explicit choice.">
               <label className="text-sm">Mode <select value={mode} disabled={busy} onChange={(event) => { setMode(event.target.value as "trash" | "delete"); setConfirm(false); }} className="iux-input ml-2"><option value="trash">Trash (default)</option><option value="delete">Delete permanently</option></select></label>
@@ -398,6 +589,7 @@ export default function CleanupPage({ page = "" }: { page?: CleanupPageId }) {
                       <div className="flex items-center gap-2">
                         <span className="min-w-0 flex-1 truncate font-medium">{item.name}</span>
                         <span dir="ltr" className="tabular-nums">{bytes(item.sizeBytes)}</span>
+                        {!PUBLIC && <BookmarkToggle entryId={item.id} bookmarked={bookmarkedIds.has(item.id)} onToggle={toggleBookmark} />}
                         <InfoPopover><ScanDetails item={item} /></InfoPopover>
                       </div>
                       <SizeBar value={item.sizeBytes} max={maxSize} />
@@ -454,6 +646,7 @@ export default function CleanupPage({ page = "" }: { page?: CleanupPageId }) {
           </Section>
           {(status?.platform?.id === "linux" || status?.platform?.id === "windows") && <CrossPlatformLeftovers />}
           </>}
+          {page === "space" && <SpaceExplorer scanHref={link("scan/")} />}
           {page === "history" && <Section title="Audit history" description="Verified cleanup runs stored on this computer.">
             {!history?.entries.length ? <Empty>No cleanup runs recorded yet.</Empty> : history.entries.map((entry) =>
               <div key={entry.id} className="border-b border-(--iux-border) py-3 text-sm">
@@ -466,7 +659,10 @@ export default function CleanupPage({ page = "" }: { page?: CleanupPageId }) {
                 <details className="mt-1">
                   <summary className="cursor-pointer text-xs text-(--iux-muted-foreground)">Items</summary>
                   <div className="iux-scroll mt-1 max-h-56 overflow-auto">
-                    {entry.result.results.map((item, index) => <p key={index} className="break-all text-xs"><span translate="no">{item.path}</span> · {item.status} · {bytes(item.bytes)}</p>)}
+                    {entry.result.results.map((item, index) => <div key={index} className="flex items-start gap-1 py-0.5 text-xs">
+                      {!PUBLIC && <BookmarkToggle entryId={item.entryId} bookmarked={bookmarkedIds.has(item.entryId)} onToggle={toggleBookmark} title="Bookmark this item" />}
+                      <p className="min-w-0 flex-1 break-all"><span translate="no">{item.path}</span> · {item.status} · {bytes(item.bytes)}</p>
+                    </div>)}
                   </div>
                 </details>
               </div>)}
