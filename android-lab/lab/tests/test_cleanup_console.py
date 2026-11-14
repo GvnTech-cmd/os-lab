@@ -905,3 +905,45 @@ def test_size_alert_events_flow_through_the_monitor_store(monkeypatch, tmp_path)
     event = next(event for event in report["state"]["events"] if event["kind"] == "warning")
     assert event["bookmark"] == "system.user-caches"
     assert event["sizeBytes"] == 500
+
+
+def test_custom_entries_are_validated_once_then_addressed_by_id(monkeypatch, tmp_path):
+    _bookmark_env(monkeypatch, tmp_path)
+    api = cleanup_api.CleanupAPI(REPO_ROOT)
+    with pytest.raises(cleanup_api.CleanupError) as caught:
+        api.post("/api/cleanup/custom-entries", {"name": "X", "path": "relative/path"})
+    assert caught.value.status == 400
+    with pytest.raises(cleanup_api.CleanupError) as caught:
+        api.post("/api/cleanup/custom-entries", {"name": "X", "path": str(tmp_path), "extra": 1})
+    assert caught.value.status == 400
+    # The home folder itself is a protected root.
+    with pytest.raises(cleanup_api.CleanupError) as caught:
+        api.post("/api/cleanup/custom-entries", {"name": "Home", "path": str(tmp_path)})
+    assert caught.value.status == 400
+    folder = tmp_path / "MyCache"
+    folder.mkdir()
+    report = api.post("/api/cleanup/custom-entries", {"name": "My Cache", "path": str(folder)})
+    assert report["error"] is None
+    assert len(report["entries"]) == 1
+    entry = report["entries"][0]
+    assert entry["id"].startswith("custom.")
+    assert entry["defaultSelected"] is False
+    assert entry["risk"] == "low"
+    with pytest.raises(cleanup_api.CleanupError) as caught:
+        api.post("/api/cleanup/custom-entries", {"name": "Again", "path": str(folder)})
+    assert caught.value.status == 400
+    # The merged catalog serves the custom entry to the scan.
+    catalog_report = api.get("/api/cleanup/catalog", {})
+    assert any(e["id"] == entry["id"] for e in catalog_report["entries"])
+    # Bookmark it, remove the entry, and the bookmark disappears with it.
+    api.post("/api/cleanup/bookmarks", {"entryId": entry["id"]})
+    api.post("/api/cleanup/bookmarks/update", {"entryId": entry["id"], "quickClean": True})
+    report = api.post("/api/cleanup/custom-entries/remove", {"entryId": entry["id"]})
+    assert report["entries"] == []
+    assert report["bookmarks"] == []
+    with pytest.raises(cleanup_api.CleanupError) as caught:
+        api.post("/api/cleanup/custom-entries/remove", {"entryId": "custom.ghost"})
+    assert caught.value.status == 404
+    with pytest.raises(cleanup_api.CleanupError) as caught:
+        api.post("/api/cleanup/custom-entries/remove", {"entryId": "system.user-caches"})
+    assert caught.value.status == 400

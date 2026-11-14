@@ -62,6 +62,8 @@ BODY_KEYS = {"scan": SCAN_KEYS, "deep-scan": DEEP_KEYS, "plan": PLAN_KEYS, "clea
               "bookmarks-update": ("entryId", "priority", "quickClean", "autoCleanHook", "sizeAlert"),
               "bookmarks-remove": ("entryId",),
               "bookmarks-quick-clean": (),
+              "custom-add": ("name", "path"),
+              "custom-remove": ("entryId",),
               "leftovers": ()}
 
 
@@ -1066,6 +1068,51 @@ class CleanupAPI:
                 raise CleanupError(400, "No bookmark is marked for quick cleanup")
             job = JOBS.start_plan(self.root, {"entryIds": ids, "mode": "trash"})
             return {"job": job, "refusals": refusals}
+        if path == "/api/cleanup/custom-entries":
+            # CLNP-20: the raw path appears exactly once, here, validated by
+            # the engine before anything is stored. Afterwards only the
+            # custom.<slug> id travels through the API.
+            _object_body(body, "custom-add")
+            name = body.get("name")
+            raw_path = body.get("path")
+            if not isinstance(name, str) or not name.strip():
+                raise CleanupError(400, "A display name is required")
+            if not isinstance(raw_path, str) or not raw_path.strip():
+                raise CleanupError(400, "path must be an absolute folder path")
+            overlay = _module(self.root, "custom_catalog")
+            platform = _module(self.root, "paths").platform_id()
+            try:
+                catalog_ids = {entry["id"] for entry in _module(self.root, "catalog").load(self.root)}
+            except Exception as exc:
+                raise CleanupError(500, "The detector catalog is invalid: {0}".format(exc)) from exc
+            try:
+                result = overlay.add(name, raw_path, overlay.load()["entries"],
+                                     platform=platform, catalog_ids=catalog_ids)
+            except overlay.CustomCatalogError as exc:
+                raise CleanupError(400, str(exc)) from exc
+            return {"entries": result["entries"], "error": result["error"]}
+        if path == "/api/cleanup/custom-entries/remove":
+            _object_body(body, "custom-remove")
+            entry_id = body.get("entryId")
+            if not isinstance(entry_id, str) or not entry_id:
+                raise CleanupError(400, "entryId must name a custom entry")
+            if not entry_id.startswith("custom."):
+                raise CleanupError(400, "Only custom.<slug> entries can be removed here")
+            overlay = _module(self.root, "custom_catalog")
+            platform = _module(self.root, "paths").platform_id()
+            try:
+                result = overlay.remove(entry_id, overlay.load()["entries"], platform=platform)
+            except overlay.CustomCatalogError as exc:
+                raise CleanupError(404, str(exc)) from exc
+            # A removed entry cannot stay bookmarked: clear it and its flags.
+            bookmarks_mod = _bookmark_book(self.root)
+            loaded = bookmarks_mod.load()
+            if any(item["entryId"] == entry_id for item in loaded["bookmarks"]):
+                try:
+                    result["bookmarks"] = bookmarks_mod.remove(entry_id, loaded["bookmarks"])["bookmarks"]
+                except bookmarks_mod.BookmarksError:
+                    pass
+            return result
         if path == "/api/cleanup/deep-scan":
             _object_body(body, "deep-scan")
             return JOBS.start_deep_scan(self.root, body)

@@ -301,7 +301,30 @@ def load(root, env=None):
                 )
             seen[entry["id"]] = name
             entries.append(entry)
+    # CLNP-20: merge the per-install overlay (``custom.<slug>`` entries) after
+    # the shipped catalog. A shipped id always wins; a broken overlay is
+    # ignored here and reported through :func:`report` instead of failing the
+    # whole catalog.
+    try:
+        from . import custom_catalog
+
+        overlay = custom_catalog.load(env=env)
+        for entry in overlay["entries"]:
+            if entry["id"] not in seen:
+                entries.append(entry)
+    except Exception:
+        pass
     return entries
+
+
+def overlay_error(env=None):
+    """Why the per-install overlay is not in effect, or ``None`` (CLNP-20)."""
+    try:
+        from . import custom_catalog
+
+        return custom_catalog.load(env=env)["error"]
+    except Exception as exc:
+        return str(exc)
 
 
 def resolve(entry, platform, env=None):
@@ -375,6 +398,7 @@ def report(root, platform=None, env=None):
     entries = for_platform(load(root, env), target)
     return {
         "platform": target,
+        "overlayError": overlay_error(env),
         "entries": [
             {
                 "id": entry["id"],

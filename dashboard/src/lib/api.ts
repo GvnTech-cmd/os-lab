@@ -356,6 +356,9 @@ export const api = {
   cleanupBookmarkUpdate: (entryId: string, changes: BookmarkChanges) => post<BookmarksPayload>("/api/cleanup/bookmarks/update", { entryId, ...changes }),
   cleanupBookmarkRemove: (entryId: string) => post<BookmarksPayload>("/api/cleanup/bookmarks/remove", { entryId }),
   cleanupBookmarkQuickClean: () => post<{ job: CleanupJob; refusals: { entryId: string; reason: string }[] }>("/api/cleanup/bookmarks/quick-clean"),
+  /** CLNP-20: the raw path appears exactly once, here; afterwards ids only. */
+  cleanupCustomAdd: (name: string, path: string) => post<{ entries: { id: string; name: string; risk: string; paths: Record<string, string[]> }[]; error: string | null }>("/api/cleanup/custom-entries", { name, path }),
+  cleanupCustomRemove: (entryId: string) => post<{ entries: unknown[]; bookmarks?: BookmarkRecord[]; error: string | null }>("/api/cleanup/custom-entries/remove", { entryId }),
   cleanupContainerPreview: (actionId: string) => post<CleanupContainerPreview>("/api/cleanup/containers/preview", { actionId }),
   cleanupContainerPrune: (previewId: string) => post<CleanupAuxJob<CleanupContainerResult>>("/api/cleanup/containers/prune", { previewId }),
   cleanupVMScan: () => post<CleanupAuxJob<CleanupVMInventory>>("/api/cleanup/vms/scan"),

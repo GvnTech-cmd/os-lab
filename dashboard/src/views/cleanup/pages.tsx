@@ -426,7 +426,8 @@ export default function CleanupPage({ page: initialPage = "" }: { page?: Cleanup
           {page === "" && status?.state === "ready" && <PermissionsCard permissions={permissions} />}
           {page === "" && !PUBLIC && <MonitorCard monitor={monitor} reload={monitorReload} />}
           {page === "" && !PUBLIC && <BookmarksSection bookmarks={bookmarks} reload={reloadBookmarks}
-            onQuickClean={(job) => { setActive(job); setJobs((old) => [job, ...old.filter((row) => row.id !== job.id)]); setBookmarkConfirm(true); }} />}
+            onQuickClean={(job) => { setActive(job); setJobs((old) => [job, ...old.filter((row) => row.id !== job.id)]); setBookmarkConfirm(true); }}
+            onCatalogChanged={() => { void api.cleanupCatalog().then((catalog) => setEntries(catalog.entries)).catch(() => {}); }} />}
           {page === "" && !PUBLIC && bookmarkConfirm && active && isPlan(active) &&
             <ConfirmDialog plan={active.result} planUsed={planUsed} now={now} busy={!!busy} error={actionError}
               onRun={() => void start(() => api.cleanupClean(active.result.planId))}
