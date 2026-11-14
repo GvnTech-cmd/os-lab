@@ -23,17 +23,13 @@ function NodeRows({
       const childRelative = relative ? `${relative}/${child.name}` : child.name;
       return <div key={child.path} className="py-2 text-sm">
         <div className="flex items-center gap-2">
-          {child.children.length > 0 || child.folders > 0
-            ? <button type="button" className="iux-btn min-w-0 flex-1 justify-start" data-variant="ghost" title={`Measure ${child.name}`}
-              onClick={() => onDescend(childRelative)}>
-              <FolderOpenIcon size={14} className="shrink-0 text-[#f36c21]" />
-              <span className="min-w-0 flex-1 truncate text-start" translate="no">{child.name}</span>
-              {child.truncated && <Badge tone="warning">partial</Badge>}
-              <ArrowRightIcon size={12} className="shrink-0 text-(--iux-muted-foreground)" />
-            </button>
-            : <span className="iux-btn flex min-w-0 flex-1 cursor-default justify-start border-0" data-variant="ghost">
-              <span className="min-w-0 flex-1 truncate" translate="no">{child.name}</span>
-            </span>}
+          <button type="button" className="iux-btn min-w-0 flex-1 justify-start" data-variant="ghost" title={`Measure ${child.name}`}
+            onClick={() => onDescend(childRelative)}>
+            <FolderOpenIcon size={14} className="shrink-0 text-[#f36c21]" />
+            <span className="min-w-0 flex-1 truncate text-start" translate="no">{child.name}</span>
+            {child.truncated && <Badge tone="warning">partial</Badge>}
+            <ArrowRightIcon size={12} className="shrink-0 text-(--iux-muted-foreground)" />
+          </button>
           <span dir="ltr" className="tabular-nums">{formatBytes(child.sizeBytes)}</span>
           {child.unreadable > 0 && <Badge tone="warning">{child.unreadable} unreadable</Badge>}
         </div>
@@ -123,15 +119,13 @@ export function SpaceExplorer({ scanHref }: { scanHref: string }) {
     {tree && <>
       <div className="mt-3 flex flex-wrap items-center gap-1 text-sm">
         <button type="button" className="iux-btn" data-variant="ghost" onClick={() => void run(() => api.cleanupExplorerScan(rootId))} disabled={busy}>
-          <HardDrivesIcon size={14} className="inline" /> {tree.name}
+          <HardDrivesIcon size={14} className="inline" /> {(roots ?? []).find((item) => item.id === rootId)?.name ?? result?.rootId ?? "root"}
         </button>
         {segments.map((segment, index) => <span key={index} className="flex items-center gap-1">
           <span className="text-(--iux-muted-foreground)">/</span>
-          {index < segments.length - 1
-            ? <button type="button" className="iux-btn" data-variant="ghost" disabled={busy}
-              onClick={() => void run(() => api.cleanupExplorerSubtree(rootId, segments.slice(0, index + 1).join("/")))}
-              translate="no">{segment}</button>
-            : <span className="font-medium" translate="no">{segment}</span>}
+          <button type="button" className="iux-btn" data-variant="ghost" disabled={busy}
+            onClick={() => void run(() => api.cleanupExplorerSubtree(rootId, segments.slice(0, index + 1).join("/")))}
+            translate="no">{segment}</button>
         </span>)}
         <span className="ms-auto text-xs text-(--iux-muted-foreground)">
           {formatBytes(tree.sizeBytes)} · {result?.nodes ?? 0} entries{result?.truncated ? " · partially shown (walk budget reached)" : ""}

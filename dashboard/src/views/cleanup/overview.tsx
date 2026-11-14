@@ -17,6 +17,16 @@ import {
 import { Section } from "../../components/ui";
 import { formatBytes, type CleanupStatus, type CleanupVolume } from "../../lib/api";
 
+/** The hero's big number keeps one decimal, like the reference layout. */
+function formatPrecise(value: number | null | undefined): string {
+  if (value == null) return "—";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let i = 0;
+  let v = value;
+  while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+  return `${new Intl.NumberFormat("en", { maximumFractionDigits: 1 }).format(v)} ${units[i]}`;
+}
+
 /** CLNP-22: the storage hero. Purgeable renders only when a probe proved it. */
 export function StorageHero({
   volumes, onRefresh
@@ -47,7 +57,7 @@ export function StorageHero({
       {selected.pressure === "warning" && <span className="text-(--iux-danger)"> · running low</span>}
     </span>}>
     <div className="flex flex-wrap items-baseline gap-2">
-      <span dir="ltr" className="text-3xl font-bold tabular-nums">{formatBytes(free)}</span>
+      <span dir="ltr" className="text-3xl font-bold tabular-nums">{formatPrecise(free)}</span>
       <span className="text-sm text-(--iux-muted-foreground)">available</span>
       <span dir="ltr" className="ms-auto text-sm tabular-nums text-(--iux-muted-foreground)">{formatBytes(total)} total</span>
     </div>
