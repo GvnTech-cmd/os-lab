@@ -296,3 +296,42 @@ class CliTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PurgeableTest(unittest.TestCase):
+    """CLNP-22: purgeable space is reported only when the probe proves it."""
+
+    def _rows(self):
+        return [
+            {"mountPoint": "/", "device": "/dev/disk3s1s1", "filesystem": "apfs", "kind": "root"},
+        ]
+
+    def test_purgeable_reported_only_for_macos_with_a_proven_value(self):
+        reported = volumes.inventory(
+            platform="macos", rows=self._rows(), usage_fn=lambda _: (1000, 400),
+            purgeable_fn=lambda mount, device: 123 if device == "/dev/disk3s1s1" else None,
+        )
+        self.assertEqual(reported["volumes"][0]["purgeableBytes"], 123)
+        linux = volumes.inventory(
+            platform="linux", rows=self._rows(), usage_fn=lambda _: (1000, 400),
+            purgeable_fn=lambda mount, device: 123,
+        )
+        self.assertIsNone(linux["volumes"][0]["purgeableBytes"])
+
+    def test_unproven_purgeable_is_none_not_a_guess(self):
+        report = volumes.inventory(
+            platform="macos", rows=self._rows(), usage_fn=lambda _: (1000, 400),
+            purgeable_fn=lambda mount, device: None,
+        )
+        self.assertIsNone(report["volumes"][0]["purgeableBytes"])
+
+    def test_diskutil_purgeable_keys_and_fallback(self):
+        class Answer:
+            def __init__(self, payload):
+                self.returncode = 0
+                self.stdout = plistlib.dumps(payload)
+                self.stderr = b""
+        data = {"PurgeableSpace": 456}
+        self.assertEqual(volumes._purgeable("/dev/disk1", runner=lambda *_a, **_k: Answer(data)), 456)
+        self.assertIsNone(volumes._purgeable("/dev/disk1", runner=lambda *_a, **_k: Answer({})))
+        self.assertIsNone(volumes._purgeable("", runner=lambda *_a, **_k: Answer(data)))

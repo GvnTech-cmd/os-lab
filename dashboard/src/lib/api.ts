@@ -254,10 +254,28 @@ export interface CleanupMonitorConfig {
   enabled: boolean; intervalSeconds: number; cooldownSeconds: number;
   volumes: { mountPoint: string; minFreeBytes: number; minFreePercent: number; enabled: boolean }[];
 }
+/** CLNP-23: one registered Space Explorer root. */
+export interface CleanupExplorerRoot {
+  id: string; name: string; source: string; path: string | null; available: boolean; reason: string;
+}
+export interface CleanupExplorerNode {
+  name: string; path: string; sizeBytes: number; files: number; folders: number;
+  children: CleanupExplorerNode[]; truncated: boolean; unreadable: number;
+}
+export interface CleanupExplorerResult {
+  rootId: string; path: string; relative: string | null;
+  tree: CleanupExplorerNode; nodes: number; truncated: boolean; cancelled: boolean; checkedAt: number;
+}
+export interface CleanupExplorerJob {
+  id: string; kind: "explorer"; state: "running" | "done" | "cancelled" | "failed";
+  progress: Record<string, string | number> | null;
+  result: CleanupExplorerResult | null; error: string | null;
+}
 /** CLN-28: one local volume from GET /api/cleanup/volumes. */
 export interface CleanupVolume {
   mountPoint: string; name: string; device: string; filesystem: string | null; kind: string;
   totalBytes: number | null; freeBytes: number | null; usedBytes: number | null; usage: number | null;
+  purgeableBytes: number | null;
   isHome: boolean; pressure: string; error: string | null;
 }
 export interface CleanupVolumes {
@@ -359,6 +377,10 @@ export const api = {
   /** CLNP-20: the raw path appears exactly once, here; afterwards ids only. */
   cleanupCustomAdd: (name: string, path: string) => post<{ entries: { id: string; name: string; risk: string; paths: Record<string, string[]> }[]; error: string | null }>("/api/cleanup/custom-entries", { name, path }),
   cleanupCustomRemove: (entryId: string) => post<{ entries: unknown[]; bookmarks?: BookmarkRecord[]; error: string | null }>("/api/cleanup/custom-entries/remove", { entryId }),
+  /** CLNP-23: the Space Explorer (read-only size trees over registered roots). */
+  cleanupExplorerRoots: () => call<{ roots: CleanupExplorerRoot[] }>("/api/cleanup/explorer/roots"),
+  cleanupExplorerScan: (rootId: string) => post<CleanupExplorerJob>("/api/cleanup/explorer/scan", { rootId }),
+  cleanupExplorerSubtree: (rootId: string, relative: string) => post<CleanupExplorerJob>("/api/cleanup/explorer/subtree", { rootId, relative }),
   cleanupContainerPreview: (actionId: string) => post<CleanupContainerPreview>("/api/cleanup/containers/preview", { actionId }),
   cleanupContainerPrune: (previewId: string) => post<CleanupAuxJob<CleanupContainerResult>>("/api/cleanup/containers/prune", { previewId }),
   cleanupVMScan: () => post<CleanupAuxJob<CleanupVMInventory>>("/api/cleanup/vms/scan"),

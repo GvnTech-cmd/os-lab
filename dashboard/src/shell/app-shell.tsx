@@ -164,6 +164,7 @@ function buildGroups(labs: LabStatus[] | undefined, running: Set<string>, androi
         { id: "cleanup", label: "Cleanup Lab", icon: <BroomIcon size={16} />,
           children: [
             { id: "cleanup-scan", label: "Scan & clean" },
+            { id: "cleanup-space", label: "Space Explorer" },
             { id: "cleanup-results", label: "Results" },
             { id: "cleanup-leftovers", label: "Leftovers" },
             { id: "cleanup-history", label: "History" }

@@ -100,7 +100,7 @@ export function BookmarksSection({
     }
   }
 
-  return <Section title="Bookmarks" description="Your cleanup favourites, in the order they are cleaned. Quick cleanup still confirms before anything moves.">
+  return <Section id="cleanup-bookmarks" title="Bookmarks" description="Your cleanup favourites, in the order they are cleaned. Quick cleanup still confirms before anything moves.">
     {bookmarks?.error && <Status value={{ ok: false, text: bookmarks.error }} />}
     {error && <Status value={{ ok: false, text: error }} />}
     {refusals.length > 0 && <Status value={{ ok: false, text: refusals.map((item) => item.reason).join(" ") }} />}

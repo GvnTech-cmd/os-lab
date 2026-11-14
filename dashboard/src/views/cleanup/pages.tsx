@@ -13,12 +13,14 @@ import { CleanupExtraTools } from "./extra-tools";
 import { CrossPlatformLeftovers } from "./cross-leftovers";
 import { MonitorBanner, MonitorCard } from "./monitor-card";
 import { BookmarkToggle, BookmarksSection } from "./bookmarks-card";
-import type { BookmarksPayload } from "../../lib/api";
+import { OverviewCards, StorageHero, type OverviewCard } from "./overview";
+import { SpaceExplorer } from "./space-explorer";
+import type { BookmarksPayload, CleanupVolume } from "../../lib/api";
 
-export type CleanupPageId = "" | "scan" | "results" | "leftovers" | "history";
-export const CLEANUP_PAGES: CleanupPageId[] = ["", "scan", "results", "leftovers", "history"];
+export type CleanupPageId = "" | "scan" | "results" | "leftovers" | "history" | "space";
+export const CLEANUP_PAGES: CleanupPageId[] = ["", "scan", "results", "leftovers", "history", "space"];
 /** Any `/cleanup` route for any locale or base path, at the end of a pathname. */
-const CLEANUP_ROUTE = /\/cleanup(?:\/(scan|results|leftovers|history))?\/?$/;
+const CLEANUP_ROUTE = /\/cleanup(?:\/(scan|results|leftovers|history|space))?\/?$/;
 
 /**
  * CLNP-06: the cleanup route a pathname names, or null when it is not one.
@@ -102,7 +104,7 @@ function PermissionsCard({ permissions }: { permissions: CleanupPermissions | nu
   const applicable = permissions.permissions.filter((record) => record && record.applicable);
   if (!applicable.length) return null;
   const classified = permissions.classification?.classified ?? [];
-  return <Section title="Permissions" description="What this computer lets the cleaner read, and how to grant more.">
+  return <Section id="cleanup-permissions" title="Permissions" description="What this computer lets the cleaner read, and how to grant more.">
     <div className="divide-y divide-(--iux-border)">
       {applicable.map((record) => <div key={record.id} className="py-3 first:pt-0 last:pb-0">
         <div className="flex items-center gap-2">
@@ -239,6 +241,11 @@ export default function CleanupPage({ page: initialPage = "" }: { page?: Cleanup
   );
   const monitor = monitorLive ?? monitorOnce ?? null;
   const monitorReload = () => { reloadMonitorOnce(); reloadMonitorLive(); };
+  // CLNP-21/22: the storage hero and the monitor card share one volumes fetch.
+  const { data: volumeReport, reload: reloadVolumes } = usePoll(
+    () => PUBLIC ? Promise.resolve(null) : api.cleanupVolumes(), 0
+  );
+  const volumes: CleanupVolume[] | null = volumeReport?.volumes ?? null;
 
   useEffect(() => {
     if (typeof window !== "undefined") setPage(parseCleanupPath(window.location.pathname) ?? initialPage);
@@ -280,6 +287,15 @@ export default function CleanupPage({ page: initialPage = "" }: { page?: Cleanup
 
   const reloadBookmarks = () => { void api.cleanupBookmarks().then(setBookmarks).catch(() => {}); };
   const bookmarkedIds = new Set((bookmarks?.bookmarks ?? []).map((item) => item.entryId));
+
+  /** CLNP-21: a capability card either navigates a tab or scrolls to its section. */
+  function goCard(card: OverviewCard) {
+    if (card.onTab) {
+      navigateTo(card.target.replace("/", "") as CleanupPageId);
+    } else {
+      document.getElementById(card.target)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
 
   /** CLNP-18: bookmark or unbookmark one catalog entry from any row. */
   function toggleBookmark(entryId: string) {
@@ -406,13 +422,21 @@ export default function CleanupPage({ page: initialPage = "" }: { page?: Cleanup
   }
 
   const tabs: { id: CleanupPageId; label: string; path: string }[] = [
-    { id: "", label: "Dashboard", path: "" }, { id: "scan", label: "Advanced scan", path: "scan/" }, { id: "results", label: "Results", path: "results/" },
+    { id: "", label: "Dashboard", path: "" }, { id: "space", label: "Space Explorer", path: "space/" }, { id: "scan", label: "Advanced scan", path: "scan/" }, { id: "results", label: "Results", path: "results/" },
     { id: "leftovers", label: "Leftovers", path: "leftovers/" }, { id: "history", label: "History", path: "history/" }
   ];
   return <AppShell activeId={`cleanup-${page || "scan"}`}>
     <TopBar title="Cleanup Lab" icon={<BroomIcon size={20} />} />
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-5 p-4 sm:p-6" onClick={onNavClick}>
-      <PageHead icon={<BroomIcon size={22} />} title="Cleanup Lab" description="Measure reclaimable space, review a plan, then confirm each clean." />
+      <PageHead icon={<BroomIcon size={22} />} title="Cleanup Lab" description="Measure reclaimable space, review a plan, then confirm each clean."
+        actions={<>
+          {!PUBLIC && status && <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${status.state === "ready" ? "bg-(--iux-success)/10 text-(--iux-success)" : "bg-(--iux-warning)/10 text-(--iux-warning)"}`}>
+            {status.state === "ready" ? "Ready" : status.state === "needs-setup" ? "Setup needed" : "Unavailable"}
+          </span>}
+          {!PUBLIC && <span className="text-xs text-(--iux-muted-foreground)">
+            {latestScan ? `Last scan measured ${bytes(latestScan.totals.sizeBytes)}` : "No scan run yet"}
+          </span>}
+        </>} />
       {!PUBLIC && <MonitorBanner monitor={monitor} scanHref={link("scan/")} />}
       <nav aria-label="Cleanup pages" className="flex flex-wrap gap-2">{tabs.map((tab) =>
         <a key={tab.id} href={link(tab.path)} aria-current={page === tab.id ? "page" : undefined} className="iux-btn" data-variant={page === tab.id ? "primary" : "outline"}>{tab.label}</a>)}</nav>
@@ -424,7 +448,7 @@ export default function CleanupPage({ page: initialPage = "" }: { page?: Cleanup
             <button type="button" className="iux-btn mt-3" onClick={() => { setLoading(true); void api.cleanupStatus().then(setStatus).catch((error) => setLoadError(errorText(error))).finally(() => setLoading(false)); }}>Re-check</button>
           </Section>}
           {page === "" && status?.state === "ready" && <PermissionsCard permissions={permissions} />}
-          {page === "" && !PUBLIC && <MonitorCard monitor={monitor} reload={monitorReload} />}
+          {page === "" && !PUBLIC && <MonitorCard monitor={monitor} volumes={volumes} reload={monitorReload} />}
           {page === "" && !PUBLIC && <BookmarksSection bookmarks={bookmarks} reload={reloadBookmarks}
             onQuickClean={(job) => { setActive(job); setJobs((old) => [job, ...old.filter((row) => row.id !== job.id)]); setBookmarkConfirm(true); }}
             onCatalogChanged={() => { void api.cleanupCatalog().then((catalog) => setEntries(catalog.entries)).catch(() => {}); }} />}
@@ -433,7 +457,8 @@ export default function CleanupPage({ page: initialPage = "" }: { page?: Cleanup
               onRun={() => void start(() => api.cleanupClean(active.result.planId))}
               onClose={() => { setBookmarkConfirm(false); }} />}
           {page === "" && <>
-            <Section title="Quick cleanup" description="Scan all available categories. Nothing is removed during a scan.">
+            {!PUBLIC && status?.state === "ready" && <StorageHero volumes={volumes} onRefresh={reloadVolumes} />}
+            <Section id="overview-review" title="Review cleanup" description="Check the available categories for caches, logs and other removable files. Nothing is removed during a scan.">
               <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-(--iux-muted-foreground)">{status?.state === "ready" ? "Ready to scan" : "Scan unavailable until setup is complete"} · {entries.length} categories available</p><button type="button" className="iux-btn" data-variant="primary" disabled={!canWork || !entries.length} onClick={() => void start(() => api.cleanupScan(entries.map((item) => item.id)))}>{latestScan ? "Scan again" : "Scan now"}</button></div>
               {active?.state === "running" && <div className="mt-4" role="status"><p>{active.kind} in progress · <span dir="ltr">{String(active.progress?.pathsDone ?? active.progress?.itemsDone ?? 0)} / {String(active.progress?.pathsTotal ?? active.progress?.itemsTotal ?? "…")}</span></p><progress className="mt-2 w-full" max={Number(active.progress?.pathsTotal ?? active.progress?.itemsTotal ?? 1)} value={Number(active.progress?.pathsDone ?? active.progress?.itemsDone ?? 0)} /><p className="break-all text-xs text-(--iux-muted-foreground)" translate="no">{active.progress?.currentPath}</p><button type="button" className="iux-btn mt-2" onClick={() => void cancel()}>Cancel</button></div>}
               {active?.state === "failed" && <Status value={{ ok: false, text: active.error || "The cleanup job failed." }} />}{actionError && <Status value={{ ok: false, text: actionError }} />}
@@ -457,6 +482,7 @@ export default function CleanupPage({ page: initialPage = "" }: { page?: Cleanup
               <p className="mt-3 text-sm"><span dir="ltr" className="tabular-nums">{bytes(latestClean.totals.bytes)}</span> moved to Trash, not yet freed.</p>
               <div className="mt-3 flex gap-2"><a className="iux-btn" href={link("results/")}>View report</a><a className="iux-btn" href={link("leftovers/")}>View leftovers</a><a className="iux-btn" href={link("history/")}>History</a></div>
             </Section>}
+            {!PUBLIC && <OverviewCards go={goCard} />}
           </>}
           {page === "scan" && <>
             <Section title="Scan" description="Choose catalog entries. Scanning only measures files; it does not remove them.">
@@ -620,6 +646,7 @@ export default function CleanupPage({ page: initialPage = "" }: { page?: Cleanup
           </Section>
           {(status?.platform?.id === "linux" || status?.platform?.id === "windows") && <CrossPlatformLeftovers />}
           </>}
+          {page === "space" && <SpaceExplorer scanHref={link("scan/")} />}
           {page === "history" && <Section title="Audit history" description="Verified cleanup runs stored on this computer.">
             {!history?.entries.length ? <Empty>No cleanup runs recorded yet.</Empty> : history.entries.map((entry) =>
               <div key={entry.id} className="border-b border-(--iux-border) py-3 text-sm">

@@ -11,7 +11,7 @@
 import { useState } from "react";
 import { BellIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
 import { Badge, Empty, Section, Status } from "../../components/ui";
-import { api, formatBytes, message, usePoll, type CleanupMonitorConfig, type CleanupMonitorStatus, type CleanupVolume } from "../../lib/api";
+import { api, formatBytes, message, type CleanupMonitorConfig, type CleanupMonitorStatus, type CleanupVolume } from "../../lib/api";
 
 const INTERVALS = [60, 120, 300, 600, 1800, 3600];
 
@@ -33,11 +33,10 @@ export function MonitorBanner({ monitor, scanHref }: { monitor: CleanupMonitorSt
 }
 
 export function MonitorCard({
-  monitor, reload
+  monitor, volumes, reload
 }: {
-  monitor: CleanupMonitorStatus | null; reload: () => void;
+  monitor: CleanupMonitorStatus | null; volumes: CleanupVolume[] | null; reload: () => void;
 }) {
-  const { data: volumes } = usePoll(() => api.cleanupVolumes().then((report) => report.volumes), 0);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -69,7 +68,7 @@ export function MonitorCard({
   const configuredMounts = new Set(monitor.volumes.map((entry) => entry.mountPoint).filter(Boolean));
   const addable = (volumes ?? []).filter((volume) => !configuredMounts.has(volume.mountPoint));
 
-  return <Section title="Background monitor" description="Checks disk free space while the console runs and warns when a volume crosses its threshold. Nothing is cleaned automatically by this card.">
+  return <Section id="cleanup-monitor" title="Background monitor" description="Checks disk free space while the console runs and warns when a volume crosses its threshold. Nothing is cleaned automatically by this card.">
     <div className="flex flex-wrap items-center gap-2">
       <button type="button" className="iux-btn" data-variant={monitor.enabled ? "primary" : "outline"} disabled={busy}
         onClick={() => void save((current) => ({ ...configFrom(current), enabled: !current.enabled }))}>

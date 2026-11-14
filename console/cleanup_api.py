@@ -64,6 +64,8 @@ BODY_KEYS = {"scan": SCAN_KEYS, "deep-scan": DEEP_KEYS, "plan": PLAN_KEYS, "clea
               "bookmarks-quick-clean": (),
               "custom-add": ("name", "path"),
               "custom-remove": ("entryId",),
+              "explorer-scan": ("rootId",),
+              "explorer-subtree": ("rootId", "relative"),
               "leftovers": ()}
 
 
@@ -416,6 +418,42 @@ class CleanupJobStore:
                 })
             except Exception:
                 pass
+        finally:
+            job.finishedAt = time.time()
+
+    def start_explorer(self, root, request, *, relative=None):
+        """CLNP-23: a read-only size-tree walk over a registered root id."""
+        explorer = _module(root, "explorer")
+        root_id = request.get("rootId")
+        if not isinstance(root_id, str) or not root_id:
+            raise CleanupError(400, "rootId must name a registered root")
+        try:
+            explorer.resolve_root(root, root_id)
+        except explorer.ExplorerError as exc:
+            raise CleanupError(400, str(exc)) from exc
+        request_payload = {"rootId": root_id}
+        if relative is not None:
+            if not isinstance(relative, str):
+                raise CleanupError(400, "relative must be a path relative to the root")
+            request_payload["relative"] = relative
+        job = CleanupJob("explorer", request_payload)
+        self._register(job)
+        return self._spawn(job, self._run_explorer, (root, job, root_id, relative))
+
+    def _run_explorer(self, root, job, root_id, relative):
+        def update(payload):
+            job.progress = {"phase": "walking", "currentPath": payload.get("currentPath", ""),
+                            "nodes": payload.get("nodes", 0)}
+
+        try:
+            result = _module(root, "explorer").explore(
+                root, root_id, cancel=job.cancel, progress_callback=update, relative=relative
+            )
+            job.result = result
+            job.state = "cancelled" if result["cancelled"] else "done"
+        except Exception as exc:
+            job.state = "failed"
+            job.error = "{0}: {1}".format(type(exc).__name__, exc)
         finally:
             job.finishedAt = time.time()
 
@@ -1113,6 +1151,15 @@ class CleanupAPI:
                 except bookmarks_mod.BookmarksError:
                     pass
             return result
+        if path == "/api/cleanup/explorer/roots":
+            _query(query)
+            return {"roots": _module(self.root, "explorer").roots(self.root)}
+        if path == "/api/cleanup/explorer/scan":
+            _object_body(body, "explorer-scan")
+            return JOBS.start_explorer(self.root, body)
+        if path == "/api/cleanup/explorer/subtree":
+            _object_body(body, "explorer-subtree")
+            return JOBS.start_explorer(self.root, body, relative=body.get("relative"))
         if path == "/api/cleanup/deep-scan":
             _object_body(body, "deep-scan")
             return JOBS.start_deep_scan(self.root, body)
