@@ -12,6 +12,7 @@ test("quick cleanup dashboard: scan all, suggested plan, confirm, report and his
     if (route.request().method() === "POST") calls.push({ path, body });
     let data: unknown = {};
     if (path === "/api/cleanup/status") data = { state: "ready", reasons: [], requirements: [], capabilities: [] };
+    else if (path === "/api/cleanup/permissions") data = { platform: "macos", permissions: [] };
     else if (path === "/api/cleanup/catalog") data = { platform: "macos", entries: [{ id: "system.caches", name: "Caches", category: "system", risk: "low", hint: "Safe cache", impact: "", defaultSelected: true, needsPrivilege: false, paths: [{ template: "~/Caches", path: "/tmp/caches", reason: "" }] }, { id: "browser.private", name: "Private data", category: "browser", risk: "privacy", hint: "Sensitive", impact: "", defaultSelected: false, needsPrivilege: false, paths: [{ template: "~/Private", path: "/tmp/private", reason: "" }] }] };
     else if (path === "/api/cleanup/jobs") data = { jobs };
     else if (path === "/api/cleanup/history") data = { entries: [{ id: 1, result, hmac: "abc" }], total: 1, verified: true };
@@ -66,6 +67,7 @@ test("advanced scan sorts by size, reviews a plan and cleans typed", async ({ pa
     if (route.request().method() === "POST") calls.push({ path, body });
     let data: unknown = {};
     if (path === "/api/cleanup/status") data = { state: "ready", reasons: [], requirements: [], capabilities: [] };
+    else if (path === "/api/cleanup/permissions") data = { platform: "macos", permissions: [] };
     else if (path === "/api/cleanup/catalog") data = { platform: "macos", entries: [{ id: "system.caches", name: "Caches", category: "system", risk: "low", hint: "Safe cache", impact: "", defaultSelected: true, needsPrivilege: false, paths: [{ template: "~/Caches", path: "/tmp/caches", reason: "" }] }] };
     else if (path === "/api/cleanup/jobs") data = { jobs };
     else if (path === "/api/cleanup/scan" || path === "/api/cleanup/plan" || path === "/api/cleanup/clean") {
@@ -104,6 +106,7 @@ test("container pruning needs a preview and VM inventory stays report only", asy
     if (route.request().method() === "POST") posts.push({ path, body });
     let data: unknown = {};
     if (path === "/api/cleanup/status") data = { state: "ready", reasons: [], requirements: [], capabilities: [] };
+    else if (path === "/api/cleanup/permissions") data = { platform: "macos", permissions: [] };
     else if (path === "/api/cleanup/catalog") data = { platform: "linux", entries: [] };
     else if (path === "/api/cleanup/jobs") data = { jobs: [] };
     else if (path === "/api/cleanup/containers") data = { available: true, engine: "docker", reason: "", actions: [{ id: "containers.docker.dangling-volumes", risk: "high", defaultSelected: false, pruneArgv: ["docker", "volume", "prune", "--all", "--force"] }] };
@@ -141,6 +144,7 @@ test("Linux app leftovers show inventory uncertainty without a delete action", a
     if (route.request().method() === "POST") posts.push({ path, body });
     let data: unknown = {};
     if (path === "/api/cleanup/status") data = { state: "ready", platform: { id: "linux", label: "Linux", supported: true }, reasons: [], requirements: [], capabilities: [] };
+    else if (path === "/api/cleanup/permissions") data = { platform: "macos", permissions: [] };
     else if (path === "/api/cleanup/catalog") data = { platform: "linux", entries: [] };
     else if (path === "/api/cleanup/jobs") data = { jobs: [] };
     else if (path === "/api/cleanup/leftovers/scan") data = { id: "job-leftovers", kind: "leftovers", state: "running", result: null, error: null };

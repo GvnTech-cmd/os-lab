@@ -3,7 +3,7 @@ import { BroomIcon } from "@phosphor-icons/react";
 import { AppShell } from "../../shell/app-shell";
 import { TopBar } from "../../shell/top-bar";
 import { Badge, Empty, PageHead, Section, Status } from "../../components/ui";
-import { api, type CleanupEntry, type CleanupHistory, type CleanupJob, type CleanupPermissions, type CleanupPermission, type CleanupPlan, type CleanupResult, type CleanupScan, type CleanupStatus } from "../../lib/api";
+import { api, usePoll, type CleanupEntry, type CleanupHistory, type CleanupJob, type CleanupMonitorStatus, type CleanupPermissions, type CleanupPermission, type CleanupPlan, type CleanupResult, type CleanupScan, type CleanupStatus } from "../../lib/api";
 import { localeFromPath, localePath } from "../../i18n/paths";
 import { keepModalFocus } from "../modal-focus";
 import { InfoPopover } from "./info-popover";
@@ -11,9 +11,24 @@ import { CategoryIcon, PrivilegeMarker, StatusIcon } from "./icons";
 import { bytes, itemStatusLabel, riskLabel, riskTone, sortEntries, totalsByRisk, type SortOrder } from "./format";
 import { CleanupExtraTools } from "./extra-tools";
 import { CrossPlatformLeftovers } from "./cross-leftovers";
+import { MonitorBanner, MonitorCard } from "./monitor-card";
 
 export type CleanupPageId = "" | "scan" | "results" | "leftovers" | "history";
 export const CLEANUP_PAGES: CleanupPageId[] = ["", "scan", "results", "leftovers", "history"];
+/** Any `/cleanup` route for any locale or base path, at the end of a pathname. */
+const CLEANUP_ROUTE = /\/cleanup(?:\/(scan|results|leftovers|history))?\/?$/;
+
+/**
+ * CLNP-06: the cleanup route a pathname names, or null when it is not one.
+ * Works for `/cleanup/scan/`, `/fa/cleanup/results/` and Public Pages base
+ * paths alike — only the tail decides.
+ */
+export function parseCleanupPath(pathname: string): CleanupPageId | null {
+  const match = CLEANUP_ROUTE.exec(pathname.replace(/\/+$/, "") + "/");
+  if (!match) return null;
+  const suffix = (match[1] ?? "") as CleanupPageId;
+  return (CLEANUP_PAGES as string[]).includes(suffix) ? suffix : null;
+}
 const PUBLIC = import.meta.env.PUBLIC_SITE_MODE === "pages";
 const errorText = (error: unknown) => error instanceof Error ? error.message : String(error);
 const isScan = (job: CleanupJob): job is CleanupJob & { result: CleanupScan } => job.kind === "scan" && !!job.result;
@@ -81,8 +96,8 @@ function permissionTone(granted: boolean | null): { label: string; tone: "succes
  * deep link is a plain client-side anchor — the engine never opens Settings.
  */
 function PermissionsCard({ permissions }: { permissions: CleanupPermissions | null }) {
-  if (!permissions) return null;
-  const applicable = permissions.permissions.filter((record) => record.applicable);
+  if (!permissions || !Array.isArray(permissions.permissions)) return null;
+  const applicable = permissions.permissions.filter((record) => record && record.applicable);
   if (!applicable.length) return null;
   const classified = permissions.classification?.classified ?? [];
   return <Section title="Permissions" description="What this computer lets the cleaner read, and how to grant more.">
@@ -183,7 +198,10 @@ function ConfirmDialog({
   </dialog>;
 }
 
-export default function CleanupPage({ page = "" }: { page?: CleanupPageId }) {
+export default function CleanupPage({ page: initialPage = "" }: { page?: CleanupPageId }) {
+  // CLNP-06: the active page is live state, derived from the URL. The prop
+  // stays as the SSR/deep-link seed; navigation updates the state in place.
+  const [page, setPage] = useState<CleanupPageId>(initialPage);
   const [status, setStatus] = useState<CleanupStatus | null>(null);
   const [entries, setEntries] = useState<CleanupEntry[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
@@ -200,33 +218,97 @@ export default function CleanupPage({ page = "" }: { page?: CleanupPageId }) {
   const [confirm, setConfirm] = useState(false);
   const [order, setOrder] = useState<SortOrder>("size");
   const [now, setNow] = useState(Date.now() / 1000);
+  const coreLoaded = useRef(false);
   const locale = typeof window === "undefined" ? "en" : localeFromPath(window.location.pathname);
   const link = (suffix: string) => localePath(`/cleanup/${suffix}`, locale);
 
+  // CLNP-11: the monitor state is shared by the banner and the card. One
+  // fetch on mount (PUBLIC resolves to null without any request), then a
+  // light 15 s poll only while the runner is enabled — intervalMs 0 means
+  // "fetch on mount and on reload", never a timer.
+  const { data: monitorOnce, reload: reloadMonitorOnce } = usePoll<CleanupMonitorStatus | null>(
+    () => PUBLIC ? Promise.resolve(null) : api.cleanupMonitor(), 0
+  );
+  const monitorEnabled = monitorOnce?.enabled === true;
+  const { data: monitorLive, reload: reloadMonitorLive } = usePoll<CleanupMonitorStatus | null>(
+    () => PUBLIC ? Promise.resolve(null) : api.cleanupMonitor(), monitorEnabled ? 15000 : 0
+  );
+  const monitor = monitorLive ?? monitorOnce ?? null;
+  const monitorReload = () => { reloadMonitorOnce(); reloadMonitorLive(); };
+
   useEffect(() => {
-    if (PUBLIC) return;
+    if (typeof window !== "undefined") setPage(parseCleanupPath(window.location.pathname) ?? initialPage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // CLNP-06: back/forward re-derives the page from the URL the browser shows.
+  useEffect(() => {
+    const onPop = () => setPage(parseCleanupPath(window.location.pathname) ?? "");
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  // CLNP-07: the core fetch runs once per island session, not per tab. The
+  // permission probe is an optional capability: its failure degrades to a
+  // hidden card instead of failing the whole load.
+  useEffect(() => {
+    if (PUBLIC || coreLoaded.current) return;
+    coreLoaded.current = true;
     let alive = true;
-    Promise.all([api.cleanupStatus(), api.cleanupCatalog(), api.cleanupJobs(), api.cleanupPermissions()])
-      .then(([ready, catalog, recent, grants]) => {
+    Promise.all([api.cleanupStatus(), api.cleanupCatalog(), api.cleanupJobs()])
+      .then(([ready, catalog, recent]) => {
         if (!alive) return;
         setStatus(ready);
         setEntries(catalog.entries);
         setSelected(catalog.entries.filter((item) => item.defaultSelected && item.risk !== "credentials" && item.risk !== "privacy").map((item) => item.id));
         setJobs(recent.jobs);
-        setPermissions(grants);
       })
       .catch((error) => { if (alive) setLoadError(errorText(error)); })
       .finally(() => { if (alive) setLoading(false); });
+    void api.cleanupPermissions()
+      .then((grants) => { if (alive) setPermissions(grants); })
+      .catch(() => { if (alive) setPermissions(null); });
+    return () => { alive = false; };
+  }, []);
+
+  // CLNP-07: live fetch per tab entry — jobs where results are shown, the
+  // verified audit history on History. No idle polling; the job poller below
+  // stays tied to a running job.
+  useEffect(() => {
+    if (PUBLIC) return;
+    let alive = true;
+    if (page === "history") {
+      void api.cleanupHistory().then((value) => { if (alive) setHistory(value); })
+        .catch((error) => { if (alive) setLoadError(errorText(error)); });
+      return () => { alive = false; };
+    }
+    if (page === "" || page === "results" || page === "leftovers") {
+      void api.cleanupJobs().then((recent) => { if (alive) setJobs(recent.jobs); })
+        .catch(() => { if (alive) { /* keep the session's jobs */ } });
+    }
     return () => { alive = false; };
   }, [page]);
 
-  useEffect(() => {
-    if (PUBLIC || page !== "history") return;
-    let alive = true;
-    void api.cleanupHistory().then((value) => { if (alive) setHistory(value); })
-      .catch((error) => { if (alive) setLoadError(errorText(error)); });
-    return () => { alive = false; };
-  }, [page]);
+  /** CLNP-06: one in-place navigation: URL, page state, scroll, dialog. */
+  function navigateTo(next: CleanupPageId, pushUrl = true) {
+    if (pushUrl && next !== page) window.history.pushState({}, "", link(next ? `${next}/` : ""));
+    setPage(next);
+    setConfirm(false);
+    window.scrollTo({ top: 0 });
+  }
+
+  /** CLNP-06: intercept plain left-clicks on cleanup anchors; others pass through. */
+  function onNavClick(event: React.MouseEvent<HTMLElement>) {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const anchor = (event.target as HTMLElement).closest("a");
+    if (!anchor || !anchor.href || anchor.getAttribute("href")?.startsWith("#")) return;
+    const url = new URL(anchor.href, window.location.href);
+    if (url.origin !== window.location.origin) return;
+    const next = parseCleanupPath(url.pathname);
+    if (next === null) return;
+    event.preventDefault();
+    navigateTo(next, url.pathname !== window.location.pathname);
+  }
 
   useEffect(() => {
     if (!active || active.state !== "running") return;
@@ -309,8 +391,9 @@ export default function CleanupPage({ page = "" }: { page?: CleanupPageId }) {
   ];
   return <AppShell activeId={`cleanup-${page || "scan"}`}>
     <TopBar title="Cleanup Lab" icon={<BroomIcon size={20} />} />
-    <main className="mx-auto flex w-full max-w-5xl flex-col gap-5 p-4 sm:p-6">
+    <main className="mx-auto flex w-full max-w-5xl flex-col gap-5 p-4 sm:p-6" onClick={onNavClick}>
       <PageHead icon={<BroomIcon size={22} />} title="Cleanup Lab" description="Measure reclaimable space, review a plan, then confirm each clean." />
+      {!PUBLIC && <MonitorBanner monitor={monitor} scanHref={link("scan/")} />}
       <nav aria-label="Cleanup pages" className="flex flex-wrap gap-2">{tabs.map((tab) =>
         <a key={tab.id} href={link(tab.path)} aria-current={page === tab.id ? "page" : undefined} className="iux-btn" data-variant={page === tab.id ? "primary" : "outline"}>{tab.label}</a>)}</nav>
       {PUBLIC ? <Section title="Local app required"><p>The Cleanup Lab runs in the local app. Install and open os-lab on your computer to scan and clean.</p></Section> :
@@ -321,6 +404,7 @@ export default function CleanupPage({ page = "" }: { page?: CleanupPageId }) {
             <button type="button" className="iux-btn mt-3" onClick={() => { setLoading(true); void api.cleanupStatus().then(setStatus).catch((error) => setLoadError(errorText(error))).finally(() => setLoading(false)); }}>Re-check</button>
           </Section>}
           {page === "" && status?.state === "ready" && <PermissionsCard permissions={permissions} />}
+          {page === "" && !PUBLIC && <MonitorCard monitor={monitor} reload={monitorReload} />}
           {page === "" && <>
             <Section title="Quick cleanup" description="Scan all available categories. Nothing is removed during a scan.">
               <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-(--iux-muted-foreground)">{status?.state === "ready" ? "Ready to scan" : "Scan unavailable until setup is complete"} · {entries.length} categories available</p><button type="button" className="iux-btn" data-variant="primary" disabled={!canWork || !entries.length} onClick={() => void start(() => api.cleanupScan(entries.map((item) => item.id)))}>{latestScan ? "Scan again" : "Scan now"}</button></div>

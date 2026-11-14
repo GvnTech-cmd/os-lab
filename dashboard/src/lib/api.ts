@@ -233,6 +233,38 @@ export interface CleanupPermissions {
   platform: string; permissions: CleanupPermission[];
   classification?: { classified: { path: string; permissionId: string; state: string; reason: string }[]; unmatched: { path: string; permissionId: null; state: string; reason: string }[] };
 }
+/** CLNP-09/10: one configured volume of the background monitor. */
+export interface CleanupMonitorVolumeConfig {
+  mountPoint: string; minFreeBytes: number; minFreePercent: number; enabled: boolean;
+  volume: { freeBytes: number | null; totalBytes: number | null; usage: number | null; kind: string | null } | null;
+}
+export interface CleanupMonitorStatus {
+  enabled: boolean; running: boolean; intervalSeconds: number; cooldownSeconds: number;
+  volumes: CleanupMonitorVolumeConfig[];
+  state: {
+    volumes: Record<string, { armed: boolean; lastWarningAt: number | null; state: string }>;
+    events: { at: number; kind: string; volume: string | null; freeBytes: number | null; thresholdBytes: number | null; message: string }[];
+    lastEvaluationAt: number | null; lastError: string | null;
+  };
+  activeWarnings: { volume: string; lastWarningAt: number | null }[];
+  configError: string | null;
+  checkedAt: number;
+}
+export interface CleanupMonitorConfig {
+  enabled: boolean; intervalSeconds: number; cooldownSeconds: number;
+  volumes: { mountPoint: string; minFreeBytes: number; minFreePercent: number; enabled: boolean }[];
+}
+/** CLN-28: one local volume from GET /api/cleanup/volumes. */
+export interface CleanupVolume {
+  mountPoint: string; name: string; device: string; filesystem: string | null; kind: string;
+  totalBytes: number | null; freeBytes: number | null; usedBytes: number | null; usage: number | null;
+  isHome: boolean; pressure: string; error: string | null;
+}
+export interface CleanupVolumes {
+  platform: string; threshold: number;
+  volumes: CleanupVolume[];
+  homeVolume: string | null; warnings: string[]; error: string | null;
+}
 
 export class ApiError extends Error {
   constructor(
@@ -302,6 +334,10 @@ export const api = {
   cleanupCancel: (id: string) => post<CleanupJob>(`/api/cleanup/jobs/${encodeURIComponent(id)}/cancel`),
   cleanupContainers: () => call<CleanupContainerCapabilities>("/api/cleanup/containers"),
   cleanupPermissions: () => call<CleanupPermissions>("/api/cleanup/permissions"),
+  cleanupMonitor: () => call<CleanupMonitorStatus>("/api/cleanup/monitor"),
+  cleanupMonitorConfig: (config: CleanupMonitorConfig) => post<CleanupMonitorStatus>("/api/cleanup/monitor/config", config),
+  cleanupMonitorEvaluate: () => post<CleanupMonitorStatus>("/api/cleanup/monitor/evaluate"),
+  cleanupVolumes: () => call<CleanupVolumes>("/api/cleanup/volumes"),
   cleanupContainerPreview: (actionId: string) => post<CleanupContainerPreview>("/api/cleanup/containers/preview", { actionId }),
   cleanupContainerPrune: (previewId: string) => post<CleanupAuxJob<CleanupContainerResult>>("/api/cleanup/containers/prune", { previewId }),
   cleanupVMScan: () => post<CleanupAuxJob<CleanupVMInventory>>("/api/cleanup/vms/scan"),
