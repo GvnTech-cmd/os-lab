@@ -373,6 +373,91 @@ const tasks: CleanupTask[] = [
     ],
     targetPaths: ["cleanup-lab/engine/", "console/"],
   },
+  // --- Cleaner Pro (CLNP) — shipped in PR #214 (feat/cleaner-pro) ---
+  {
+    id: "CLNP-01…05",
+    title: "Optional permission checks and grants: Full Disk Access, TCC-protected roots",
+    priority: "High",
+    effort: "Medium",
+    summary:
+      "A typed, read-only permission surface: the macOS Full Disk Access probe moves into cleanup_lab.permissions (payload-compatible delegation from CLN-20), Desktop/Documents/Downloads grants are classified reactively from scan-time permission errors (proactive probing would raise the macOS consent dialog), unreadable scan paths are re-probed and mapped to the grant that unlocks them, and hidden-folder classification covers every platform. Surfaced through readiness, labctl doctor, GET /api/cleanup/permissions and a dashboard card with the client-side settings deep link.",
+    deliverables: [
+      "Probes stay read-only and silent under TCC; recovered paths make no claim",
+      "Optional readiness capability — a missing grant never blocks ready",
+      "Fake-prober unittests and console contract tests",
+    ],
+    targetPaths: ["cleanup-lab/engine/", "console/", "dashboard/src/views/cleanup/"],
+  },
+  {
+    id: "CLNP-06…08",
+    title: "In-place tabs: the five cleanup pages swap client-side, live per-tab fetches",
+    priority: "High",
+    effort: "Medium",
+    summary:
+      "The active page becomes island state derived from the URL: tab and in-page cleanup anchors are intercepted with pushState/popstate (real hrefs kept as progressive enhancement), the scan session, selection and running-job poller survive tab switches, and each tab live-fetches what it shows (jobs on Dashboard/Results/Leftovers, audit history on History) with no idle polling.",
+    deliverables: [
+      "Static routes, deep links and Public Pages URLs unchanged",
+      "Playwright proof: a window marker survives a tab change; back/forward re-derives",
+      "Public Pages swaps in place with zero engine calls",
+    ],
+    targetPaths: ["dashboard/src/views/cleanup/"],
+  },
+  {
+    id: "CLNP-09…13",
+    title: "Optional background monitor: disk free-space warnings over a trigger registry",
+    priority: "High",
+    effort: "Large",
+    summary:
+      "An opt-in daemon thread in the console evaluates a typed trigger registry on a configurable interval. The first trigger, disk-free-space, warns per volume (absolute and percent floors from the CLN-28 inventory) with re-arm hysteresis and a cooldown; config and bounded events persist as atomic JSON in the private state folder. The dashboard gains a monitor card and a warning banner; labctl gains a read-only status command. The runner never cleans by itself.",
+    deliverables: [
+      "Corrupt store disables and reports, never guesses; evaluation is a pure function",
+      "Typed GET /api/cleanup/monitor, config and evaluate endpoints (400/501 contract)",
+      "No probes while disabled; OS notifications deferred to the desktop app",
+    ],
+    targetPaths: ["cleanup-lab/engine/", "console/", "dashboard/src/views/cleanup/", "labctl"],
+  },
+  {
+    id: "CLNP-14…19",
+    title: "Bookmarks: prioritized favourites, quick clean, auto-clean hook, size alerts",
+    priority: "High",
+    effort: "Large",
+    summary:
+      "Typed catalog-entry bookmarks (never raw paths) with priority ordering, a quick-clean flag, a Trash-only auto-clean hook that runs when the free-space trigger fires, and a bookmark-size alert trigger. Quick clean runs the existing plan → confirm → run flow in priority order; the hook adds engine-ready and no-overlap guards, refuses high/credentials/privacy entries, audits every automated run and announces it; size alerts land as a registry trigger with cleanup actions in the alert.",
+    deliverables: [
+      "Atomic bookmark store in the private state folder; stale ids refused, not dropped",
+      "labctl cleanup bookmarks; bookmark affordances on scan, results and history rows",
+      "Hook runs land in the job list and history marked automated: true",
+    ],
+    targetPaths: ["cleanup-lab/engine/", "console/", "dashboard/src/views/cleanup/", "labctl"],
+  },
+  {
+    id: "CLNP-20",
+    title: "Custom-path bookmarks through a per-install catalog overlay",
+    priority: "Medium",
+    effort: "Medium",
+    summary:
+      "User folders join the system as custom.<slug> catalog entries validated by the shipped catalog's own rules and merged after it (shipped ids win; a broken overlay is reported, not fatal). The raw path is validated exactly once at creation — absolute, an existing folder, never a symlink, never a protected or system directory — then only ids travel through the API, so every guard (roots containment, owning-app check, fingerprinted plans) applies unchanged.",
+    deliverables: [
+      "POST /api/cleanup/custom-entries add/remove; removing clears the bookmark and flags",
+      "Conservative defaults: risk low, never pre-selected, no privilege",
+      "Add-a-folder dialog in the bookmarks section; Your-folder marker",
+    ],
+    targetPaths: ["cleanup-lab/engine/", "console/", "dashboard/src/views/cleanup/"],
+  },
+  {
+    id: "CLNP-21…23",
+    title: "Overview dashboard and the Space Explorer (dua-style size trees)",
+    priority: "High",
+    effort: "Large",
+    summary:
+      "The /cleanup/ dashboard becomes an overview page: readiness chip and last-scan note, a storage hero with a segmented used/available bar (purgeable shown only where the diskutil probe proves it), a Review-cleanup CTA and grouped capability card grids tied to live readiness. New Space Explorer tab: a read-only parent-summed size tree (lstat only, symlinks never followed, hard links once, one filesystem, node/depth budgets that report truncated) over registered roots — deep-roots ids plus custom overlay entries — with dua-style sorted bars, drill-down and breadcrumbs; it never deletes and links cleaning back to the plan flow.",
+    deliverables: [
+      "Layout ported on the lab's own tokens; Qleaner's styling stays unported",
+      "explorer/roots and typed explorer jobs; relative drill-downs stay contained",
+      "Engine, console and Playwright coverage for walker honesty and the tab flow",
+    ],
+    targetPaths: ["cleanup-lab/engine/", "console/", "dashboard/src/views/cleanup/"],
+  },
 ];
 
 export const CLEANUP_LAB_TASKS: TodoTask[] = tasks.map((t) => ({
