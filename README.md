@@ -27,10 +27,12 @@ each a reproducible, isolated guest driven by `make` and a shared management CLI
 | **Windows x64** | [`os-lab_0.3.6_windows_x64-setup.exe`](https://github.com/keyvanarasteh/os-lab/releases/download/app-v0.3.6/os-lab_0.3.6_windows_x64-setup.exe) | [`.msi`](https://github.com/keyvanarasteh/os-lab/releases/download/app-v0.3.6/os-lab_0.3.6_windows_x64.msi) |
 | **Linux amd64** | [`os-lab_0.3.6_linux_amd64.deb`](https://github.com/keyvanarasteh/os-lab/releases/download/app-v0.3.6/os-lab_0.3.6_linux_amd64.deb) | [`.rpm`](https://github.com/keyvanarasteh/os-lab/releases/download/app-v0.3.6/os-lab_0.3.6_linux_amd64.rpm) · [`.AppImage`](https://github.com/keyvanarasteh/os-lab/releases/download/app-v0.3.6/os-lab_0.3.6_linux_amd64.AppImage) |
 
-<sub>Latest **0.3.5** · [all files, checksums & signatures](https://github.com/keyvanarasteh/os-lab/releases/tag/app-v0.3.5) · [install & uninstall](app/INSTALL.md) · [release notes](docs/RELEASES.md). Every asset has a `.sha256` and detached `.sig`; in-app updates use the signed feed published by the `updater-manifest` workflow.</sub>
+<sub>Latest **0.3.6** · [all files, checksums & signatures](https://github.com/keyvanarasteh/os-lab/releases/tag/app-v0.3.6) · [install & uninstall](app/INSTALL.md) · [release notes](docs/RELEASES.md). Every asset has a `.sha256` and detached `.sig`; in-app updates use the signed feed published by the `updater-manifest` workflow.</sub>
 
 Windows installers have verified updater signatures but no Authenticode signature;
-SmartScreen may warn. See [Windows signing](app/SIGNING.md).
+SmartScreen may warn (**More info → Run anyway**). Every release build is attested:
+verify a download with `gh attestation verify <file> -R keyvanarasteh/os-lab`.
+See [Windows signing](app/SIGNING.md).
 
 ## Labs
 

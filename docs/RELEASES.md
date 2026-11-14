@@ -71,6 +71,12 @@ uploads `latest.json` to the `app-updates` prerelease.
   segmented icon controls titled by what they drive — Stack, Appium, idb —
   with accessible names, tooltips and 44 px coarse-pointer targets; new
   strings are translated in all seven locales.
+- Publishes the Windows installers unsigned for the first time, after an explicit maintainer
+  approval recorded in the manual workflow run: the `release-win` gate held them until then.
+  They carry verified updater signatures, `.sha256` files and new **build provenance
+  attestations** (`gh attestation verify <file> -R keyvanarasteh/os-lab`); the Authenticode
+  path stays open for the SignPath Foundation reapplication. SmartScreen may warn on first
+  run. README, CODE_SIGNING.md and app/SIGNING.md document the state.
 - Regenerates the committed dashboard and the prompt command reference.
 
 ## 0.3.5
