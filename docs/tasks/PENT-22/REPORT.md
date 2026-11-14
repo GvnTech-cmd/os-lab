@@ -10,4 +10,4 @@ Bu proje (PENT-22), bir sızma testi oturum kaydını (session log) okuyarak sta
 4. **Test & CI Uyumluluğu:** Script, reponun zorunlu kıldığı `bash -n` sözdizimi kontrollerini geçecek şekilde `set -euo pipefail` standartlarında yazılmıştır.
 
 ## Kanıt Videosu
-**VİDEO LİNKİ:** <https://drive.google.com/file/d/1NQ9x2WOvh4Weqyav9WMqDIoI7yWhghT9/view?usp=sharing>
+**VİDEO LİNKİ:** <https://drive.google.com/file/d/1At5JiEC_eJiqlx7SHKkUGsEmLGBu-yLn/view?usp=sharing>
