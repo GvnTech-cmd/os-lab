@@ -12,7 +12,7 @@ CONFIRM ?=
 PROFILE ?=
 INSTALL ?=
 
-.PHONY: help preflight setup prepare up up-gpu boot wait status monitor profiles logs shell web vnc restart update down backup restore install-service uninstall-service reset clean env mac-doctor mac-setup mac-profiles mac-profile mac-sim mac-stop mac-appium mac-appium-stop mac-idb-install mac-idb mac-idb-stop mac-xcuitest mac-app-doctor mac-app-smoke mac-status
+.PHONY: help preflight setup prepare up up-gpu boot wait status monitor profiles logs shell web vnc restart update down backup restore install-service uninstall-service reset clean env mac-doctor mac-setup mac-profiles mac-profile mac-sim mac-stop mac-appium mac-appium-stop mac-idb-install mac-idb mac-idb-stop mac-xcuitest mac-app-doctor mac-app-smoke mac-app-repl mac-status
 
 help: ## Show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -145,6 +145,9 @@ mac-app-doctor: ## macOS host: check the macOS Lab's app automation stack (Appiu
 
 mac-app-smoke: ## macOS host: run one mac2 session that activates Finder on this Mac
 	bash mac/macos-app.sh smoke
+
+mac-app-repl: ## macOS host: interactive mac2 REPL for macOS apps (APP=<bundle-id>, default Finder)
+	APP="$(APP)" bash mac/macos-app.sh repl
 
 mac-status: ## macOS host: show Xcode, booted simulators and Appium state
 	bash mac/status-mac.sh

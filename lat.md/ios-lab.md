@@ -46,6 +46,14 @@ and mac2 needs Accessibility permission in System Settings to control
 applications. `appium.sh install` installs both the XCUITest and mac2
 drivers, so one Appium server serves both lab pages.
 
+Beyond the one-shot smoke run, [[ios-lab/mac/macos-repl.mjs]] keeps a mac2
+session open for interactive work from a terminal
+(`make -C ios-lab mac-app-repl APP=<bundle-id>`): it prints the app's
+accessibility tree, finds elements by label and clicks or types into them
+by number, and saves screenshots into artifacts/. It is a local operator
+tool — the web console never runs interactive sessions and keeps its
+preview → confirm model for every action it does run.
+
 The dashboard's simulator panel (see [[dashboard]]) drives the same scripts:
 `start` accepts a `device` (a UDID or unique name, validated against
 `xcrun simctl` by the console) so the panel can boot the device picked in its

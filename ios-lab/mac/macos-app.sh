@@ -3,7 +3,7 @@
 # The macOS Lab drives installed applications (Appium mac2); the iOS Simulator lives
 # in the iOS Lab through run-simulator.sh.
 #
-#   macos-app.sh status|doctor|smoke
+#   macos-app.sh status|doctor|smoke|repl
 set -uo pipefail
 
 . "$(dirname "$0")/lib.sh"
@@ -122,7 +122,22 @@ case "$ACTION" in
     curl -fsS --max-time 30 -X DELETE "http://${APPIUM_HOST}:${APPIUM_PORT}/session/$SESSION_ID" >/dev/null 2>&1 || true
     say "macOS app smoke passed: mac2 session $SESSION_ID activated Finder"
     ;;
+  repl)
+    # Interactive mac2 REPL (macos-repl.mjs): a local operator tool with its own terminal
+    # session. Never a console job — stdin does not survive the background job runner, and
+    # the web console keeps its preview → confirm model for everything it runs.
+    command -v node >/dev/null 2>&1 || die "node is required for the REPL (brew install node)"
+    APPIUM="$(appium_bin)"
+    [ -n "$APPIUM" ] || die "Appium is not installed; use Install Appium in the macOS Lab page"
+    if [ -x "$MANAGED_BIN" ]; then export APPIUM_HOME="$APPIUM_PREFIX/home"; fi
+    "$APPIUM" driver list --installed 2>/dev/null | grep -q mac2 \
+      || die "the Appium mac2 driver is not installed; run Install Appium again"
+    curl -fsS --max-time 2 "http://${APPIUM_HOST}:${APPIUM_PORT}/status" >/dev/null 2>&1 \
+      || die "Appium is not running on ${APPIUM_HOST}:${APPIUM_PORT}; start it first (make mac-appium)"
+    mkdir -p "$LAB_DIR/artifacts"
+    exec node "$MAC_DIR/macos-repl.mjs" "http://${APPIUM_HOST}:${APPIUM_PORT}" "${MACOS_APP:-com.apple.finder}" "$LAB_DIR/artifacts"
+    ;;
   *)
-    die "usage: $0 status|doctor|smoke"
+    die "usage: $0 status|doctor|smoke|repl"
     ;;
 esac
